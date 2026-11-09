@@ -3,7 +3,6 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 using SIGA.API.Middlewares;
 using SIGA.Application;
 using SIGA.Infrastructure;
@@ -26,47 +25,11 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
 
-// 2. Swagger / OpenAPI con soporte para JWT Bearer
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "SIGA API - Azafrán Mediterráneo",
-        Version = "v1",
-        Description = "Backend API para el Sistema Integral de Gestión de Azafrán Mediterráneo (SIGA)"
-    });
-
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Description = "Autenticación JWT usando el encabezado Bearer.\r\n\r\nIngrese 'Bearer' [espacio] y luego su token.",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
-    });
-
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
-    });
-});
-
-// 3. Inyección de dependencias de Capas Application e Infrastructure
+// 2. Inyección de dependencias de Capas Application e Infrastructure
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// 4. Configuración de Autenticación con JWT Bearer (sin claves hardcodeadas)
+// 3. Configuración de Autenticación con JWT Bearer (sin claves hardcodeadas)
 var jwtSecretKey = builder.Configuration["JwtSettings:SecretKey"]
     ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
 
@@ -103,7 +66,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// 5. Cabeceras ForwardedHeaders para balanceadores HTTPS de Google Cloud
+// 4. Cabeceras ForwardedHeaders para balanceadores HTTPS de Google Cloud
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -111,7 +74,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
-// 6. Configuración de CORS para Frontend
+// 5. Configuración de CORS para Frontend
 var configuredOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? string.Empty)
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -142,21 +105,10 @@ var app = builder.Build();
 
 app.UseForwardedHeaders();
 
-// 7. Middleware Global de Excepciones
+// 6. Middleware Global de Excepciones
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
-// 8. Configuración de Swagger
-if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("EnableSwagger", true))
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "SIGA API v1");
-        c.RoutePrefix = "swagger";
-    });
-}
-
-// 9. Pipeline HTTP
+// 7. Pipeline HTTP
 app.UseRouting();
 
 app.UseCors("AllowFrontend");
@@ -175,10 +127,7 @@ app.MapGet("/api/v1/health", () => Results.Ok(new
     timestamp = DateTime.UtcNow
 }));
 
-// Redirección de raíz al swagger
-app.MapGet("/", () => Results.Redirect("/swagger"));
-
-// 10. Inicialización y Siembra de Base de Datos
+// 8. Inicialización y Siembra de Base de Datos
 await DatabaseSeeder.InitializeDatabaseAsync(app.Services);
 
 app.Run();
