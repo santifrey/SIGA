@@ -3,14 +3,23 @@
  * Configuración global de la aplicación frontend
  */
 
+const isLocalEnvironment =
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1' ||
+  window.location.protocol === 'file:';
+
+// Reemplazar con la URL del servicio en Google Cloud Run cuando se despliegue (ej: 'https://siga-api-xxxx.run.app/api/v1')
+const PRODUCTION_API_URL = '/api/v1';
+const LOCAL_API_URL = 'http://localhost:5000/api/v1';
+
 export const CONFIG = {
   APP_NAME: 'SIGA',
   APP_SUBTITLE: 'Sistema Integral de Gestión y Administración',
   VERSION: '1.0.0',
 
   // URL Base de la API backend REST
-  // Puede sobreescribirse dinámicamente mediante window.SIGA_API_URL
-  API_BASE_URL: window.SIGA_API_URL || 'http://localhost:5000/api/v1',
+  // En local apunta a http://localhost:5000/api/v1; en producción usa window.SIGA_API_URL o PRODUCTION_API_URL
+  API_BASE_URL: window.SIGA_API_URL || (isLocalEnvironment ? LOCAL_API_URL : PRODUCTION_API_URL),
 
   // Configuración de almacenamiento
   STORAGE_KEYS: {
@@ -40,6 +49,6 @@ export const CONFIG = {
   // Timeout para solicitudes HTTP (en milisegundos)
   HTTP_TIMEOUT_MS: 10000,
 
-  // Bandera de modo Mock / Fallback automático cuando el backend no esté disponible
-  ENABLE_MOCK_FALLBACK: true,
+  // Bandera de modo Mock / Fallback automático: activo solo en entorno local de desarrollo
+  ENABLE_MOCK_FALLBACK: isLocalEnvironment,
 };
