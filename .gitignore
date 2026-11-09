@@ -1,0 +1,24 @@
+## Ignore Visual Studio / .NET build artifacts and caches
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Ignore local SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+## Ignore local Development configuration with local secrets/credentials
+**/appsettings.Development.json
+!**/appsettings.Development.example.json
+
+## OS generated files
+.DS_Store
+Thumbs.db
