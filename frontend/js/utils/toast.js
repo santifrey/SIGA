@@ -3,6 +3,8 @@
  * Sistema de alertas toast no intrusivas y animadas
  */
 
+import { escapeHtml } from './html.js';
+
 class ToastService {
   constructor() {
     this.container = null;
@@ -54,8 +56,8 @@ class ToastService {
     toast.innerHTML = `
       ${iconHtml}
       <div class="toast-content">
-        ${title ? `<div class="toast-title">${title}</div>` : ''}
-        <div class="toast-message">${message}</div>
+        ${title ? `<div class="toast-title">${escapeHtml(title)}</div>` : ''}
+        <div class="toast-message">${escapeHtml(message)}</div>
       </div>
       <button type="button" class="toast-close" aria-label="Cerrar notificación">
         <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor">

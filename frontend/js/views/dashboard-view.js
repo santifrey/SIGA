@@ -7,6 +7,7 @@ import { authService } from '../services/auth-service.js';
 import { clientesService } from '../services/clientes-service.js';
 import { sucursalesService } from '../services/sucursales-service.js';
 import { CONFIG } from '../config.js';
+import { escapeHtml } from '../utils/html.js';
 
 export class DashboardView {
   constructor(router) {
@@ -39,10 +40,10 @@ export class DashboardView {
                 </span>
               </div>
               <h2 style="color: #ffffff; font-size: 1.75rem; margin-bottom: 0.35rem;">
-                Hola, ${user.nombre}
+                Hola, ${escapeHtml(user.nombre)}
               </h2>
               <p style="color: #deb0e5; font-size: 0.9375rem; margin: 0;">
-                Rol: <strong>${user.rol}</strong> | Asignado a: <strong>${user.sucursal || 'Central Córdoba'}</strong>
+                Rol: <strong>${escapeHtml(user.rol)}</strong> | Asignado a: <strong>${escapeHtml(user.sucursal || 'Central Córdoba')}</strong>
               </p>
             </div>
             <div class="d-flex gap-sm">
@@ -241,11 +242,11 @@ export class DashboardView {
           tbody.innerHTML = items.map(c => `
             <tr>
               <td>
-                <div class="font-semibold text-main">${c.nombre} ${c.apellido}</div>
-                <small class="text-muted">${c.codigo || 'S/C'}</small>
+                <div class="font-semibold text-main">${escapeHtml(c.nombre)} ${escapeHtml(c.apellido)}</div>
+                <small class="text-muted">${escapeHtml(c.codigo || 'S/C')}</small>
               </td>
-              <td>${c.tipoDocumento || 'DNI'} ${c.documento}</td>
-              <td><span class="text-muted text-sm">${c.email}</span></td>
+              <td>${escapeHtml(c.tipoDocumento || 'DNI')} ${escapeHtml(c.documento)}</td>
+              <td><span class="text-muted text-sm">${escapeHtml(c.email)}</span></td>
               <td>
                 <span class="badge ${c.activo ? 'badge-success' : 'badge-danger'}">
                   <span class="badge-dot"></span>
@@ -267,11 +268,11 @@ export class DashboardView {
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border-radius: var(--radius-md); margin-bottom: 0.5rem; background: var(--surface-alt);">
               <div style="display: flex; align-items: center; gap: 0.75rem;">
                 <div style="width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--primary-100); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700;">
-                  ${s.codigo ? s.codigo.substring(4, 7) : 'SUC'}
+                  ${escapeHtml(s.codigo ? s.codigo.substring(4, 7) : 'SUC')}
                 </div>
                 <div>
-                  <div class="font-medium text-sm text-main">${s.nombre}</div>
-                  <div class="text-xs text-muted">${s.ciudad} • Capacidad: ${s.capacidad || 0}</div>
+                  <div class="font-medium text-sm text-main">${escapeHtml(s.nombre)}</div>
+                  <div class="text-xs text-muted">${escapeHtml(s.ciudad)} • Capacidad: ${escapeHtml(s.capacidad || 0)}</div>
                 </div>
               </div>
               <span class="badge ${s.activa ? 'badge-success' : 'badge-warning'}">

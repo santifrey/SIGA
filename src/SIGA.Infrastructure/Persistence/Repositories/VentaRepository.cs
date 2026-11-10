@@ -13,6 +13,7 @@ public class VentaRepository : Repository<Venta>, IVentaRepository
     public async Task<IReadOnlyList<Venta>> GetAllWithDetailsAsync(CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .AsNoTracking()
             .Include(v => v.Cliente)
                 .ThenInclude(c => c.Persona)
             .Include(v => v.Vendedor)
@@ -31,6 +32,7 @@ public class VentaRepository : Repository<Venta>, IVentaRepository
     public async Task<IReadOnlyList<Venta>> GetByClienteAsync(int clienteId, CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .AsNoTracking()
             .Include(v => v.Cliente)
                 .ThenInclude(c => c.Persona)
             .Include(v => v.Vendedor)

@@ -6,6 +6,7 @@
 import { movimientosService } from '../services/movimientos-service.js';
 import { clientesService } from '../services/clientes-service.js';
 import { toast } from '../utils/toast.js';
+import { escapeHtml } from '../utils/escape-html.js';
 
 export class MovimientosView {
   constructor(router) {
@@ -242,21 +243,21 @@ export class MovimientosView {
 
         return `
           <tr>
-            <td><strong class="text-primary text-xs">${m.numeroComprobante || 'MOV-' + m.id}</strong></td>
-            <td class="text-xs text-muted">${fechaStr}</td>
-            <td class="font-medium text-main text-sm">${m.origenNombre || m.origenId}</td>
-            <td class="font-medium text-main text-sm">${m.destinoNombre || m.destinoId}</td>
+            <td><strong class="text-primary text-xs">${escapeHtml(m.numeroComprobante || 'MOV-' + m.id)}</strong></td>
+            <td class="text-xs text-muted">${escapeHtml(fechaStr)}</td>
+            <td class="font-medium text-main text-sm">${escapeHtml(m.origenNombre || m.origenId)}</td>
+            <td class="font-medium text-main text-sm">${escapeHtml(m.destinoNombre || m.destinoId)}</td>
             <td style="text-align: right; font-weight: 700;">${(m.totalBulbos || 0).toLocaleString('es-AR')}</td>
             <td>
-              <span class="badge ${badgeClass}">${m.estado}</span>
+              <span class="badge ${badgeClass}">${escapeHtml(m.estado)}</span>
             </td>
             <td>
               <div class="table-actions justify-end">
                 ${isPendiente ? `
-                  <button class="btn btn-sm btn-outline btn-confirmar-mov" data-id="${m.id}" style="color: var(--success); border-color: var(--success-border);" title="Confirmar movimiento">
+                  <button class="btn btn-sm btn-outline btn-confirmar-mov" data-id="${escapeHtml(m.id)}" style="color: var(--success); border-color: var(--success-border);" title="Confirmar movimiento">
                     Confirmar
                   </button>
-                  <button class="btn btn-sm btn-outline btn-anular-mov" data-id="${m.id}" style="color: var(--danger); border-color: var(--danger-border);" title="Anular movimiento">
+                  <button class="btn btn-sm btn-outline btn-anular-mov" data-id="${escapeHtml(m.id)}" style="color: var(--danger); border-color: var(--danger-border);" title="Anular movimiento">
                     Anular
                   </button>
                 ` : `
@@ -299,7 +300,7 @@ export class MovimientosView {
       });
 
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger" style="padding: 1.5rem;">${err.message || 'Error al cargar movimientos'}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger" style="padding: 1.5rem;">${escapeHtml(err.message || 'Error al cargar movimientos')}</td></tr>`;
       toast.error('No se pudo cargar el listado de movimientos.');
     }
   }

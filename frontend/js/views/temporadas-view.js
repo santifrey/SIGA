@@ -5,6 +5,7 @@
 
 import { temporadasService, ESTADOS_TEMPORADA } from '../services/temporadas-service.js';
 import { toast } from '../utils/toast.js';
+import { escapeHtml } from '../utils/escape-html.js';
 
 export class TemporadasView {
   constructor(router) {
@@ -231,7 +232,7 @@ export class TemporadasView {
       tbody.innerHTML = `
         <tr>
           <td colspan="6" class="text-center py-4 text-danger">
-            Error al consultar temporadas: ${err.message}
+            Error al consultar temporadas: ${escapeHtml(err.message)}
           </td>
         </tr>
       `;
@@ -256,7 +257,7 @@ export class TemporadasView {
     const t = this.temporadaActiva;
     nombreEl.textContent = t.nombre;
     badgeEl.className = `badge ${this._getBadgeClass(t.estado)}`;
-    badgeEl.innerHTML = `<span class="badge-dot"></span> ${t.estado}`;
+    badgeEl.innerHTML = `<span class="badge-dot"></span> ${escapeHtml(t.estado)}`;
     periodoEl.textContent = `Período: ${t.fechaInicio ? new Date(t.fechaInicio).toLocaleDateString() : 'N/A'} al ${t.fechaFin ? new Date(t.fechaFin).toLocaleDateString() : 'N/A'}`;
 
     const siguienteEstado = temporadasService.obtenerSiguienteEstado(t.estado);
@@ -267,7 +268,7 @@ export class TemporadasView {
           <svg class="icon-svg sm" viewBox="0 0 24 24">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
-          <span>Avanzar a "${siguienteEstado}"</span>
+          <span>Avanzar a "${escapeHtml(siguienteEstado)}"</span>
         </button>
       `;
 
@@ -277,7 +278,7 @@ export class TemporadasView {
     } else {
       accionContainer.innerHTML = `
         <span class="badge badge-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
-          Temporada en estado final (${t.estado})
+          Temporada en estado final (${escapeHtml(t.estado)})
         </span>
       `;
     }
@@ -308,26 +309,26 @@ export class TemporadasView {
         <tr class="${isActiva ? 'table-row-active' : ''}">
           <td>
             <span class="font-bold text-xs" style="color: var(--primary); background: var(--primary-100); padding: 3px 8px; border-radius: var(--radius-sm);">
-              #${t.id}
+              #${escapeHtml(t.id)}
             </span>
           </td>
           <td>
-            <div class="font-semibold text-main">${t.nombre}</div>
+            <div class="font-semibold text-main">${escapeHtml(t.nombre)}</div>
             ${isActiva ? '<span class="badge badge-primary text-xs" style="margin-top: 2px;">Activa</span>' : ''}
-            ${t.observaciones ? `<small class="text-muted text-truncate d-block" style="max-width: 250px;">${t.observaciones}</small>` : ''}
+            ${t.observaciones ? `<small class="text-muted text-truncate d-block" style="max-width: 250px;">${escapeHtml(t.observaciones)}</small>` : ''}
           </td>
-          <td>${t.fechaInicio ? new Date(t.fechaInicio).toLocaleDateString() : '-'}</td>
-          <td>${t.fechaFin ? new Date(t.fechaFin).toLocaleDateString() : '-'}</td>
+          <td>${escapeHtml(t.fechaInicio ? new Date(t.fechaInicio).toLocaleDateString() : '-')}</td>
+          <td>${escapeHtml(t.fechaFin ? new Date(t.fechaFin).toLocaleDateString() : '-')}</td>
           <td>
             <span class="badge ${this._getBadgeClass(t.estado)}">
               <span class="badge-dot"></span>
-              ${t.estado}
+              ${escapeHtml(t.estado)}
             </span>
           </td>
           <td style="text-align: right;">
             ${siguiente ? `
-              <button class="btn btn-sm btn-outline-primary btn-avanzar-fila" data-id="${t.id}" data-sig="${siguiente}" data-nombre="${t.nombre}">
-                <span>Avanzar a ${siguiente}</span>
+              <button class="btn btn-sm btn-outline-primary btn-avanzar-fila" data-id="${escapeHtml(t.id)}" data-sig="${escapeHtml(siguiente)}" data-nombre="${escapeHtml(t.nombre)}">
+                <span>Avanzar a ${escapeHtml(siguiente)}</span>
                 <svg class="icon-svg sm" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
               </button>
             ` : `

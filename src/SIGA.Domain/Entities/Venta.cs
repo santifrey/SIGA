@@ -12,7 +12,7 @@ public class Venta : BaseEntity
     public int VendedorId { get; set; }
     public virtual Usuario? Vendedor { get; set; }
 
-    public int OrigenParticipanteId { get; set; } = 1; // Por defecto Empresa Singleton (Id = 1)
+    public int OrigenParticipanteId { get; set; } = Empresa.SingletonId; // Por defecto Empresa Singleton
     public virtual ParticipanteComercial? OrigenParticipante { get; set; }
 
     public int ClienteId { get; set; }
@@ -35,7 +35,7 @@ public class Venta : BaseEntity
     {
     }
 
-    public Venta(int vendedorId, int clienteId, int? temporadaId = null, int origenParticipanteId = 1, string? observaciones = null)
+    public Venta(int vendedorId, int clienteId, int? temporadaId = null, int origenParticipanteId = Empresa.SingletonId, string? observaciones = null)
     {
         if (vendedorId <= 0)
             throw new OperacionInvalidaException("El vendedor es requerido.");

@@ -96,7 +96,8 @@ public class GestionTransferenciasTests
 
         // Act & Assert
         await Assert.ThrowsAsync<OperacionInvalidaException>(() => _service.TransferirLoteAsync(dto, 1));
-        _unitOfWorkMock.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

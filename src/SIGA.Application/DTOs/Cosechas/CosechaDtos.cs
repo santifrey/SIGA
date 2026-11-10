@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using SIGA.Domain.Enums;
 
 namespace SIGA.Application.DTOs.Cosechas;
@@ -37,19 +38,31 @@ public class CosechaDto
 
 public class CreateCosechaDto
 {
+    [Range(1, int.MaxValue, ErrorMessage = "El identificador de temporada es requerido.")]
     public int TemporadaId { get; set; }
+
+    [Range(1, int.MaxValue, ErrorMessage = "El identificador de sucursal es requerido.")]
     public int SucursalId { get; set; }
+
+    [StringLength(1000)]
     public string? Observaciones { get; set; }
 }
 
 public class ItemDetalleCosechaDto
 {
+    [Required]
     public ClaseBulbo ClaseBulbo { get; set; }
+
+    [Range(0, int.MaxValue, ErrorMessage = "La cantidad cosechada no puede ser negativa.")]
     public int Cantidad { get; set; }
 }
 
 public class RegistrarDetalleCosechaDto
 {
+    [Range(1, int.MaxValue, ErrorMessage = "El identificador del lote es requerido.")]
     public int LoteId { get; set; }
+
+    [Required]
+    [MinLength(1, ErrorMessage = "Debe incluir al menos una clase de bulbo cosechada.")]
     public List<ItemDetalleCosechaDto> Cantidades { get; set; } = new();
 }

@@ -38,31 +38,31 @@ public class GestionTransferencias : IGestionTransferencias
         if (dto.NuevoTitularId <= 0)
             throw new ValidationException("El nuevo titular es requerido.");
 
-        var lote = await _loteRepository.GetByIdWithDetailsAsync(dto.LoteId, cancellationToken);
-        if (lote == null)
-            throw new NotFoundException(nameof(Lote), dto.LoteId);
-
-        if (lote.Temporada != null && lote.Temporada.Estado == EstadoTemporada.Cerrada)
-            throw new OperacionInvalidaException("No se pueden transferir lotes de una temporada cerrada.");
-
-        if (lote.Estado == EstadoLote.Cosechado || lote.Estado == EstadoLote.Cerrado)
-            throw new OperacionInvalidaException("El lote ya se encuentra cosechado o cerrado. Solo se pueden transferir lotes plantados o en crecimiento.");
-
-        var hasPending = await _transferenciaRepo.HasPendingTransferAsync(dto.LoteId, cancellationToken);
-        if (hasPending)
-            throw new OperacionInvalidaException("El lote ya posee una transferencia pendiente de confirmación.");
-
-        var titularActualId = lote.ResolverTitularVigenteId();
-        if (dto.NuevoTitularId == titularActualId)
-            throw new OperacionInvalidaException("El nuevo titular no puede ser el mismo que el titular actual del lote.");
-
-        var existeNuevoTitular = await _participanteRepo.ExistsAsync(p => p.Id == dto.NuevoTitularId, cancellationToken);
-        if (!existeNuevoTitular)
-            throw new NotFoundException("Participante", dto.NuevoTitularId);
-
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
+            var lote = await _loteRepository.GetByIdWithDetailsAsync(dto.LoteId, cancellationToken);
+            if (lote == null)
+                throw new NotFoundException(nameof(Lote), dto.LoteId);
+
+            if (lote.Temporada != null && lote.Temporada.Estado == EstadoTemporada.Cerrada)
+                throw new OperacionInvalidaException("No se pueden transferir lotes de una temporada cerrada.");
+
+            if (lote.Estado == EstadoLote.Cosechado || lote.Estado == EstadoLote.Cerrado)
+                throw new OperacionInvalidaException("El lote ya se encuentra cosechado o cerrado. Solo se pueden transferir lotes plantados o en crecimiento.");
+
+            var hasPending = await _transferenciaRepo.HasPendingTransferAsync(dto.LoteId, cancellationToken);
+            if (hasPending)
+                throw new OperacionInvalidaException("El lote ya posee una transferencia pendiente de confirmación.");
+
+            var titularActualId = lote.ResolverTitularVigenteId();
+            if (dto.NuevoTitularId == titularActualId)
+                throw new OperacionInvalidaException("El nuevo titular no puede ser el mismo que el titular actual del lote.");
+
+            var existeNuevoTitular = await _participanteRepo.ExistsAsync(p => p.Id == dto.NuevoTitularId, cancellationToken);
+            if (!existeNuevoTitular)
+                throw new NotFoundException("Participante", dto.NuevoTitularId);
+
             var transferencia = new TransferenciaLote(
                 dto.LoteId, 
                 titularActualId, 

@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SIGA.API.Authorization;
 using SIGA.Application.Common;
 using SIGA.Application.DTOs.Cosechas;
 using SIGA.Application.Interfaces;
 
 namespace SIGA.API.Controllers;
 
-[Authorize]
+[Authorize(Roles = Roles.Personal)]
 public class CosechasController : BaseApiController
 {
     private readonly IGestionCosechas _gestionCosechas;
@@ -38,6 +39,7 @@ public class CosechasController : BaseApiController
     }
 
     [HttpPost]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<CosechaDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<CosechaDto>>> Create(
@@ -49,6 +51,7 @@ public class CosechasController : BaseApiController
     }
 
     [HttpPost("{id:int}/detalle")]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<CosechaDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<CosechaDto>>> RegistrarDetalle(
@@ -61,6 +64,7 @@ public class CosechasController : BaseApiController
     }
 
     [HttpPost("{id:int}/cerrar")]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<CosechaDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<CosechaDto>>> Cerrar(

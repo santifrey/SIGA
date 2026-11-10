@@ -114,7 +114,8 @@ public class GestionMovimientosTests
 
         // Act & Assert
         await Assert.ThrowsAsync<StockInsuficienteException>(() => _service.ConfirmarMovimientoAsync(10, 1));
-        _unitOfWorkMock.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

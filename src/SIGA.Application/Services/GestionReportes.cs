@@ -380,6 +380,6 @@ public class GestionReportes : IGestionReportes
         {
             return e.RazonSocial;
         }
-        return fallbackId == 1 ? "Azafrán Mediterráneo S.A." : $"Participante #{fallbackId}";
+        return fallbackId == Empresa.SingletonId ? "Azafrán Mediterráneo S.A." : $"Participante #{fallbackId}";
     }
 }

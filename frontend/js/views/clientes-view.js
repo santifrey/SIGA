@@ -6,6 +6,7 @@
 import { clientesService } from '../services/clientes-service.js';
 import { toast } from '../utils/toast.js';
 import { CONFIG } from '../config.js';
+import { escapeHtml } from '../utils/escape-html.js';
 
 export class ClientesView {
   constructor(router) {
@@ -69,7 +70,7 @@ export class ClientesView {
                   id="search-input"
                   class="form-control has-icon-left"
                   placeholder="Buscar por nombre, documento, código o email..."
-                  value="${this.searchTerm}"
+                  value="${escapeHtml(this.searchTerm)}"
                 />
               </div>
             </div>
@@ -393,20 +394,20 @@ export class ClientesView {
           <tr>
             <td>
               <span class="font-bold text-xs" style="color: var(--primary); background: var(--primary-100); padding: 3px 8px; border-radius: var(--radius-sm);">
-                ${cliente.codigo || `CLI-${cliente.id}`}
+                ${escapeHtml(cliente.codigo || `CLI-${cliente.id}`)}
               </span>
             </td>
             <td>
-              <div class="font-semibold text-main">${cliente.nombre} ${cliente.apellido}</div>
-              <small class="text-muted text-truncate" style="max-width: 200px; display: block;">${cliente.observaciones || 'Sin notas'}</small>
+              <div class="font-semibold text-main">${escapeHtml(cliente.nombre)} ${escapeHtml(cliente.apellido)}</div>
+              <small class="text-muted text-truncate" style="max-width: 200px; display: block;">${escapeHtml(cliente.observaciones || 'Sin notas')}</small>
             </td>
             <td>
-              <div class="text-sm font-medium">${cliente.tipoDocumento || 'DNI'}</div>
-              <div class="text-xs text-muted">${cliente.documento}</div>
+              <div class="text-sm font-medium">${escapeHtml(cliente.tipoDocumento || 'DNI')}</div>
+              <div class="text-xs text-muted">${escapeHtml(cliente.documento)}</div>
             </td>
             <td>
-              <div class="text-sm text-main">${cliente.email}</div>
-              <div class="text-xs text-muted">${cliente.telefono || 'Sin teléfono'}</div>
+              <div class="text-sm text-main">${escapeHtml(cliente.email)}</div>
+              <div class="text-xs text-muted">${escapeHtml(cliente.telefono || 'Sin teléfono')}</div>
             </td>
             <td>
               <span class="badge ${cliente.activo ? 'badge-success' : 'badge-danger'}">
@@ -416,21 +417,21 @@ export class ClientesView {
             </td>
             <td>
               <div class="table-actions justify-end">
-                <button class="btn-icon btn-action-edit" data-id="${cliente.id}" title="Editar cliente">
+                <button class="btn-icon btn-action-edit" data-id="${escapeHtml(cliente.id)}" title="Editar cliente">
                   <svg class="icon-svg sm" viewBox="0 0 24 24">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                   </svg>
                 </button>
                 ${cliente.activo ? `
-                  <button class="btn-icon btn-action-delete" data-id="${cliente.id}" data-name="${cliente.nombre} ${cliente.apellido}" title="Dar de baja (soft delete)">
+                  <button class="btn-icon btn-action-delete" data-id="${escapeHtml(cliente.id)}" data-name="${escapeHtml(cliente.nombre)} ${escapeHtml(cliente.apellido)}" title="Dar de baja (soft delete)">
                     <svg class="icon-svg sm" viewBox="0 0 24 24" style="color: var(--danger);">
                       <polyline points="3 6 5 6 21 6"></polyline>
                       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                     </svg>
                   </button>
                 ` : `
-                  <button class="btn-icon btn-action-reactivate" data-id="${cliente.id}" title="Reactivar cliente">
+                  <button class="btn-icon btn-action-reactivate" data-id="${escapeHtml(cliente.id)}" title="Reactivar cliente">
                     <svg class="icon-svg sm" viewBox="0 0 24 24" style="color: var(--success);">
                       <polyline points="23 4 23 10 17 10"></polyline>
                       <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
@@ -483,7 +484,7 @@ export class ClientesView {
       tbody.innerHTML = `
         <tr>
           <td colspan="6" class="text-center" style="padding: 2rem; color: var(--danger);">
-            ${err.message || 'Error al cargar clientes.'}
+            ${escapeHtml(err.message || 'Error al cargar clientes.')}
           </td>
         </tr>
       `;
@@ -600,7 +601,7 @@ export class ClientesView {
   openModalDelete(id, name) {
     this.selectedDeleteId = id;
     const prompt = this.container.querySelector('#delete-cliente-prompt');
-    prompt.innerHTML = `Está a punto de dar de baja lógica al cliente <strong>${name}</strong>. Esta acción conservará el historial contable pero deshabilitará su actividad.`;
+    prompt.innerHTML = `Está a punto de dar de baja lógica al cliente <strong>${escapeHtml(name)}</strong>. Esta acción conservará el historial contable pero deshabilitará su actividad.`;
     const modal = this.container.querySelector('#modal-delete-cliente');
     modal.classList.add('is-active');
   }

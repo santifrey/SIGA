@@ -7,6 +7,7 @@ import { Router } from './router.js';
 import { apiClient } from './utils/api-client.js';
 import { authService } from './services/auth-service.js';
 import { toast } from './utils/toast.js';
+import { escapeHtml } from './utils/escape-html.js';
 
 import { LoginView } from './views/login-view.js';
 import { DashboardView } from './views/dashboard-view.js';
@@ -273,10 +274,10 @@ class App {
             <div class="topbar-right">
               <!-- Perfil de Usuario -->
               <div class="user-profile" id="user-profile-badge" title="Usuario activo">
-                <div class="user-avatar" id="topbar-user-avatar">${initials}</div>
+                <div class="user-avatar" id="topbar-user-avatar">${escapeHtml(initials)}</div>
                 <div class="user-info">
-                  <span class="user-name" id="topbar-user-name">${user.nombre}</span>
-                  <span class="user-role" id="topbar-user-role">${user.rol}</span>
+                  <span class="user-name" id="topbar-user-name">${escapeHtml(user.nombre)}</span>
+                  <span class="user-role" id="topbar-user-role">${escapeHtml(user.rol)}</span>
                 </div>
               </div>
 

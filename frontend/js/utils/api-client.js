@@ -65,6 +65,14 @@ class ApiClient {
         throw new Error('Su sesión ha expirado o no tiene autorización. Inicie sesión nuevamente.');
       }
 
+      // Manejo de 403 Forbidden (autorización por roles): no se cierra la sesión
+      if (response.status === 403) {
+        console.warn('[ApiClient] 403 Forbidden recibido para', url);
+        const forbiddenErr = new Error('No tiene permisos para realizar esta operación.');
+        forbiddenErr.status = 403;
+        throw forbiddenErr;
+      }
+
       // Manejo de respuestas vacías (204 No Content)
       if (response.status === 204) {
         return null;
@@ -79,8 +87,22 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        const errorMsg = (data && (data.message || data.error || data.title)) ||
+        let errorMsg = (data && (data.message || data.error || data.title)) ||
           `Error en la petición (${response.status}: ${response.statusText})`;
+
+        // Errores de validación (400): anexar el detalle de `errors` distinto del mensaje
+        // (soporta tanto el array de ApiResponse como el diccionario de ProblemDetails)
+        if (response.status === 400 && data && data.errors && typeof data.errors === 'object') {
+          const lista = Array.isArray(data.errors)
+            ? data.errors
+            : Object.values(data.errors).flat();
+          const detalles = lista
+            .filter((e) => typeof e === 'string' && e.trim() !== '' && e !== errorMsg);
+          if (detalles.length > 0) {
+            errorMsg = `${errorMsg}: ${detalles.join(' ')}`;
+          }
+        }
+
         const error = new Error(errorMsg);
         error.status = response.status;
         error.data = data;

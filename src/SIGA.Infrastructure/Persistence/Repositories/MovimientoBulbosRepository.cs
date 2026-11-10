@@ -25,6 +25,7 @@ public class MovimientoBulbosRepository : Repository<MovimientoBulbos>, IMovimie
     public async Task<IReadOnlyList<MovimientoBulbos>> GetAllWithDetailsAsync(EstadoMovimiento? estado = null, CancellationToken cancellationToken = default)
     {
         var query = _dbSet
+            .AsNoTracking()
             .Include(m => m.Cantidades)
             .Include(m => m.Origen)
             .Include(m => m.Destino)
@@ -43,6 +44,7 @@ public class MovimientoBulbosRepository : Repository<MovimientoBulbos>, IMovimie
     public async Task<IReadOnlyList<MovimientoBulbos>> GetByParticipanteAsync(int participanteId, CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .AsNoTracking()
             .Include(m => m.Cantidades)
             .Include(m => m.Origen)
             .Include(m => m.Destino)
@@ -55,6 +57,7 @@ public class MovimientoBulbosRepository : Repository<MovimientoBulbos>, IMovimie
     public async Task<IReadOnlyList<MovimientoBulbos>> GetConfirmadosByParticipanteAsync(int participanteId, CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .AsNoTracking()
             .Include(m => m.Cantidades)
             .Include(m => m.Origen)
             .Include(m => m.Destino)
@@ -67,6 +70,7 @@ public class MovimientoBulbosRepository : Repository<MovimientoBulbos>, IMovimie
     public async Task<IReadOnlyList<MovimientoBulbos>> GetByOperacionIdAsync(int operacionId, CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .AsNoTracking()
             .Include(m => m.Cantidades)
             .Include(m => m.Origen)
             .Include(m => m.Destino)

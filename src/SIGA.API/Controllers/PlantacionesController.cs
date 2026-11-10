@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SIGA.API.Authorization;
 using SIGA.Application.Common;
 using SIGA.Application.DTOs.Lotes;
 using SIGA.Application.DTOs.Plantaciones;
@@ -7,7 +8,7 @@ using SIGA.Application.Interfaces;
 
 namespace SIGA.API.Controllers;
 
-[Authorize]
+[Authorize(Roles = Roles.Personal)]
 public class PlantacionesController : BaseApiController
 {
     private readonly IGestionPlantaciones _gestionPlantaciones;
@@ -18,6 +19,7 @@ public class PlantacionesController : BaseApiController
     }
 
     [HttpPost]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<PlantacionDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<PlantacionDto>>> Create(
@@ -41,6 +43,7 @@ public class PlantacionesController : BaseApiController
 
     [HttpPost("distribucion")]
     [HttpPost("{id}/distribucion")]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<LoteDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<LoteDto>>> RegistrarDistribucion(

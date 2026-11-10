@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SIGA.API.Authorization;
 using SIGA.Application.Common;
 using SIGA.Application.DTOs.Lotes;
 using SIGA.Application.Interfaces;
 
 namespace SIGA.API.Controllers;
 
-[Authorize]
+[Authorize(Roles = Roles.Personal)]
 public class LotesController : BaseApiController
 {
     private readonly IGestionLotes _gestionLotes;

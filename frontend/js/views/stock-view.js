@@ -6,6 +6,7 @@
 import { stockService } from '../services/stock-service.js';
 import { clientesService } from '../services/clientes-service.js';
 import { toast } from '../utils/toast.js';
+import { escapeHtml } from '../utils/escape-html.js';
 
 export class StockView {
   constructor(router) {
@@ -141,8 +142,8 @@ export class StockView {
 
       tbody.innerHTML = rows.map(r => `
         <tr>
-          <td><span class="badge badge-primary font-bold">Clase ${r.claseBulbo}</span></td>
-          <td class="font-medium text-main">${r.nombreClase}</td>
+          <td><span class="badge badge-primary font-bold">Clase ${escapeHtml(r.claseBulbo)}</span></td>
+          <td class="font-medium text-main">${escapeHtml(r.nombreClase)}</td>
           <td style="text-align: right;">
             <span class="font-bold ${r.cantidad > 0 ? 'text-main' : 'text-muted'}" style="font-size: 1.05rem;">
               ${r.cantidad.toLocaleString('es-AR')}
@@ -154,7 +155,7 @@ export class StockView {
       totalCell.textContent = `${total.toLocaleString('es-AR')} unidades`;
 
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger" style="padding: 1.5rem;">${err.message || 'Error al obtener stock'}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger" style="padding: 1.5rem;">${escapeHtml(err.message || 'Error al obtener stock')}</td></tr>`;
       totalCell.textContent = '0';
       toast.error('No se pudo consultar el stock.');
     }

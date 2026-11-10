@@ -110,7 +110,7 @@ public class SigaDbContext : DbContext
         modelBuilder.Entity<Empresa>().HasData(
             new Empresa
             {
-                Id = 1,
+                Id = Empresa.SingletonId,
                 TipoParticipante = TipoParticipante.Empresa,
                 Estado = EstadoParticipante.Activo,
                 FechaRegistro = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),

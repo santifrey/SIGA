@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SIGA.API.Authorization;
 using SIGA.Application.Common;
 using SIGA.Application.DTOs.Movimientos;
 using SIGA.Application.Interfaces;
@@ -7,7 +8,7 @@ using SIGA.Domain.Enums;
 
 namespace SIGA.API.Controllers;
 
-[Authorize]
+[Authorize(Roles = Roles.Personal)]
 public class MovimientosController : BaseApiController
 {
     private readonly IGestionMovimientos _gestionMovimientos;
@@ -61,6 +62,7 @@ public class MovimientosController : BaseApiController
     }
 
     [HttpPost("{id}/confirmar")]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<MovimientoBulbosDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -71,6 +73,7 @@ public class MovimientosController : BaseApiController
     }
 
     [HttpPost("{id}/anular")]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<MovimientoBulbosDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

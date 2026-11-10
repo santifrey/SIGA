@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SIGA.API.Authorization;
 using SIGA.Application.Common;
 using SIGA.Application.DTOs.Temporadas;
 using SIGA.Application.Interfaces;
@@ -7,7 +8,7 @@ using SIGA.Domain.Enums;
 
 namespace SIGA.API.Controllers;
 
-[Authorize]
+[Authorize(Roles = Roles.Personal)]
 public class TemporadasController : BaseApiController
 {
     private readonly IGestionTemporadas _gestionTemporadas;
@@ -44,6 +45,7 @@ public class TemporadasController : BaseApiController
     }
 
     [HttpPost]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<TemporadaDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<TemporadaDto>>> Create([FromBody] CreateTemporadaDto dto, CancellationToken cancellationToken)
@@ -53,6 +55,7 @@ public class TemporadasController : BaseApiController
     }
 
     [HttpPost("{id}/cambiar-estado")]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<TemporadaDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -66,6 +69,7 @@ public class TemporadasController : BaseApiController
     }
 
     [HttpPost("{id}/cerrar")]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<TemporadaDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

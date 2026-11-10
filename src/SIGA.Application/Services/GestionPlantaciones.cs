@@ -107,21 +107,21 @@ public class GestionPlantaciones : IGestionPlantaciones
         if (sucursal == null)
             throw new NotFoundException(nameof(Sucursal), dto.SucursalId);
 
-        // 4. Validar disponibilidad de stock del cliente para cada clase
-        foreach (var det in dto.Detalles)
-        {
-            var dispResult = await _gestionStock.VerificarDisponibilidadAsync(dto.ClienteId, det.Clase, det.Cantidad, cancellationToken);
-            if (dispResult == null || !dispResult.Success || dispResult.Data == null || !dispResult.Data.Disponible)
-            {
-                var disp = dispResult?.Data?.StockDisponible ?? 0;
-                throw new ValidationException(
-                    $"Stock insuficiente para el cliente {dto.ClienteId} en {det.Clase}. Disponible: {disp}, Requerido: {det.Cantidad}.");
-            }
-        }
-
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
+            // 4. Validar disponibilidad de stock del cliente para cada clase dentro de la transacción
+            foreach (var det in dto.Detalles)
+            {
+                var dispResult = await _gestionStock.VerificarDisponibilidadAsync(dto.ClienteId, det.Clase, det.Cantidad, cancellationToken);
+                if (dispResult == null || !dispResult.Success || dispResult.Data == null || !dispResult.Data.Disponible)
+                {
+                    var disp = dispResult?.Data?.StockDisponible ?? 0;
+                    throw new ValidationException(
+                        $"Stock insuficiente para el cliente {dto.ClienteId} en {det.Clase}. Disponible: {disp}, Requerido: {det.Cantidad}.");
+                }
+            }
+
             // 5. Obtener o crear Fila
             var fila = await _filaRepository.GetByIdentificacionAsync(
                 dto.SucursalId, 
@@ -205,7 +205,7 @@ public class GestionPlantaciones : IGestionPlantaciones
             var movimiento = new MovimientoBulbos(
                 operacion.Id, 
                 dto.ClienteId, 
-                1, // Destino Empresa Singleton
+                Empresa.SingletonId, // Destino Empresa Singleton
                 usuarioId, 
                 $"Salida por plantación en Fila {fila.Identificacion}, Lote #{lote.Id}");
 

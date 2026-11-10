@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SIGA.API.Authorization;
 using SIGA.Application.Common;
 using SIGA.Application.DTOs.Transferencias;
 using SIGA.Application.Interfaces;
@@ -7,7 +8,7 @@ using SIGA.Domain.Enums;
 
 namespace SIGA.API.Controllers;
 
-[Authorize]
+[Authorize(Roles = Roles.Personal)]
 public class TransferenciasController : BaseApiController
 {
     private readonly IGestionTransferencias _gestionTransferencias;
@@ -62,6 +63,7 @@ public class TransferenciasController : BaseApiController
     }
 
     [HttpPost("{id}/confirmar")]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<TransferenciaLoteDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -74,6 +76,7 @@ public class TransferenciasController : BaseApiController
     }
 
     [HttpPost("{id}/anular")]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<TransferenciaLoteDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

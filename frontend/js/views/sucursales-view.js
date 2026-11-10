@@ -5,6 +5,7 @@
 
 import { sucursalesService } from '../services/sucursales-service.js';
 import { toast } from '../utils/toast.js';
+import { escapeHtml } from '../utils/escape-html.js';
 
 export class SucursalesView {
   constructor(router) {
@@ -63,7 +64,7 @@ export class SucursalesView {
                   id="search-sucursales"
                   class="form-control has-icon-left"
                   placeholder="Buscar por nombre, código o ciudad..."
-                  value="${this.searchTerm}"
+                  value="${escapeHtml(this.searchTerm)}"
                 />
               </div>
             </div>
@@ -266,11 +267,11 @@ export class SucursalesView {
                 <div class="card-header" style="background: var(--surface-hover); border-bottom: 1px solid var(--border);">
                   <div class="d-flex align-center gap-sm">
                     <div style="width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--primary-100); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.875rem;">
-                      ${s.codigo ? s.codigo.substring(0, 7) : 'SUC'}
+                      ${s.codigo ? escapeHtml(s.codigo.substring(0, 7)) : 'SUC'}
                     </div>
                     <div>
-                      <h4 class="font-bold text-sm text-main" style="margin: 0;">${s.nombre}</h4>
-                      <small class="text-muted">${s.ciudad || 'S/D'}</small>
+                      <h4 class="font-bold text-sm text-main" style="margin: 0;">${escapeHtml(s.nombre)}</h4>
+                      <small class="text-muted">${escapeHtml(s.ciudad || 'S/D')}</small>
                     </div>
                   </div>
                   <span class="badge ${s.activa ? 'badge-success' : 'badge-warning'}">
@@ -282,34 +283,34 @@ export class SucursalesView {
                   <div class="d-flex flex-column gap-sm text-sm">
                     <div class="d-flex align-center gap-xs text-body">
                       <svg class="icon-svg sm text-muted" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                      <span>${s.direccion || 'Sin dirección'}</span>
+                      <span>${escapeHtml(s.direccion || 'Sin dirección')}</span>
                     </div>
 
                     <div class="d-flex align-center gap-xs text-body">
                       <svg class="icon-svg sm text-muted" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                      <span>${s.telefono || 'Sin teléfono'}</span>
+                      <span>${escapeHtml(s.telefono || 'Sin teléfono')}</span>
                     </div>
 
                     <div class="d-flex align-center gap-xs text-body">
                       <svg class="icon-svg sm text-muted" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                      <span>Resp: <strong>${s.responsable || 'No asignado'}</strong></span>
+                      <span>Resp: <strong>${escapeHtml(s.responsable || 'No asignado')}</strong></span>
                     </div>
 
                     <div class="mt-2 pt-2 d-flex justify-between align-center" style="border-top: 1px dashed var(--border);">
                       <span class="text-xs text-muted font-semibold">CAPACIDAD OPERATIVA:</span>
-                      <span class="font-bold text-primary" style="font-size: 1.1rem;">${s.capacidad || 0} puestos</span>
+                      <span class="font-bold text-primary" style="font-size: 1.1rem;">${escapeHtml(s.capacidad || 0)} puestos</span>
                     </div>
                   </div>
                 </div>
 
                 <div class="card-footer">
-                  <small class="text-muted">Cód: ${s.codigo || s.id}</small>
+                  <small class="text-muted">Cód: ${escapeHtml(s.codigo || s.id)}</small>
                   <div class="d-flex gap-xs">
-                    <button class="btn btn-sm btn-outline btn-edit-sucursal" data-id="${s.id}">
+                    <button class="btn btn-sm btn-outline btn-edit-sucursal" data-id="${escapeHtml(s.id)}">
                       Editar
                     </button>
                     ${s.activa ? `
-                      <button class="btn btn-sm btn-outline btn-disable-sucursal" data-id="${s.id}" style="color: var(--danger); border-color: var(--danger-border);">
+                      <button class="btn btn-sm btn-outline btn-disable-sucursal" data-id="${escapeHtml(s.id)}" style="color: var(--danger); border-color: var(--danger-border);">
                         Desactivar
                       </button>
                     ` : ''}
@@ -339,12 +340,12 @@ export class SucursalesView {
                 <tbody>
                   ${list.map(s => `
                     <tr>
-                      <td><span class="font-bold text-xs" style="color: var(--primary);">${s.codigo || s.id}</span></td>
-                      <td class="font-semibold text-main">${s.nombre}</td>
-                      <td>${s.direccion}, ${s.ciudad}</td>
-                      <td>${s.telefono || '-'}</td>
-                      <td>${s.responsable || 'No asignado'}</td>
-                      <td><span class="font-bold text-primary">${s.capacidad || 0}</span></td>
+                      <td><span class="font-bold text-xs" style="color: var(--primary);">${escapeHtml(s.codigo || s.id)}</span></td>
+                      <td class="font-semibold text-main">${escapeHtml(s.nombre)}</td>
+                      <td>${escapeHtml(s.direccion)}, ${escapeHtml(s.ciudad)}</td>
+                      <td>${escapeHtml(s.telefono || '-')}</td>
+                      <td>${escapeHtml(s.responsable || 'No asignado')}</td>
+                      <td><span class="font-bold text-primary">${escapeHtml(s.capacidad || 0)}</span></td>
                       <td>
                         <span class="badge ${s.activa ? 'badge-success' : 'badge-warning'}">
                           ${s.activa ? 'Activa' : 'Inactiva'}
@@ -352,7 +353,7 @@ export class SucursalesView {
                       </td>
                       <td>
                         <div class="table-actions justify-end">
-                          <button class="btn-icon btn-edit-sucursal" data-id="${s.id}" title="Editar">
+                          <button class="btn-icon btn-edit-sucursal" data-id="${escapeHtml(s.id)}" title="Editar">
                             <svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                           </button>
                         </div>
@@ -389,7 +390,7 @@ export class SucursalesView {
       });
 
     } catch (err) {
-      container.innerHTML = `<div class="text-center" style="padding: 2rem; color: var(--danger);">${err.message || 'Error al cargar sucursales'}</div>`;
+      container.innerHTML = `<div class="text-center" style="padding: 2rem; color: var(--danger);">${escapeHtml(err.message || 'Error al cargar sucursales')}</div>`;
     }
   }
 

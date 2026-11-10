@@ -8,6 +8,7 @@ import { temporadasService } from '../services/temporadas-service.js';
 import { sucursalesService } from '../services/sucursales-service.js';
 import { plantacionesService } from '../services/plantaciones-service.js';
 import { toast } from '../utils/toast.js';
+import { escapeHtml } from '../utils/escape-html.js';
 
 export class CosechasView {
   constructor(router) {
@@ -125,7 +126,7 @@ export class CosechasView {
         } else {
           selectTemp.innerHTML = this.temporadas.map(t => {
             const estado = t.nombreEstado || t.estado || '';
-            return `<option value="${t.id}">${t.nombre} (${estado})</option>`;
+            return `<option value="${escapeHtml(t.id)}">${escapeHtml(t.nombre)} (${escapeHtml(estado)})</option>`;
           }).join('');
 
           // Seleccionar activa por defecto o la primera
@@ -148,7 +149,7 @@ export class CosechasView {
           selectSuc.innerHTML = '<option value="">No hay sucursales disponibles</option>';
         } else {
           selectSuc.innerHTML = listaSucs.map(s => {
-            return `<option value="${s.id}">${s.nombre} (${s.codigo || s.ciudad || 'Sucursal'})</option>`;
+            return `<option value="${escapeHtml(s.id)}">${escapeHtml(s.nombre)} (${escapeHtml(s.codigo || s.ciudad || 'Sucursal')})</option>`;
           }).join('');
 
           this.selectedSucursalId = listaSucs[0].id;
@@ -242,9 +243,9 @@ export class CosechasView {
             <div class="mb-3">
               <span class="badge badge-warning" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">Sin Cosecha Abierta</span>
             </div>
-            <h3 class="mb-2" style="font-size: 1.25rem;">No hay cosecha iniciada para ${nombreSucursal}</h3>
+            <h3 class="mb-2" style="font-size: 1.25rem;">No hay cosecha iniciada para ${escapeHtml(nombreSucursal)}</h3>
             <p class="text-muted text-sm mb-4">
-              En la <strong>${nombreTemporada}</strong> aún no se ha dado inicio formal al proceso de cosecha para esta sucursal.
+              En la <strong>${escapeHtml(nombreTemporada)}</strong> aún no se ha dado inicio formal al proceso de cosecha para esta sucursal.
               Al iniciar la cosecha, podrá registrar los pesajes de bulbos por lote y proceder al cierre para acreditar el inventario.
             </p>
 
@@ -306,12 +307,12 @@ export class CosechasView {
         <div class="card-header d-flex justify-between align-center p-3 border-bottom flex-wrap gap-sm">
           <div>
             <h3 class="card-title text-base m-0">
-              Cosecha #${cosecha.id} - ${nombreSucursal}
+              Cosecha #${escapeHtml(cosecha.id)} - ${escapeHtml(nombreSucursal)}
             </h3>
-            <span class="text-xs text-muted">Temporada: ${nombreTemporada}</span>
+            <span class="text-xs text-muted">Temporada: ${escapeHtml(nombreTemporada)}</span>
           </div>
           <div class="d-flex align-center gap-sm">
-            <span class="badge ${badgeClass}">${estadoNombre}</span>
+            <span class="badge ${badgeClass}">${escapeHtml(estadoNombre)}</span>
             ${!isCerrada ? `
               <button class="btn btn-danger btn-sm" id="btn-cerrar-cosecha" title="Finaliza la recolección y acredita los bulbos al inventario">
                 <svg class="icon-svg sm" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
@@ -327,11 +328,11 @@ export class CosechasView {
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
             <div>
               <div class="text-xs text-muted uppercase font-bold">Fecha de Inicio</div>
-              <div class="font-semibold text-main">${fechaInicioStr}</div>
+              <div class="font-semibold text-main">${escapeHtml(fechaInicioStr)}</div>
             </div>
             <div>
               <div class="text-xs text-muted uppercase font-bold">Fecha de Cierre</div>
-              <div class="font-semibold text-main">${fechaFinStr}</div>
+              <div class="font-semibold text-main">${escapeHtml(fechaFinStr)}</div>
             </div>
             <div>
               <div class="text-xs text-muted uppercase font-bold">Total Bulbos Registrados</div>
@@ -341,7 +342,7 @@ export class CosechasView {
             </div>
             <div>
               <div class="text-xs text-muted uppercase font-bold">Observaciones</div>
-              <div class="text-sm text-main">${cosecha.observaciones || 'Sin observaciones'}</div>
+              <div class="text-sm text-main">${escapeHtml(cosecha.observaciones || 'Sin observaciones')}</div>
             </div>
           </div>
 
@@ -371,7 +372,7 @@ export class CosechasView {
                         const fila = l.filaIdentificacion || l.identificacionFila || l.fila?.identificacion || 'Fila';
                         const titular = l.nombreTitularVigente || l.nombreCliente || (l.cliente ? `${l.cliente.nombre || ''} ${l.cliente.apellido || ''}`.trim() : `Titular #${l.clienteId}`);
                         const totalPl = l.totalBulbos || l.cantidadPlantadaTotal || '-';
-                        return `<option value="${l.id}">Lote #${l.id} - Fila: ${fila} | Titular: ${titular} (${totalPl} bulbos plantados)</option>`;
+                        return `<option value="${escapeHtml(l.id)}">Lote #${escapeHtml(l.id)} - Fila: ${escapeHtml(fila)} | Titular: ${escapeHtml(titular)} (${escapeHtml(totalPl)} bulbos plantados)</option>`;
                       }).join('')
                   }
                 </select>
@@ -497,15 +498,15 @@ export class CosechasView {
 
       return `
         <tr>
-          <td><strong>#${loteId}</strong></td>
-          <td>${fila}</td>
-          <td>${orig}</td>
+          <td><strong>#${escapeHtml(loteId)}</strong></td>
+          <td>${escapeHtml(fila)}</td>
+          <td>${escapeHtml(orig)}</td>
           <td>
             <span class="${isTransferido ? 'text-primary font-bold' : ''}">
-              ${vigente} ${isTransferido ? '<span class="badge badge-info" style="font-size: 0.65rem;">Cesión</span>' : ''}
+              ${escapeHtml(vigente)} ${isTransferido ? '<span class="badge badge-info" style="font-size: 0.65rem;">Cesión</span>' : ''}
             </span>
           </td>
-          <td><span class="badge badge-accent">${clase}</span></td>
+          <td><span class="badge badge-accent">${escapeHtml(clase)}</span></td>
           <td style="text-align: right; font-weight: 600;">${cant.toLocaleString()}</td>
         </tr>
       `;
@@ -548,14 +549,14 @@ export class CosechasView {
 
       return `
         <tr style="${isCurrentSelected ? 'background: var(--surface-alt); font-weight: 500;' : ''}">
-          <td><strong>#${c.id}</strong></td>
-          <td>${c.nombreSucursal || `Sucursal #${c.sucursalId}`}</td>
-          <td><span class="badge ${badgeClass}">${estadoStr}</span></td>
-          <td>${fechaIni}</td>
-          <td>${fechaFin}</td>
+          <td><strong>#${escapeHtml(c.id)}</strong></td>
+          <td>${escapeHtml(c.nombreSucursal || `Sucursal #${c.sucursalId}`)}</td>
+          <td><span class="badge ${badgeClass}">${escapeHtml(estadoStr)}</span></td>
+          <td>${escapeHtml(fechaIni)}</td>
+          <td>${escapeHtml(fechaFin)}</td>
           <td style="text-align: right; font-weight: 600;">${total.toLocaleString()}</td>
           <td style="text-align: center;">
-            <button class="btn btn-outline-primary btn-sm btn-select-sucursal-cosecha" data-sucursal-id="${c.sucursalId}">
+            <button class="btn btn-outline-primary btn-sm btn-select-sucursal-cosecha" data-sucursal-id="${escapeHtml(c.sucursalId)}">
               ${isCurrentSelected ? 'Gestionando' : 'Seleccionar'}
             </button>
           </td>

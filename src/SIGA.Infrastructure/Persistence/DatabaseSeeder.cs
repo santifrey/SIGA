@@ -20,7 +20,14 @@ public static class DatabaseSeeder
 
         try
         {
-            await context.Database.EnsureCreatedAsync();
+            if (context.Database.GetMigrations().Any())
+            {
+                await context.Database.MigrateAsync();
+            }
+            else
+            {
+                await context.Database.EnsureCreatedAsync();
+            }
 
             // 1. Verificar si existe al menos un usuario con rol ADMINISTRADOR
             var existeAdministrador = await context.UsuarioRoles

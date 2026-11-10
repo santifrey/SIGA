@@ -117,36 +117,36 @@ public class GestionMovimientos : IGestionMovimientos
         int usuarioConfirmadorId, 
         CancellationToken cancellationToken = default)
     {
-        var movimiento = await _movimientoRepository.GetByIdWithDetailsAsync(movimientoId, cancellationToken);
-        if (movimiento == null)
-            throw new NotFoundException(nameof(MovimientoBulbos), movimientoId);
-
-        if (movimiento.Estado != EstadoMovimiento.Pendiente)
-            throw new OperacionInvalidaException($"No se puede confirmar un movimiento en estado '{movimiento.Estado}'. Solo se pueden confirmar movimientos en estado 'Pendiente'.");
-
-        // Si el Origen es un Cliente, validar disponibilidad suficiente de stock
-        var clienteOrigen = await _clienteRepository.GetByIdAsync(movimiento.OrigenId, cancellationToken);
-        if (clienteOrigen != null)
-        {
-            var saldosDisponibles = await _gestionStock.ObtenerSaldoPorClaseAsync(movimiento.OrigenId, cancellationToken);
-
-            foreach (var cant in movimiento.Cantidades)
-            {
-                var saldoActual = saldosDisponibles.TryGetValue(cant.ClaseBulbo, out var stock) ? stock : 0;
-                if (saldoActual < cant.Cantidad)
-                {
-                    throw new StockInsuficienteException(
-                        movimiento.OrigenId, 
-                        (int)cant.ClaseBulbo, 
-                        cant.Cantidad, 
-                        saldoActual);
-                }
-            }
-        }
-
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
+            var movimiento = await _movimientoRepository.GetByIdWithDetailsAsync(movimientoId, cancellationToken);
+            if (movimiento == null)
+                throw new NotFoundException(nameof(MovimientoBulbos), movimientoId);
+
+            if (movimiento.Estado != EstadoMovimiento.Pendiente)
+                throw new OperacionInvalidaException($"No se puede confirmar un movimiento en estado '{movimiento.Estado}'. Solo se pueden confirmar movimientos en estado 'Pendiente'.");
+
+            // Si el Origen es un Cliente, validar disponibilidad suficiente de stock dentro de la transacción
+            var clienteOrigen = await _clienteRepository.GetByIdAsync(movimiento.OrigenId, cancellationToken);
+            if (clienteOrigen != null)
+            {
+                var saldosDisponibles = await _gestionStock.ObtenerSaldoPorClaseAsync(movimiento.OrigenId, cancellationToken);
+
+                foreach (var cant in movimiento.Cantidades)
+                {
+                    var saldoActual = saldosDisponibles.TryGetValue(cant.ClaseBulbo, out var stock) ? stock : 0;
+                    if (saldoActual < cant.Cantidad)
+                    {
+                        throw new StockInsuficienteException(
+                            movimiento.OrigenId, 
+                            (int)cant.ClaseBulbo, 
+                            cant.Cantidad, 
+                            saldoActual);
+                    }
+                }
+            }
+
             movimiento.Confirmar();
             await _movimientoRepository.UpdateAsync(movimiento, cancellationToken);
 
@@ -172,36 +172,36 @@ public class GestionMovimientos : IGestionMovimientos
         int usuarioId, 
         CancellationToken cancellationToken = default)
     {
-        var movimiento = await _movimientoRepository.GetByIdWithDetailsAsync(movimientoId, cancellationToken);
-        if (movimiento == null)
-            throw new NotFoundException(nameof(MovimientoBulbos), movimientoId);
-
-        if (movimiento.Estado == EstadoMovimiento.Anulado)
-            throw new OperacionInvalidaException("El movimiento ya se encuentra anulado.");
-
-        // Si el movimiento estaba Confirmado y el Destino es un Cliente, validar que anular la entrada no deje saldo negativo
-        if (movimiento.Estado == EstadoMovimiento.Confirmado)
-        {
-            var clienteDestino = await _clienteRepository.GetByIdAsync(movimiento.DestinoId, cancellationToken);
-            if (clienteDestino != null)
-            {
-                var saldosDestino = await _gestionStock.ObtenerSaldoPorClaseAsync(movimiento.DestinoId, cancellationToken);
-
-                foreach (var cant in movimiento.Cantidades)
-                {
-                    var saldoActual = saldosDestino.TryGetValue(cant.ClaseBulbo, out var stock) ? stock : 0;
-                    if (saldoActual - cant.Cantidad < 0)
-                    {
-                        throw new OperacionInvalidaException(
-                            $"No se puede anular el movimiento: el participante destino quedaría con saldo negativo ({saldoActual - cant.Cantidad}) en la Clase {(int)cant.ClaseBulbo}.");
-                    }
-                }
-            }
-        }
-
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
+            var movimiento = await _movimientoRepository.GetByIdWithDetailsAsync(movimientoId, cancellationToken);
+            if (movimiento == null)
+                throw new NotFoundException(nameof(MovimientoBulbos), movimientoId);
+
+            if (movimiento.Estado == EstadoMovimiento.Anulado)
+                throw new OperacionInvalidaException("El movimiento ya se encuentra anulado.");
+
+            // Si el movimiento estaba Confirmado y el Destino es un Cliente, validar que anular la entrada no deje saldo negativo
+            if (movimiento.Estado == EstadoMovimiento.Confirmado)
+            {
+                var clienteDestino = await _clienteRepository.GetByIdAsync(movimiento.DestinoId, cancellationToken);
+                if (clienteDestino != null)
+                {
+                    var saldosDestino = await _gestionStock.ObtenerSaldoPorClaseAsync(movimiento.DestinoId, cancellationToken);
+
+                    foreach (var cant in movimiento.Cantidades)
+                    {
+                        var saldoActual = saldosDestino.TryGetValue(cant.ClaseBulbo, out var stock) ? stock : 0;
+                        if (saldoActual - cant.Cantidad < 0)
+                        {
+                            throw new OperacionInvalidaException(
+                                $"No se puede anular el movimiento: el participante destino quedaría con saldo negativo ({saldoActual - cant.Cantidad}) en la Clase {(int)cant.ClaseBulbo}.");
+                        }
+                    }
+                }
+            }
+
             movimiento.Anular(motivo);
             await _movimientoRepository.UpdateAsync(movimiento, cancellationToken);
 

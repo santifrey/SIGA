@@ -4,6 +4,8 @@ namespace SIGA.Domain.Entities;
 
 public class Empresa : ParticipanteComercial
 {
+    public const int SingletonId = 1;
+
     public Empresa()
     {
         TipoParticipante = TipoParticipante.Empresa;

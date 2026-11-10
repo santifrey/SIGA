@@ -5,6 +5,7 @@
 
 import { authService } from '../services/auth-service.js';
 import { toast } from '../utils/toast.js';
+import { escapeHtml } from '../utils/html.js';
 
 export class LoginView {
   constructor(router) {
@@ -181,7 +182,7 @@ export class LoginView {
         alertBox.className = 'mb-3 fade-in';
         alertBox.innerHTML = `
           <div style="background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger-text); padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.8125rem;">
-            ${err.message || 'Error al autenticar. Verifique sus credenciales.'}
+            ${escapeHtml(err.message || 'Error al autenticar. Verifique sus credenciales.')}
           </div>
         `;
         alertBox.classList.remove('hidden');

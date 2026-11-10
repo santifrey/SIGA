@@ -7,6 +7,7 @@ import { reportesService } from '../services/reportes-service.js';
 import { clientesService } from '../services/clientes-service.js';
 import { temporadasService } from '../services/temporadas-service.js';
 import { toast } from '../utils/toast.js';
+import { escapeHtml } from '../utils/html.js';
 
 export class ReportesView {
   constructor(router) {
@@ -122,7 +123,7 @@ export class ReportesView {
           selectCli.innerHTML = '<option value="">-- Seleccione Cliente --</option>' +
             this.clientes.map(c => {
               const nom = c.persona ? `${c.persona.nombre} ${c.persona.apellido}` : (c.razonSocial || c.nombreCompleto || c.codigoCliente);
-              return `<option value="${c.id}">${nom} (${c.codigoCliente || 'CLI'})</option>`;
+              return `<option value="${escapeHtml(c.id)}">${escapeHtml(nom)} (${escapeHtml(c.codigoCliente || 'CLI')})</option>`;
             }).join('');
 
           // Seleccionar primer cliente por defecto
@@ -139,7 +140,7 @@ export class ReportesView {
           selectTemp.innerHTML = '<option value="">No hay temporadas registradas</option>';
         } else {
           selectTemp.innerHTML = '<option value="">-- Seleccione Temporada --</option>' +
-            this.temporadas.map(t => `<option value="${t.id}">${t.nombre} (${t.nombreEstado || t.estado || ''})</option>`).join('');
+            this.temporadas.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.nombre)} (${escapeHtml(t.nombreEstado || t.estado || '')})</option>`).join('');
 
           // Seleccionar temporada activa o primera
           const activa = this.temporadas.find(t => {
@@ -236,10 +237,10 @@ export class ReportesView {
         <div class="card p-3" style="border-left: 4px solid var(--info); background: var(--surface);">
           <div class="d-flex justify-between align-center mb-1">
             <span class="text-xs text-muted uppercase font-bold">Temporada Activa</span>
-            <span class="badge badge-info" style="font-size: 0.65rem;">${tempEstado}</span>
+            <span class="badge badge-info" style="font-size: 0.65rem;">${escapeHtml(tempEstado)}</span>
           </div>
           <div class="font-bold text-main" style="font-size: 1.1rem; margin-bottom: 0.25rem;">
-            ${tempNombre}
+            ${escapeHtml(tempNombre)}
           </div>
           <div class="text-xs">
             <span class="text-muted">Plantado:</span> <strong>${plantadosActadosFmt(plantadosActiva)}</strong> | 
@@ -278,7 +279,7 @@ export class ReportesView {
       this.reporteCliente = rep;
       this.renderReporteCliente();
     } catch (err) {
-      contenedor.innerHTML = `<div class="p-3 text-danger">Error al cargar la ficha del cliente: ${err.message}</div>`;
+      contenedor.innerHTML = `<div class="p-3 text-danger">Error al cargar la ficha del cliente: ${escapeHtml(err.message)}</div>`;
     }
   }
 
@@ -301,13 +302,13 @@ export class ReportesView {
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; background: var(--surface-alt); padding: 1rem; border-radius: var(--radius-md);">
         <div>
           <span class="text-xs text-muted uppercase font-bold">Cliente:</span>
-          <div class="font-bold text-main" style="font-size: 1.15rem;">${nombre}</div>
-          <span class="text-xs text-muted">Legajo: ${codigo}</span>
+          <div class="font-bold text-main" style="font-size: 1.15rem;">${escapeHtml(nombre)}</div>
+          <span class="text-xs text-muted">Legajo: ${escapeHtml(codigo)}</span>
         </div>
         <div>
           <span class="text-xs text-muted uppercase font-bold">Documento / CUIT:</span>
-          <div class="font-semibold text-main">${doc}</div>
-          <span class="text-xs text-muted">${email}</span>
+          <div class="font-semibold text-main">${escapeHtml(doc)}</div>
+          <span class="text-xs text-muted">${escapeHtml(email)}</span>
         </div>
         <div>
           <span class="text-xs text-muted uppercase font-bold">Total Stock en Custodia:</span>
@@ -365,11 +366,11 @@ export class ReportesView {
 
                   return `
                     <tr>
-                      <td><strong>#${loteId}</strong></td>
-                      <td>${tempNom}</td>
-                      <td>${sucNom}</td>
-                      <td>${fila}</td>
-                      <td><span class="badge badge-secondary">${estadoLote}</span></td>
+                      <td><strong>#${escapeHtml(loteId)}</strong></td>
+                      <td>${escapeHtml(tempNom)}</td>
+                      <td>${escapeHtml(sucNom)}</td>
+                      <td>${escapeHtml(fila)}</td>
+                      <td><span class="badge badge-secondary">${escapeHtml(estadoLote)}</span></td>
                       <td style="text-align: right; font-weight: 600;">${cant.toLocaleString('es-AR')}</td>
                       <td style="text-align: center;">
                         ${cesion
@@ -412,7 +413,7 @@ export class ReportesView {
 
                   return `
                     <tr>
-                      <td><strong>${tempNom}</strong></td>
+                      <td><strong>${escapeHtml(tempNom)}</strong></td>
                       <td style="text-align: right;">${plant.toLocaleString('es-AR')}</td>
                       <td style="text-align: right; font-weight: 600;">${cosech.toLocaleString('es-AR')}</td>
                       <td style="text-align: right;" class="${difBadge}">${difSign}</td>
@@ -446,7 +447,7 @@ export class ReportesView {
       this.reporteTemporada = rep;
       this.renderReporteTemporada();
     } catch (err) {
-      contenedor.innerHTML = `<div class="p-3 text-danger">Error al cargar reporte de temporada: ${err.message}</div>`;
+      contenedor.innerHTML = `<div class="p-3 text-danger">Error al cargar reporte de temporada: ${escapeHtml(err.message)}</div>`;
     }
   }
 
@@ -470,7 +471,7 @@ export class ReportesView {
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; background: var(--surface-alt); padding: 1rem; border-radius: var(--radius-md);">
         <div>
           <span class="text-xs text-muted uppercase font-bold">Temporada Productiva:</span>
-          <div class="font-bold text-main" style="font-size: 1.15rem;">${tempNom}</div>
+          <div class="font-bold text-main" style="font-size: 1.15rem;">${escapeHtml(tempNom)}</div>
         </div>
         <div>
           <span class="text-xs text-muted uppercase font-bold">Total Plantado:</span>
@@ -520,7 +521,7 @@ export class ReportesView {
                   return `
                     <tr>
                       <td>
-                        <strong>${nombreClase}</strong>
+                        <strong>${escapeHtml(nombreClase)}</strong>
                         <span class="text-xs text-muted d-block">${this.getDescripcionClase(claseId)}</span>
                       </td>
                       <td style="text-align: right;">${plant.toLocaleString('es-AR')}</td>
@@ -571,8 +572,8 @@ export class ReportesView {
 
                   return `
                     <tr>
-                      <td><strong>${sucNom}</strong></td>
-                      <td><span class="badge ${estCosecha === 'Cerrada' ? 'badge-success' : 'badge-warning'}">${estCosecha}</span></td>
+                      <td><strong>${escapeHtml(sucNom)}</strong></td>
+                      <td><span class="badge ${estCosecha === 'Cerrada' ? 'badge-success' : 'badge-warning'}">${escapeHtml(estCosecha)}</span></td>
                       <td style="text-align: right;">${lotesCant}</td>
                       <td style="text-align: right;">${plant.toLocaleString('es-AR')}</td>
                       <td style="text-align: right; font-weight: 600;">${cosech.toLocaleString('es-AR')}</td>
@@ -627,13 +628,13 @@ export class ReportesView {
 
                   return `
                     <tr>
-                      <td><strong>#${loteId}</strong></td>
-                      <td>${sucNom}</td>
-                      <td>${fila}</td>
-                      <td>${orig}</td>
+                      <td><strong>#${escapeHtml(loteId)}</strong></td>
+                      <td>${escapeHtml(sucNom)}</td>
+                      <td>${escapeHtml(fila)}</td>
+                      <td>${escapeHtml(orig)}</td>
                       <td>
                         <span class="${transferido ? 'text-primary font-bold' : ''}">
-                          ${vigente} ${transferido ? '<span class="badge badge-info" style="font-size: 0.65rem;">Cesión</span>' : ''}
+                          ${escapeHtml(vigente)} ${transferido ? '<span class="badge badge-info" style="font-size: 0.65rem;">Cesión</span>' : ''}
                         </span>
                       </td>
                       <td style="text-align: right;">${plant.toLocaleString('es-AR')}</td>

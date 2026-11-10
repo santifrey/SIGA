@@ -8,6 +8,7 @@ import { temporadasService } from '../services/temporadas-service.js';
 import { sucursalesService } from '../services/sucursales-service.js';
 import { clientesService } from '../services/clientes-service.js';
 import { toast } from '../utils/toast.js';
+import { escapeHtml } from '../utils/escape-html.js';
 
 export class PlantacionesView {
   constructor(router) {
@@ -243,8 +244,8 @@ export class PlantacionesView {
         this.selectedTemporadaId = activa.id;
 
         tempSelect.innerHTML = this.temporadas.map(t => `
-          <option value="${t.id}" ${String(t.id) === String(this.selectedTemporadaId) ? 'selected' : ''}>
-            ${t.nombre} (${t.estado})
+          <option value="${escapeHtml(t.id)}" ${String(t.id) === String(this.selectedTemporadaId) ? 'selected' : ''}>
+            ${escapeHtml(t.nombre)} (${escapeHtml(t.estado)})
           </option>
         `).join('');
       } else {
@@ -256,8 +257,8 @@ export class PlantacionesView {
       if (this.sucursales.length > 0) {
         this.selectedSucursalId = this.sucursales[0].id;
         sucSelect.innerHTML = this.sucursales.map(s => `
-          <option value="${s.id}">
-            ${s.nombre} (${s.ciudad || 'Principal'})
+          <option value="${escapeHtml(s.id)}">
+            ${escapeHtml(s.nombre)} (${escapeHtml(s.ciudad || 'Principal')})
           </option>
         `).join('');
       } else {
@@ -271,8 +272,8 @@ export class PlantacionesView {
         cliSelect.innerHTML = `
           <option value="">-- Seleccionar Cliente Titular --</option>
           ${this.clientes.map(c => `
-            <option value="${c.id}">
-              ${c.codigo ? `[${c.codigo}] ` : ''}${c.nombre} ${c.apellido} (${c.documento || c.email || 'Titular'})
+            <option value="${escapeHtml(c.id)}">
+              ${c.codigo ? `[${escapeHtml(c.codigo)}] ` : ''}${escapeHtml(c.nombre)} ${escapeHtml(c.apellido)} (${escapeHtml(c.documento || c.email || 'Titular')})
             </option>
           `).join('')}
         `;
@@ -313,7 +314,7 @@ export class PlantacionesView {
       tbody.innerHTML = `
         <tr>
           <td colspan="6" class="text-center py-4 text-danger">
-            Error al consultar lotes: ${err.message}
+            Error al consultar lotes: ${escapeHtml(err.message)}
           </td>
         </tr>
       `;
@@ -361,30 +362,30 @@ export class PlantacionesView {
         <tr>
           <td>
             <span class="font-bold text-xs" style="color: var(--accent-800); background: var(--accent-100); padding: 3px 8px; border-radius: var(--radius-sm);">
-              ${l.filaIdentificacion || 'F-??'}
+              ${escapeHtml(l.filaIdentificacion || 'F-??')}
             </span>
           </td>
           <td>
-            <span class="font-semibold text-main">${l.numeroLote || `LOT-${l.id}`}</span>
+            <span class="font-semibold text-main">${escapeHtml(l.numeroLote || `LOT-${l.id}`)}</span>
           </td>
           <td>
-            <div class="font-medium text-main">${clienteNombre || 'Sin asignar'}</div>
+            <div class="font-medium text-main">${escapeHtml(clienteNombre || 'Sin asignar')}</div>
           </td>
           <td style="text-align: right;">
             <span class="font-bold" style="color: var(--primary);">${(l.totalBulbos || 0).toLocaleString()}</span>
           </td>
           <td>
             <div class="text-xs font-mono" style="background: var(--surface-alt); padding: 4px 8px; border-radius: var(--radius-sm); display: inline-block;">
-              <strong>C0:</strong> ${c0} |
-              <strong>C1:</strong> ${c1} |
-              <strong>C2:</strong> ${c2} |
-              <strong>C3:</strong> ${c3} |
-              <strong>C4:</strong> ${c4}
+              <strong>C0:</strong> ${escapeHtml(c0)} |
+              <strong>C1:</strong> ${escapeHtml(c1)} |
+              <strong>C2:</strong> ${escapeHtml(c2)} |
+              <strong>C3:</strong> ${escapeHtml(c3)} |
+              <strong>C4:</strong> ${escapeHtml(c4)}
             </div>
           </td>
           <td>
             <span class="text-xs text-muted">
-              ${l.fechaRegistro ? new Date(l.fechaRegistro).toLocaleDateString() : '-'}
+              ${escapeHtml(l.fechaRegistro ? new Date(l.fechaRegistro).toLocaleDateString() : '-')}
             </span>
           </td>
         </tr>

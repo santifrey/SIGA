@@ -101,7 +101,7 @@ public class GestionVentas : IGestionVentas
                 throw new NotFoundException(nameof(Temporada), dto.TemporadaId.Value);
         }
 
-        var origenId = dto.OrigenParticipanteId > 0 ? dto.OrigenParticipanteId : 1;
+        var origenId = dto.OrigenParticipanteId > 0 ? dto.OrigenParticipanteId : Empresa.SingletonId;
 
         var venta = new Venta(
             vendedorUsuarioId,
@@ -231,33 +231,33 @@ public class GestionVentas : IGestionVentas
         int usuarioId,
         CancellationToken cancellationToken = default)
     {
-        var venta = await _ventaRepository.GetByIdWithDetailsAsync(ventaId, cancellationToken);
-        if (venta == null)
-            throw new NotFoundException(nameof(Venta), ventaId);
-
-        // Si el vendedor de los bulbos es un Cliente (OrigenParticipanteId != 1), validamos su stock disponible
-        if (venta.OrigenParticipanteId != 1)
-        {
-            foreach (var det in venta.Detalles.Where(d => !d.IsDeleted))
-            {
-                var disp = await _gestionStock.VerificarDisponibilidadAsync(
-                    venta.OrigenParticipanteId,
-                    det.ClaseBulbo,
-                    det.Cantidad,
-                    cancellationToken);
-
-                if (disp == null || !disp.Success || disp.Data == null || !disp.Data.Disponible)
-                {
-                    var stockActual = disp?.Data?.StockDisponible ?? 0;
-                    throw new ValidationException(
-                        $"Stock insuficiente en el participante vendedor #{venta.OrigenParticipanteId} para {det.ClaseBulbo}. Disponible: {stockActual}, Requerido: {det.Cantidad}.");
-                }
-            }
-        }
-
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
+            var venta = await _ventaRepository.GetByIdWithDetailsAsync(ventaId, cancellationToken);
+            if (venta == null)
+                throw new NotFoundException(nameof(Venta), ventaId);
+
+            // Si el vendedor de los bulbos es un Cliente (OrigenParticipanteId != Empresa.SingletonId), validamos su stock disponible dentro de la transacción
+            if (venta.OrigenParticipanteId != Empresa.SingletonId)
+            {
+                foreach (var det in venta.Detalles.Where(d => !d.IsDeleted))
+                {
+                    var disp = await _gestionStock.VerificarDisponibilidadAsync(
+                        venta.OrigenParticipanteId,
+                        det.ClaseBulbo,
+                        det.Cantidad,
+                        cancellationToken);
+
+                    if (disp == null || !disp.Success || disp.Data == null || !disp.Data.Disponible)
+                    {
+                        var stockActual = disp?.Data?.StockDisponible ?? 0;
+                        throw new ValidationException(
+                            $"Stock insuficiente en el participante vendedor #{venta.OrigenParticipanteId} para {det.ClaseBulbo}. Disponible: {stockActual}, Requerido: {det.Cantidad}.");
+                    }
+                }
+            }
+
             // Generar Operación Comercial y Movimiento de Bulbos confirmado hacia el Cliente comprador
             var operacion = new OperacionComercial
             {

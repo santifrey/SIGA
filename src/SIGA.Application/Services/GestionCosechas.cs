@@ -192,8 +192,8 @@ public class GestionCosechas : IGestionCosechas
             {
                 var titularVigenteId = grupoTitular.Key;
 
-                // Si el titular vigente es un Cliente (Id != 1), generamos operación de IngresoCosecha y movimiento confirmado (Empresa 1 -> TitularVigente)
-                if (titularVigenteId != 1)
+                // Si el titular vigente es un Cliente (Id != Empresa.SingletonId), generamos operación de IngresoCosecha y movimiento confirmado (Empresa -> TitularVigente)
+                if (titularVigenteId != Empresa.SingletonId)
                 {
                     var operacion = new OperacionComercial
                     {
@@ -209,7 +209,7 @@ public class GestionCosechas : IGestionCosechas
 
                     var movimiento = new MovimientoBulbos(
                         operacion.Id,
-                        1, // Origen: Producción / Empresa Singleton
+                        Empresa.SingletonId, // Origen: Producción / Empresa Singleton
                         titularVigenteId, // Destino: Titular Vigente del Lote
                         usuarioId,
                         $"Acreditación de cosecha #{cosecha.Id} (Temporada {temporada.Nombre})");

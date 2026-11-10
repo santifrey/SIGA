@@ -1,10 +1,13 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using SIGA.API.Middlewares;
 using SIGA.Application;
+using SIGA.Application.Common;
 using SIGA.Infrastructure;
 using SIGA.Infrastructure.Persistence;
 
@@ -66,7 +69,32 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// 4. Cabeceras ForwardedHeaders para balanceadores HTTPS de Google Cloud
+// 4. Rate Limiting nativo para proteger /api/v1/auth/login contra fuerza bruta
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        var resp = ApiResponse<object>.Failure(
+            "Demasiados intentos. Por favor aguarde un minuto antes de volver a intentar.",
+            StatusCodes.Status429TooManyRequests);
+        await context.HttpContext.Response.WriteAsJsonAsync(resp, cancellationToken: token);
+    };
+
+    options.AddPolicy("LoginPolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+});
+
+// 5. Cabeceras ForwardedHeaders para balanceadores HTTPS de Google Cloud
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -74,9 +102,11 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
-// 5. Configuración de CORS para Frontend
+// 6. Configuración de CORS (estricta en Producción, permisiva para localhost sólo en Development)
 var configuredOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? string.Empty)
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+var isDevelopment = builder.Environment.IsDevelopment();
 
 builder.Services.AddCors(options =>
 {
@@ -84,16 +114,23 @@ builder.Services.AddCors(options =>
     {
         policy.SetIsOriginAllowed(origin =>
         {
-            if (string.IsNullOrEmpty(origin) || origin == "null") return true;
-            if (configuredOrigins.Length > 0 && configuredOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(origin) &&
+                configuredOrigins.Length > 0 &&
+                configuredOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase))
             {
                 return true;
             }
-            if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+
+            if (isDevelopment)
             {
-                return uri.Host == "localhost" || uri.Host == "127.0.0.1" || origin.StartsWith("file://");
+                if (string.IsNullOrEmpty(origin) || origin == "null") return true;
+                if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                {
+                    return uri.Host == "localhost" || uri.Host == "127.0.0.1" || origin.StartsWith("file://");
+                }
             }
-            return builder.Environment.IsDevelopment();
+
+            return false;
         })
         .AllowAnyMethod()
         .AllowAnyHeader()
@@ -105,13 +142,15 @@ var app = builder.Build();
 
 app.UseForwardedHeaders();
 
-// 6. Middleware Global de Excepciones
+// 7. Middleware Global de Excepciones
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
-// 7. Pipeline HTTP
+// 8. Pipeline HTTP
 app.UseRouting();
 
 app.UseCors("AllowFrontend");
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -127,7 +166,7 @@ app.MapGet("/api/v1/health", () => Results.Ok(new
     timestamp = DateTime.UtcNow
 }));
 
-// 8. Inicialización y Siembra de Base de Datos
+// 9. Inicialización y Siembra de Base de Datos
 await DatabaseSeeder.InitializeDatabaseAsync(app.Services);
 
 app.Run();

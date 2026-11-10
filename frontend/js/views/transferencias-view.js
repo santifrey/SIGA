@@ -8,6 +8,7 @@ import { plantacionesService } from '../services/plantaciones-service.js';
 import { temporadasService } from '../services/temporadas-service.js';
 import { clientesService } from '../services/clientes-service.js';
 import { toast } from '../utils/toast.js';
+import { escapeHtml } from '../utils/escape-html.js';
 
 export class TransferenciasView {
   constructor() {
@@ -142,7 +143,7 @@ export class TransferenciasView {
     const select = document.getElementById('transf-temporada');
     if (!select) return;
     select.innerHTML = '<option value="">-- Seleccione Temporada --</option>' +
-      this.temporadas.map(t => `<option value="${t.id}">${t.nombre} (${t.nombreEstado || t.estado})</option>`).join('');
+      this.temporadas.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.nombre)} (${escapeHtml(t.nombreEstado || t.estado)})</option>`).join('');
   }
 
   renderSelectNuevoTitular() {
@@ -152,7 +153,7 @@ export class TransferenciasView {
     html += '<option value="1">🏢 Empresa (Azafrán Mediterráneo S.A.)</option>';
     html += this.clientes.map(c => {
       const nom = c.persona ? `${c.persona.nombre} ${c.persona.apellido}` : (c.nombreCompleto || c.codigoCliente);
-      return `<option value="${c.id}">👤 ${nom} (${c.codigoCliente})</option>`;
+      return `<option value="${escapeHtml(c.id)}">👤 ${escapeHtml(nom)} (${escapeHtml(c.codigoCliente)})</option>`;
     }).join('');
     select.innerHTML = html;
   }
@@ -167,7 +168,7 @@ export class TransferenciasView {
         return;
       }
       selectLote.innerHTML = '<option value="">-- Seleccione Lote --</option>' +
-        this.lotes.map(l => `<option value="${l.id}">Lote #${l.id} - Fila ${l.identificacionFila || l.filaId} | Titular: ${l.nombreCliente || l.clienteId} (${l.cantidadPlantadaTotal} bulbos)</option>`).join('');
+        this.lotes.map(l => `<option value="${escapeHtml(l.id)}">Lote #${escapeHtml(l.id)} - Fila ${escapeHtml(l.identificacionFila || l.filaId)} | Titular: ${escapeHtml(l.nombreCliente || l.clienteId)} (${escapeHtml(l.cantidadPlantadaTotal)} bulbos)</option>`).join('');
     } catch (err) {
       selectLote.innerHTML = '<option value="">Error al cargar lotes</option>';
     }
@@ -187,15 +188,15 @@ export class TransferenciasView {
       const badgeClass = t.estado === 'Confirmada' ? 'badge-success' : (t.estado === 'Anulada' ? 'badge-danger' : 'badge-warning');
       return `
         <tr>
-          <td><strong>#${t.id}</strong></td>
-          <td>Lote #${t.loteId}</td>
-          <td>${t.identificacionFila || '-'} (${t.nombreSucursal || 'Central'})</td>
-          <td>${t.nombreTitularAnterior || `Titular #${t.titularAnteriorId}`}</td>
-          <td><strong class="text-primary">${t.nombreNuevoTitular || `Titular #${t.nuevoTitularId}`}</strong></td>
-          <td>${fecha}</td>
-          <td><span class="badge ${badgeClass}">${t.estado}</span></td>
+          <td><strong>#${escapeHtml(t.id)}</strong></td>
+          <td>Lote #${escapeHtml(t.loteId)}</td>
+          <td>${escapeHtml(t.identificacionFila || '-')} (${escapeHtml(t.nombreSucursal || 'Central')})</td>
+          <td>${escapeHtml(t.nombreTitularAnterior || `Titular #${t.titularAnteriorId}`)}</td>
+          <td><strong class="text-primary">${escapeHtml(t.nombreNuevoTitular || `Titular #${t.nuevoTitularId}`)}</strong></td>
+          <td>${escapeHtml(fecha)}</td>
+          <td><span class="badge ${badgeClass}">${escapeHtml(t.estado)}</span></td>
           <td>
-            ${t.estado === 'Confirmada' ? `<button class="btn btn-outline-danger btn-sm btn-anular-transf" data-id="${t.id}">Anular</button>` : '-'}
+            ${t.estado === 'Confirmada' ? `<button class="btn btn-outline-danger btn-sm btn-anular-transf" data-id="${escapeHtml(t.id)}">Anular</button>` : '-'}
           </td>
         </tr>
       `;

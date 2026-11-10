@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SIGA.API.Authorization;
 using SIGA.Application.Common;
 using SIGA.Application.DTOs.Ventas;
 using SIGA.Application.Interfaces;
 
 namespace SIGA.API.Controllers;
 
-[Authorize]
+[Authorize(Roles = Roles.Personal)]
 public class VentasController : BaseApiController
 {
     private readonly IGestionVentas _gestionVentas;
@@ -27,6 +28,7 @@ public class VentasController : BaseApiController
     }
 
     [HttpPost("precios")]
+    [Authorize(Roles = Roles.Contable)]
     [ProducesResponseType(typeof(ApiResponse<PrecioClaseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PrecioClaseDto>), StatusCodes.Status201Created)]
     public async Task<ActionResult<ApiResponse<PrecioClaseDto>>> UpsertPrecioClase(
@@ -67,6 +69,7 @@ public class VentasController : BaseApiController
     }
 
     [HttpPost]
+    [Authorize(Roles = Roles.Comercial)]
     [ProducesResponseType(typeof(ApiResponse<VentaDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<VentaDto>>> Create(
@@ -79,6 +82,7 @@ public class VentasController : BaseApiController
 
     [HttpPost("{id:int}/enviar-revision")]
     [HttpPost("{id:int}/enviar-aprobacion")]
+    [Authorize(Roles = Roles.Comercial)]
     [ProducesResponseType(typeof(ApiResponse<VentaDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<VentaDto>>> EnviarARevision(
         int id,
@@ -90,6 +94,7 @@ public class VentasController : BaseApiController
     }
 
     [HttpPost("{id:int}/contrato")]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<VentaDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<VentaDto>>> GenerarContrato(
         int id,
@@ -101,6 +106,7 @@ public class VentasController : BaseApiController
     }
 
     [HttpPost("{id:int}/aprobar-administracion")]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<VentaDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<VentaDto>>> AprobarAdministracion(
         int id,
@@ -112,6 +118,7 @@ public class VentasController : BaseApiController
     }
 
     [HttpPost("{id:int}/factura")]
+    [Authorize(Roles = Roles.Contable)]
     [ProducesResponseType(typeof(ApiResponse<VentaDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<VentaDto>>> EmitirFactura(
         int id,
@@ -124,6 +131,7 @@ public class VentasController : BaseApiController
 
     [HttpPost("{id:int}/aprobar-final")]
     [HttpPost("{id:int}/aprobar")]
+    [Authorize(Roles = Roles.Gestion)]
     [ProducesResponseType(typeof(ApiResponse<VentaDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<VentaDto>>> AprobarFinal(
         int id,
@@ -135,6 +143,7 @@ public class VentasController : BaseApiController
     }
 
     [HttpPost("{id:int}/rechazar")]
+    [Authorize(Roles = Roles.Revisores)]
     [ProducesResponseType(typeof(ApiResponse<VentaDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<VentaDto>>> Rechazar(
         int id,

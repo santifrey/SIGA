@@ -10,6 +10,7 @@ import { ventasService } from '../services/ventas-service.js';
 import { temporadasService } from '../services/temporadas-service.js';
 import { clientesService } from '../services/clientes-service.js';
 import { toast } from '../utils/toast.js';
+import { escapeHtml } from '../utils/html.js';
 
 export class VentasView {
   constructor(router) {
@@ -331,7 +332,7 @@ export class VentasView {
           selectTempPrecios.innerHTML = '<option value="">No hay temporadas registradas</option>';
         } else {
           selectTempPrecios.innerHTML = this.temporadas.map(t =>
-            `<option value="${t.id}">${t.nombre} (${t.nombreEstado || t.estado || ''})</option>`
+            `<option value="${escapeHtml(t.id)}">${escapeHtml(t.nombre)} (${escapeHtml(t.nombreEstado || t.estado || '')})</option>`
           ).join('');
 
           // Activa por defecto o primera
@@ -349,7 +350,7 @@ export class VentasView {
       if (selectTempVenta) {
         let opts = '<option value="">(Sin temporada / Precios libres)</option>';
         opts += this.temporadas.map(t =>
-          `<option value="${t.id}" ${String(t.id) === String(this.selectedTemporadaPreciosId) ? 'selected' : ''}>${t.nombre}</option>`
+          `<option value="${escapeHtml(t.id)}" ${String(t.id) === String(this.selectedTemporadaPreciosId) ? 'selected' : ''}>${escapeHtml(t.nombre)}</option>`
         ).join('');
         selectTempVenta.innerHTML = opts;
         this.selectedTemporadaVentaId = this.selectedTemporadaPreciosId;
@@ -364,7 +365,7 @@ export class VentasView {
           selectCliente.innerHTML = '<option value="">-- Seleccione Cliente Comprador --</option>' +
             this.clientes.map(c => {
               const nombre = c.persona ? `${c.persona.nombre} ${c.persona.apellido}` : (c.razonSocial || c.nombreCompleto || c.codigoCliente);
-              return `<option value="${c.id}">${nombre} (${c.codigoCliente || 'CLI'})</option>`;
+              return `<option value="${escapeHtml(c.id)}">${escapeHtml(nombre)} (${escapeHtml(c.codigoCliente || 'CLI')})</option>`;
             }).join('');
         }
       }
@@ -652,28 +653,28 @@ export class VentasView {
 
       // Contrato
       const contratoBadge = v.contrato
-        ? `<span class="badge badge-primary" title="${v.contrato.numeroContrato}">CTR: ${v.contrato.numeroContrato}</span>`
+        ? `<span class="badge badge-primary" title="${escapeHtml(v.contrato.numeroContrato)}">CTR: ${escapeHtml(v.contrato.numeroContrato)}</span>`
         : `<span class="badge badge-secondary text-muted">Sin Contrato</span>`;
 
       // Factura
       const facturaBadge = v.factura
-        ? `<span class="badge badge-accent" title="${v.factura.numeroFactura}">FAC: ${v.factura.numeroFactura}</span>`
+        ? `<span class="badge badge-accent" title="${escapeHtml(v.factura.numeroFactura)}">FAC: ${escapeHtml(v.factura.numeroFactura)}</span>`
         : `<span class="badge badge-secondary text-muted">Sin Factura</span>`;
 
       return `
         <tr>
-          <td><strong>#${v.id}</strong></td>
-          <td>${fecha}</td>
+          <td><strong>#${escapeHtml(v.id)}</strong></td>
+          <td>${escapeHtml(fecha)}</td>
           <td>
-            <strong>${v.nombreCliente || `Cliente #${v.clienteId}`}</strong>
-            <span class="text-xs text-muted d-block">${v.codigoCliente || ''}</span>
+            <strong>${escapeHtml(v.nombreCliente || `Cliente #${v.clienteId}`)}</strong>
+            <span class="text-xs text-muted d-block">${escapeHtml(v.codigoCliente || '')}</span>
           </td>
           <td style="text-align: right; font-weight: 600;">${bulbosFmt}</td>
           <td style="text-align: right; font-weight: 700; color: var(--primary);">${montoFmt}</td>
           <td>
             <span class="badge ${estadoInfo.badgeClass}">
               <span class="badge-dot"></span>
-              ${estadoInfo.label}
+              ${escapeHtml(estadoInfo.label)}
             </span>
           </td>
           <td>${contratoBadge}</td>
@@ -681,7 +682,7 @@ export class VentasView {
           <td style="text-align: center;">
             <div class="d-flex justify-center align-center gap-xs flex-wrap">
               ${this.renderBotonesCircuito(v)}
-              <button class="btn btn-outline btn-sm btn-ver-detalle" data-id="${v.id}" title="Ver auditoría y desglose">
+              <button class="btn btn-outline btn-sm btn-ver-detalle" data-id="${escapeHtml(v.id)}" title="Ver auditoría y desglose">
                 Detalles
               </button>
             </div>
@@ -721,7 +722,7 @@ export class VentasView {
     // 1. En Registrada (0) o Rechazada (5): botón "Enviar a Revisión"
     if (st === 0 || st === 5) {
       return `
-        <button class="btn btn-primary btn-sm btn-enviar-revision" data-id="${v.id}">
+        <button class="btn btn-primary btn-sm btn-enviar-revision" data-id="${escapeHtml(v.id)}">
           Enviar a Revisión
         </button>
       `;
@@ -733,19 +734,19 @@ export class VentasView {
     if (st === 1) {
       if (!v.contrato) {
         return `
-          <button class="btn btn-primary btn-sm btn-generar-contrato" data-id="${v.id}">
+          <button class="btn btn-primary btn-sm btn-generar-contrato" data-id="${escapeHtml(v.id)}">
             Generar Contrato
           </button>
-          <button class="btn btn-outline-danger btn-sm btn-rechazar-venta" data-id="${v.id}">
+          <button class="btn btn-outline-danger btn-sm btn-rechazar-venta" data-id="${escapeHtml(v.id)}">
             Rechazar
           </button>
         `;
       } else {
         return `
-          <button class="btn btn-success btn-sm btn-aprobar-admin" data-id="${v.id}">
+          <button class="btn btn-success btn-sm btn-aprobar-admin" data-id="${escapeHtml(v.id)}">
             Aprobar Administración
           </button>
-          <button class="btn btn-outline-danger btn-sm btn-rechazar-venta" data-id="${v.id}">
+          <button class="btn btn-outline-danger btn-sm btn-rechazar-venta" data-id="${escapeHtml(v.id)}">
             Rechazar
           </button>
         `;
@@ -755,10 +756,10 @@ export class VentasView {
     // 3. En AprobadaAdministracion (2): botón "Emitir Factura (Contabilidad)"
     if (st === 2) {
       return `
-        <button class="btn btn-accent btn-sm btn-emitir-factura" data-id="${v.id}">
+        <button class="btn btn-accent btn-sm btn-emitir-factura" data-id="${escapeHtml(v.id)}">
           Emitir Factura
         </button>
-        <button class="btn btn-outline-danger btn-sm btn-rechazar-venta" data-id="${v.id}">
+        <button class="btn btn-outline-danger btn-sm btn-rechazar-venta" data-id="${escapeHtml(v.id)}">
           Rechazar
         </button>
       `;
@@ -767,10 +768,10 @@ export class VentasView {
     // 4. En Facturada (3): botón "Aprobación Final y Entregar Stock"
     if (st === 3) {
       return `
-        <button class="btn btn-success btn-sm btn-aprobar-final" data-id="${v.id}">
+        <button class="btn btn-success btn-sm btn-aprobar-final" data-id="${escapeHtml(v.id)}">
           Aprobar Final y Entregar Stock
         </button>
-        <button class="btn btn-outline-danger btn-sm btn-rechazar-venta" data-id="${v.id}">
+        <button class="btn btn-outline-danger btn-sm btn-rechazar-venta" data-id="${escapeHtml(v.id)}">
           Rechazar
         </button>
       `;
@@ -854,12 +855,12 @@ export class VentasView {
       const numSugerido = `CTR-${new Date().getFullYear()}-${String(venta.id).padStart(3, '0')}`;
       body.innerHTML = `
         <p class="text-sm text-muted mb-3">
-          Registre el número formal de contrato generado para el comprador <strong>${venta.nombreCliente}</strong>.
+          Registre el número formal de contrato generado para el comprador <strong>${escapeHtml(venta.nombreCliente)}</strong>.
         </p>
         <form id="form-modal-accion">
           <div class="form-group mb-3">
             <label for="modal-input-contrato" class="form-label text-xs font-bold uppercase">Número de Contrato <span class="required-mark">*</span></label>
-            <input type="text" id="modal-input-contrato" class="form-control" value="${numSugerido}" required />
+            <input type="text" id="modal-input-contrato" class="form-control" value="${escapeHtml(numSugerido)}" required />
           </div>
           <div class="form-group mb-3">
             <label for="modal-input-url" class="form-label text-xs font-bold uppercase">Enlace al Documento Firmado (URL Opcional)</label>
@@ -875,7 +876,7 @@ export class VentasView {
       title.textContent = `Aprobar Administración y Contrato - Venta #${venta.id}`;
       body.innerHTML = `
         <p class="text-sm text-muted mb-3">
-          El contrato <strong>${venta.contrato?.numeroContrato || 'Generado'}</strong> ha sido verificado. Al confirmar, la venta pasará a estado <strong>Aprobada Administración</strong> para posterior facturación contable.
+          El contrato <strong>${escapeHtml(venta.contrato?.numeroContrato || 'Generado')}</strong> ha sido verificado. Al confirmar, la venta pasará a estado <strong>Aprobada Administración</strong> para posterior facturación contable.
         </p>
         <form id="form-modal-accion">
           <div class="form-group mb-3">
@@ -898,7 +899,7 @@ export class VentasView {
         <form id="form-modal-accion">
           <div class="form-group mb-3">
             <label for="modal-input-factura" class="form-label text-xs font-bold uppercase">Número de Factura / Comprobante <span class="required-mark">*</span></label>
-            <input type="text" id="modal-input-factura" class="form-control" value="${numFacSugerido}" required />
+            <input type="text" id="modal-input-factura" class="form-control" value="${escapeHtml(numFacSugerido)}" required />
           </div>
           <div class="form-group mb-3">
             <label for="modal-input-url" class="form-label text-xs font-bold uppercase">Enlace PDF Comprobante AFIP (URL Opcional)</label>
@@ -918,7 +919,7 @@ export class VentasView {
       title.textContent = `Aprobación Final y Entrega de Stock - Venta #${venta.id}`;
       body.innerHTML = `
         <div style="background: rgba(34, 197, 94, 0.1); border-left: 4px solid var(--success); padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.875rem; margin-bottom: 1rem;">
-          <strong>Paso Definitivo:</strong> Al completar esta aprobación, se generará el movimiento comercial en el stock y los bulbos serán acreditados en el inventario del comprador <strong>${venta.nombreCliente}</strong>.
+          <strong>Paso Definitivo:</strong> Al completar esta aprobación, se generará el movimiento comercial en el stock y los bulbos serán acreditados en el inventario del comprador <strong>${escapeHtml(venta.nombreCliente)}</strong>.
         </div>
         <form id="form-modal-accion">
           <div class="form-group mb-3">
@@ -1039,16 +1040,16 @@ export class VentasView {
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; background: var(--surface-alt); padding: 1rem; border-radius: var(--radius-md);">
         <div>
           <span class="text-xs text-muted font-bold uppercase">Cliente Comprador:</span>
-          <div class="font-bold text-main">${venta.nombreCliente || `Cliente #${venta.clienteId}`}</div>
-          <span class="text-xs text-muted">${venta.codigoCliente || ''}</span>
+          <div class="font-bold text-main">${escapeHtml(venta.nombreCliente || `Cliente #${venta.clienteId}`)}</div>
+          <span class="text-xs text-muted">${escapeHtml(venta.codigoCliente || '')}</span>
         </div>
         <div>
           <span class="text-xs text-muted font-bold uppercase">Fecha de Registro:</span>
-          <div class="font-semibold text-main">${fechaFmt}</div>
+          <div class="font-semibold text-main">${escapeHtml(fechaFmt)}</div>
         </div>
         <div>
           <span class="text-xs text-muted font-bold uppercase">Estado Actual:</span>
-          <div><span class="badge ${estadoInfo.badgeClass}">${estadoInfo.label}</span></div>
+          <div><span class="badge ${estadoInfo.badgeClass}">${escapeHtml(estadoInfo.label)}</span></div>
         </div>
         <div>
           <span class="text-xs text-muted font-bold uppercase">Monto Total Facturado:</span>
@@ -1071,7 +1072,7 @@ export class VentasView {
           <tbody>
             ${(venta.detalles || []).map(d => `
               <tr>
-                <td><strong>${d.nombreClase || `Clase ${d.claseBulbo}`}</strong></td>
+                <td><strong>${escapeHtml(d.nombreClase || `Clase ${d.claseBulbo}`)}</strong></td>
                 <td style="text-align: right; font-weight: 600;">${(Number(d.cantidad) || 0).toLocaleString('es-AR')}</td>
                 <td style="text-align: right;">$ ${(Number(d.precioUnitarioPactado) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
                 <td style="text-align: right; font-weight: 700;">$ ${(Number(d.subtotal) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
@@ -1086,18 +1087,18 @@ export class VentasView {
         <div class="card p-3" style="background: var(--surface);">
           <h5 class="text-xs font-bold uppercase mb-2 text-primary">Contrato de Compraventa</h5>
           ${venta.contrato ? `
-            <div class="text-sm"><strong>Número:</strong> ${venta.contrato.numeroContrato}</div>
-            <div class="text-xs text-muted">Generado: ${new Date(venta.contrato.fechaGeneracion).toLocaleDateString()}</div>
-            ${venta.contrato.archivoUrl ? `<a href="${venta.contrato.archivoUrl}" target="_blank" class="text-xs text-primary font-bold mt-1 d-block">Descargar Archivo Contrato</a>` : ''}
+            <div class="text-sm"><strong>Número:</strong> ${escapeHtml(venta.contrato.numeroContrato)}</div>
+            <div class="text-xs text-muted">Generado: ${escapeHtml(new Date(venta.contrato.fechaGeneracion).toLocaleDateString())}</div>
+            ${this._safeUrl(venta.contrato.archivoUrl) ? `<a href="${escapeHtml(this._safeUrl(venta.contrato.archivoUrl))}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary font-bold mt-1 d-block">Descargar Archivo Contrato</a>` : ''}
           ` : '<span class="text-xs text-muted">No se ha generado contrato aún.</span>'}
         </div>
 
         <div class="card p-3" style="background: var(--surface);">
           <h5 class="text-xs font-bold uppercase mb-2 text-accent">Factura Comercial (Contabilidad)</h5>
           ${venta.factura ? `
-            <div class="text-sm"><strong>Número:</strong> ${venta.factura.numeroFactura}</div>
-            <div class="text-xs text-muted">Emitida: ${new Date(venta.factura.fechaEmision).toLocaleDateString()}</div>
-            ${venta.factura.archivoUrl ? `<a href="${venta.factura.archivoUrl}" target="_blank" class="text-xs text-primary font-bold mt-1 d-block">Descargar Comprobante PDF</a>` : ''}
+            <div class="text-sm"><strong>Número:</strong> ${escapeHtml(venta.factura.numeroFactura)}</div>
+            <div class="text-xs text-muted">Emitida: ${escapeHtml(new Date(venta.factura.fechaEmision).toLocaleDateString())}</div>
+            ${this._safeUrl(venta.factura.archivoUrl) ? `<a href="${escapeHtml(this._safeUrl(venta.factura.archivoUrl))}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary font-bold mt-1 d-block">Descargar Comprobante PDF</a>` : ''}
           ` : '<span class="text-xs text-muted">Pendiente de facturación contable.</span>'}
         </div>
       </div>
@@ -1117,10 +1118,10 @@ export class VentasView {
           <tbody>
             ${(venta.historialAprobaciones && venta.historialAprobaciones.length > 0) ? venta.historialAprobaciones.map(h => `
               <tr>
-                <td class="text-xs">${h.fecha ? new Date(h.fecha).toLocaleString() : '-'}</td>
-                <td><span class="badge badge-secondary">${h.nombreAccion || `Acción #${h.accion}`}</span></td>
-                <td class="text-sm">${h.nombreUsuarioAprobador || 'Usuario'}</td>
-                <td class="text-xs text-muted">${h.observaciones || 'Sin notas'}</td>
+                <td class="text-xs">${escapeHtml(h.fecha ? new Date(h.fecha).toLocaleString() : '-')}</td>
+                <td><span class="badge badge-secondary">${escapeHtml(h.nombreAccion || `Acción #${h.accion}`)}</span></td>
+                <td class="text-sm">${escapeHtml(h.nombreUsuarioAprobador || 'Usuario')}</td>
+                <td class="text-xs text-muted">${escapeHtml(h.observaciones || 'Sin notas')}</td>
               </tr>
             `).join('') : '<tr><td colspan="4" class="text-center p-3 text-muted text-xs">Sin registros de auditoría aún.</td></tr>'}
           </tbody>
@@ -1139,5 +1140,16 @@ export class VentasView {
   closeModalDetalle() {
     const modal = document.getElementById('modal-detalle-venta');
     modal?.classList.remove('is-active');
+  }
+
+  /**
+   * Devuelve la URL solo si no usa un esquema peligroso (javascript:, data:, vbscript:).
+   * Retorna '' si la URL es vacía o insegura.
+   */
+  _safeUrl(url) {
+    if (!url) return '';
+    const s = String(url).trim();
+    if (/^(javascript|data|vbscript):/i.test(s.replace(/[\s\u0000-\u001f]/g, ''))) return '';
+    return s;
   }
 }
