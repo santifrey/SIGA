@@ -12,11 +12,12 @@ public class UsuarioRepository : Repository<Usuario>, IUsuarioRepository
 
     public async Task<Usuario?> GetByUsernameWithRolesAsync(string username, CancellationToken cancellationToken = default)
     {
+        var normalized = username.Trim().ToLower();
         return await _dbSet
             .Include(u => u.Persona)
             .Include(u => u.UsuarioRoles)
                 .ThenInclude(ur => ur.Rol)
-            .FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower(), cancellationToken);
+            .FirstOrDefaultAsync(u => u.Username.ToLower() == normalized || (u.Persona != null && u.Persona.Email.ToLower() == normalized), cancellationToken);
     }
 
     public async Task<Usuario?> GetByIdWithRolesAsync(int id, CancellationToken cancellationToken = default)

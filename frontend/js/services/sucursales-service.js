@@ -109,6 +109,41 @@ class SucursalesService {
     storage.set(CONFIG.STORAGE_KEYS.MOCK_SUCURSALES, sucursales);
   }
 
+  _unwrap(res) {
+    if (res && typeof res === 'object' && 'data' in res && res.data !== null && res.data !== undefined) {
+      return res.data;
+    }
+    return res;
+  }
+
+  _normalizeSucursal(s) {
+    if (!s) return s;
+    let activa = true;
+    if (typeof s.activa === 'boolean') {
+      activa = s.activa;
+    } else if (s.estado !== undefined && s.estado !== null) {
+      const est = String(s.estado).toLowerCase();
+      activa = est === 'activa' || est === 'activo' || est === '1';
+    }
+    const capacidad = Number(s.capacidad ?? s.capacidadTotal ?? 0);
+    return {
+      ...s,
+      id: s.id,
+      codigo: s.codigo || `SUC-${String(s.id).padStart(2, '0')}`,
+      nombre: s.nombre || '',
+      direccion: s.direccion || s.ubicacion || '',
+      ubicacion: s.ubicacion || s.direccion || '',
+      ciudad: s.ciudad || s.ubicacion || '',
+      provincia: s.provincia || 'Córdoba',
+      telefono: s.telefono || '',
+      capacidad,
+      capacidadTotal: capacidad,
+      responsable: s.responsable || 'Administración SIGA',
+      activa,
+      fechaAlta: s.fechaAlta || s.fechaCreacion || new Date().toISOString()
+    };
+  }
+
   /**
    * Alias de listar para compatibilidad
    */
@@ -121,8 +156,28 @@ class SucursalesService {
    */
   async listar({ search = '', estado = 'todas' } = {}) {
     try {
-      const params = { search, estado };
-      return await apiClient.get('/sucursales', params);
+      const response = await apiClient.get('/sucursales');
+      const unwrapped = this._unwrap(response);
+      let list = (Array.isArray(unwrapped) ? unwrapped : (unwrapped?.items || [])).map(s => this._normalizeSucursal(s));
+
+      if (search && search.trim() !== '') {
+        const q = search.trim().toLowerCase();
+        list = list.filter(s =>
+          (s.nombre && s.nombre.toLowerCase().includes(q)) ||
+          (s.codigo && s.codigo.toLowerCase().includes(q)) ||
+          (s.ciudad && s.ciudad.toLowerCase().includes(q)) ||
+          (s.direccion && s.direccion.toLowerCase().includes(q)) ||
+          (s.responsable && s.responsable.toLowerCase().includes(q))
+        );
+      }
+
+      if (estado === 'activas') {
+        list = list.filter(s => s.activa === true);
+      } else if (estado === 'inactivas') {
+        list = list.filter(s => s.activa === false);
+      }
+
+      return list;
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[SucursalesService] Usando repositorio local mock.');
@@ -155,7 +210,8 @@ class SucursalesService {
    */
   async obtenerPorId(id) {
     try {
-      return await apiClient.get(`/sucursales/${id}`);
+      const response = await apiClient.get(`/sucursales/${id}`);
+      return this._normalizeSucursal(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         const list = this._getLocalSucursales();
@@ -172,7 +228,13 @@ class SucursalesService {
    */
   async crear(data) {
     try {
-      return await apiClient.post('/sucursales', data);
+      const payload = {
+        ...data,
+        ubicacion: data.ubicacion || [data.direccion, data.ciudad, data.provincia].filter(Boolean).join(', '),
+        capacidadTotal: Number(data.capacidadTotal ?? data.capacidad ?? 0)
+      };
+      const response = await apiClient.post('/sucursales', payload);
+      return this._normalizeSucursal(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         const list = this._getLocalSucursales();
@@ -197,7 +259,14 @@ class SucursalesService {
    */
   async actualizar(id, data) {
     try {
-      return await apiClient.put(`/sucursales/${id}`, data);
+      const payload = {
+        ...data,
+        ubicacion: data.ubicacion || [data.direccion, data.ciudad, data.provincia].filter(Boolean).join(', '),
+        capacidadTotal: Number(data.capacidadTotal ?? data.capacidad ?? 0),
+        estado: data.estado || (data.activa === false ? 'Inactiva' : 'Activa')
+      };
+      const response = await apiClient.put(`/sucursales/${id}`, payload);
+      return this._normalizeSucursal(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         const list = this._getLocalSucursales();

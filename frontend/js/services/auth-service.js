@@ -17,16 +17,27 @@ class AuthService {
    */
   async login(email, password, remember = false) {
     try {
-      // Intento de llamada al backend real
-      const response = await apiClient.post('/auth/login', { email, password });
+      // Intento de llamada al backend real (enviando username y email para compatibilidad)
+      const response = await apiClient.post('/auth/login', {
+        username: email.trim(),
+        email: email.trim(),
+        password
+      });
       
-      // Manejo de respuesta estándar backend (token + usuario)
-      const token = response.token || (response.data && response.data.token);
-      const user = response.usuario || response.user || (response.data && response.data.user) || {
+      // Manejo de respuesta estándar backend (ApiResponse<LoginResponseDto>)
+      const dataPayload = response.data || response;
+      const token = dataPayload.token || response.token;
+      const user = response.usuario || response.user || (dataPayload.username ? {
+        id: dataPayload.usuarioId || 1,
+        nombre: dataPayload.nombreCompleto || dataPayload.username,
+        email: dataPayload.email || email,
+        rol: (dataPayload.roles && dataPayload.roles.length > 0) ? dataPayload.roles[0] : 'Administrador',
+        roles: dataPayload.roles || ['ADMINISTRADOR']
+      } : {
         email,
         nombre: email.split('@')[0],
         rol: 'Administrador'
-      };
+      });
 
       if (!token) {
         throw new Error('La respuesta del servidor no incluyó el token de acceso.');
@@ -42,8 +53,8 @@ class AuthService {
         console.info('[AuthService] Backend no detectado. Utilizando autenticación de demostración local.');
         
         // Verificación de credenciales demo
-        const isDefaultAdmin = (email === 'admin@siga.com' || email === 'admin') && password === 'admin123';
-        const isDefaultOp = (email === 'operador@siga.com' || email === 'operador') && password === 'operador123';
+        const isDefaultAdmin = (email === 'admin@siga.com' || email === 'admin' || email === 'admin@azafranmediterraneo.com') && (password === 'admin123' || password === 'Admin123!');
+        const isDefaultOp = (email === 'operador@siga.com' || email === 'operador') && (password === 'operador123' || password === 'Operador123!');
 
         if (isDefaultAdmin || isDefaultOp) {
           const mockUser = {
@@ -60,7 +71,7 @@ class AuthService {
           storage.setUser(mockUser, remember);
           return mockUser;
         } else {
-          throw new Error('Credenciales incorrectas. Para el modo demo use admin@siga.com con admin123');
+          throw new Error('Credenciales incorrectas. Para el modo demo use admin con Admin123! o admin123');
         }
       }
 

@@ -510,13 +510,21 @@
   box-shadow: var(--shadow-xl);
   width: 100%;
   max-width: 600px;
-  max-height: calc(100vh - 4rem);
+  max-height: calc(100vh - 2.5rem);
   display: flex;
   flex-direction: column;
   transform: translateY(20px) scale(0.97);
   transition: transform var(--transition-normal);
   overflow: hidden;
   border: 1px solid var(--border);
+}
+
+.modal-dialog > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .modal-backdrop.is-active .modal-dialog {
@@ -537,6 +545,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .modal-title {
@@ -563,8 +572,11 @@
 }
 
 .modal-body {
-  padding: var(--spacing-xl);
+  padding: var(--spacing-lg) var(--spacing-xl);
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  overscroll-behavior: contain;
 }
 
 .modal-footer {
@@ -575,4 +587,5 @@
   align-items: center;
   justify-content: flex-end;
   gap: var(--spacing-sm);
+  flex-shrink: 0;
 }

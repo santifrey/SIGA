@@ -136,6 +136,62 @@ class VentasService {
     return res;
   }
 
+  _normalizeClaseBulbo(val) {
+    if (typeof val === 'number' && !Number.isNaN(val)) return val;
+    const str = String(val ?? '').trim();
+    const match = str.match(/(\d+)/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  _normalizeEstadoVenta(val) {
+    if (typeof val === 'number' && !Number.isNaN(val)) return val;
+    const map = {
+      registrada: 0,
+      enrevisionadministracion: 1,
+      aprobadaadministracion: 2,
+      facturada: 3,
+      completada: 4,
+      rechazada: 5,
+      anulada: 6
+    };
+    const key = String(val ?? '').trim().toLowerCase();
+    if (key in map) return map[key];
+    const num = Number(val);
+    return Number.isNaN(num) ? 0 : num;
+  }
+
+  _normalizePrecioClase(p) {
+    if (!p) return p;
+    const claseNum = this._normalizeClaseBulbo(p.claseBulbo ?? p.nombreClase);
+    return {
+      ...p,
+      claseBulbo: claseNum,
+      nombreClase: p.nombreClase || `Clase${claseNum}`,
+      precioReferencia: Number(p.precioReferencia) || 0
+    };
+  }
+
+  _normalizeVenta(v) {
+    if (!v) return v;
+    const estadoNum = this._normalizeEstadoVenta(v.estado ?? v.nombreEstado);
+    const detalles = Array.isArray(v.detalles)
+      ? v.detalles.map(d => {
+          const claseNum = this._normalizeClaseBulbo(d.claseBulbo ?? d.nombreClase);
+          return {
+            ...d,
+            claseBulbo: claseNum,
+            nombreClase: d.nombreClase || `Clase${claseNum}`
+          };
+        })
+      : [];
+    return {
+      ...v,
+      estado: estadoNum,
+      nombreEstado: v.nombreEstado || (typeof v.estado === 'string' ? v.estado : 'Registrada'),
+      detalles
+    };
+  }
+
   /**
    * Listar precios de referencia de bulbos por clase para una temporada
    * GET /api/v1/ventas/precios/temporada/{temporadaId}
@@ -144,13 +200,16 @@ class VentasService {
     try {
       const response = await apiClient.get(`/ventas/precios/temporada/${temporadaId}`);
       const data = this._unwrap(response);
-      return Array.isArray(data) ? data : (data.items || []);
+      const list = Array.isArray(data) ? data : (data?.items || []);
+      return list.map(p => this._normalizePrecioClase(p));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[VentasService] Fallback mock para listar precios por temporada.');
         const list = this._getLocalPrecios();
-        if (!temporadaId) return list;
-        return list.filter(p => String(p.temporadaId) === String(temporadaId));
+        if (!temporadaId) return list.map(p => this._normalizePrecioClase(p));
+        return list
+          .filter(p => String(p.temporadaId) === String(temporadaId))
+          .map(p => this._normalizePrecioClase(p));
       }
       throw err;
     }
@@ -164,7 +223,7 @@ class VentasService {
   async configurarPrecioClase(dto) {
     try {
       const response = await apiClient.post('/ventas/precios', dto);
-      return this._unwrap(response);
+      return this._normalizePrecioClase(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[VentasService] Fallback mock para configurar precio clase.');
@@ -178,7 +237,7 @@ class VentasService {
           list[index].precioReferencia = Number(dto.precioReferencia);
           list[index].fechaVigencia = new Date().toISOString();
           this._saveLocalPrecios(list);
-          return list[index];
+          return this._normalizePrecioClase(list[index]);
         }
 
         const nextId = list.length > 0 ? Math.max(...list.map(p => Number(p.id) || 0)) + 1 : 1;
@@ -193,7 +252,7 @@ class VentasService {
         };
         list.push(nuevo);
         this._saveLocalPrecios(list);
-        return nuevo;
+        return this._normalizePrecioClase(nuevo);
       }
       throw err;
     }
@@ -207,12 +266,15 @@ class VentasService {
     try {
       const response = await apiClient.get('/ventas');
       const data = this._unwrap(response);
-      return Array.isArray(data) ? data : (data.items || []);
+      const list = Array.isArray(data) ? data : (data?.items || []);
+      return list.map(v => this._normalizeVenta(v));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[VentasService] Fallback mock para listar todas las ventas.');
         const list = this._getLocalVentas();
-        return [...list].sort((a, b) => Number(b.id) - Number(a.id));
+        return [...list]
+          .sort((a, b) => Number(b.id) - Number(a.id))
+          .map(v => this._normalizeVenta(v));
       }
       throw err;
     }
@@ -225,14 +287,14 @@ class VentasService {
   async obtenerPorId(id) {
     try {
       const response = await apiClient.get(`/ventas/${id}`);
-      return this._unwrap(response);
+      return this._normalizeVenta(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[VentasService] Fallback mock para obtener venta por ID.');
         const list = this._getLocalVentas();
         const found = list.find(v => String(v.id) === String(id));
         if (!found) throw new Error(`Venta #${id} no encontrada`);
-        return found;
+        return this._normalizeVenta(found);
       }
       throw err;
     }
@@ -246,7 +308,7 @@ class VentasService {
   async crear(dto) {
     try {
       const response = await apiClient.post('/ventas', dto);
-      return this._unwrap(response);
+      return this._normalizeVenta(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[VentasService] Fallback mock para crear venta.');
@@ -324,7 +386,7 @@ class VentasService {
     try {
       const payload = { observaciones: typeof observaciones === 'string' ? observaciones : (observaciones?.observaciones || '') };
       const response = await apiClient.post(`/ventas/${id}/enviar-revision`, payload);
-      return this._unwrap(response);
+      return this._normalizeVenta(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[VentasService] Fallback mock para enviar a revisión.');
@@ -360,7 +422,7 @@ class VentasService {
   async generarContrato(id, dto) {
     try {
       const response = await apiClient.post(`/ventas/${id}/contrato`, dto);
-      return this._unwrap(response);
+      return this._normalizeVenta(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[VentasService] Fallback mock para generar contrato.');
@@ -393,7 +455,7 @@ class VentasService {
     try {
       const payload = { observaciones: typeof observaciones === 'string' ? observaciones : (observaciones?.observaciones || '') };
       const response = await apiClient.post(`/ventas/${id}/aprobar-administracion`, payload);
-      return this._unwrap(response);
+      return this._normalizeVenta(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[VentasService] Fallback mock para aprobar administración.');
@@ -429,7 +491,7 @@ class VentasService {
   async emitirFactura(id, dto) {
     try {
       const response = await apiClient.post(`/ventas/${id}/factura`, dto);
-      return this._unwrap(response);
+      return this._normalizeVenta(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[VentasService] Fallback mock para emitir factura.');
@@ -478,7 +540,7 @@ class VentasService {
     try {
       const payload = { observaciones: typeof observaciones === 'string' ? observaciones : (observaciones?.observaciones || '') };
       const response = await apiClient.post(`/ventas/${id}/aprobar-final`, payload);
-      return this._unwrap(response);
+      return this._normalizeVenta(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[VentasService] Fallback mock para aprobación final.');
@@ -515,7 +577,7 @@ class VentasService {
     try {
       const payload = { observaciones: typeof observaciones === 'string' ? observaciones : (observaciones?.observaciones || '') };
       const response = await apiClient.post(`/ventas/${id}/rechazar`, payload);
-      return this._unwrap(response);
+      return this._normalizeVenta(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[VentasService] Fallback mock para rechazar venta.');

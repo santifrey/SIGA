@@ -161,54 +161,118 @@ class ClientesService {
     storage.set(CONFIG.STORAGE_KEYS.MOCK_CLIENTES, clientes);
   }
 
+  _unwrap(res) {
+    if (res && typeof res === 'object' && 'data' in res && res.data !== null && res.data !== undefined) {
+      return res.data;
+    }
+    return res;
+  }
+
+  _normalizeCliente(c) {
+    if (!c) return c;
+    let nombre = c.nombre || (c.persona && c.persona.nombre) || '';
+    let apellido = c.apellido || (c.persona && c.persona.apellido) || '';
+    if (!nombre && !apellido && c.nombreCompleto) {
+      const parts = String(c.nombreCompleto).trim().split(/\s+/);
+      nombre = parts[0] || '';
+      apellido = parts.slice(1).join(' ') || '';
+    }
+    const nombreCompleto = c.nombreCompleto || `${nombre} ${apellido}`.trim();
+    const codigo = c.codigo || c.codigoCliente || `CLI-${String(c.id).padStart(4, '0')}`;
+    const documento = c.documento || (c.persona && c.persona.documento) || '';
+    const tipoDocumento = c.tipoDocumento || (documento.includes('-') ? 'CUIT' : 'DNI');
+    const email = c.email ?? (c.persona && c.persona.email) ?? '';
+    const telefono = c.telefono ?? (c.persona && c.persona.telefono) ?? '';
+
+    let activo = true;
+    if (typeof c.activo === 'boolean') {
+      activo = c.activo;
+    } else if (c.estadoCliente !== undefined && c.estadoCliente !== null) {
+      const est = String(c.estadoCliente).toLowerCase();
+      activo = est === 'activo' || est === '1';
+    }
+
+    return {
+      ...c,
+      id: c.id,
+      personaId: c.personaId || (c.persona && c.persona.id) || null,
+      nombre,
+      apellido,
+      nombreCompleto,
+      tipoDocumento,
+      documento,
+      email,
+      telefono,
+      codigo,
+      codigoCliente: codigo,
+      observaciones: c.observaciones ?? '',
+      activo,
+      estadoCliente: activo ? 'Activo' : 'Inactivo',
+      fechaAlta: c.fechaAlta || c.fechaRegistro || new Date().toISOString(),
+      fechaRegistro: c.fechaRegistro || c.fechaAlta || new Date().toISOString(),
+    };
+  }
+
+  _filterAndPaginate(rawList, { page = 1, pageSize = CONFIG.PAGINATION.DEFAULT_PAGE_SIZE, search = '', estado = 'todos' } = {}) {
+    let list = rawList.map(c => this._normalizeCliente(c));
+
+    // Filtro por búsqueda (nombre, apellido, nombreCompleto, documento, código, email)
+    if (search && search.trim() !== '') {
+      const q = search.trim().toLowerCase();
+      list = list.filter(c =>
+        (c.nombre && c.nombre.toLowerCase().includes(q)) ||
+        (c.apellido && c.apellido.toLowerCase().includes(q)) ||
+        (c.nombreCompleto && c.nombreCompleto.toLowerCase().includes(q)) ||
+        (c.documento && c.documento.toLowerCase().includes(q)) ||
+        (c.codigo && c.codigo.toLowerCase().includes(q)) ||
+        (c.email && c.email.toLowerCase().includes(q))
+      );
+    }
+
+    // Filtro por estado
+    if (estado === 'activos') {
+      list = list.filter(c => c.activo === true);
+    } else if (estado === 'inactivos') {
+      list = list.filter(c => c.activo === false);
+    }
+
+    const total = list.length;
+    const startIndex = (page - 1) * pageSize;
+    const paginatedItems = list.slice(startIndex, startIndex + pageSize);
+
+    return {
+      items: paginatedItems,
+      total,
+      page: Number(page),
+      pageSize: Number(pageSize),
+      totalPages: Math.ceil(total / pageSize) || 1
+    };
+  }
+
   /**
    * Listar clientes con paginación, filtros de búsqueda y estado
    */
   async listar({ page = 1, pageSize = CONFIG.PAGINATION.DEFAULT_PAGE_SIZE, search = '', estado = 'todos' } = {}) {
     try {
-      const params = { page, pageSize, search, estado };
+      const params = search && search.trim() !== '' ? { busqueda: search.trim() } : {};
       const response = await apiClient.get('/clientes', params);
-      
-      // Adaptación de respuestas del backend si viene como { items, total } o array directo
-      if (Array.isArray(response)) {
-        return { items: response, total: response.length, page, pageSize };
+      const unwrapped = this._unwrap(response);
+
+      if (Array.isArray(unwrapped)) {
+        return this._filterAndPaginate(unwrapped, { page, pageSize, search, estado });
       }
-      return response;
+      if (unwrapped && Array.isArray(unwrapped.items)) {
+        return {
+          ...unwrapped,
+          items: unwrapped.items.map(c => this._normalizeCliente(c))
+        };
+      }
+      return { items: [], total: 0, page: Number(page), pageSize: Number(pageSize), totalPages: 1 };
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[ClientesService] Usando repositorio local mock.');
-        let list = this._getLocalClientes();
-
-        // Filtro por búsqueda (nombre, apellido, documento, código, email)
-        if (search && search.trim() !== '') {
-          const q = search.trim().toLowerCase();
-          list = list.filter(c =>
-            (c.nombre && c.nombre.toLowerCase().includes(q)) ||
-            (c.apellido && c.apellido.toLowerCase().includes(q)) ||
-            (c.documento && c.documento.toLowerCase().includes(q)) ||
-            (c.codigo && c.codigo.toLowerCase().includes(q)) ||
-            (c.email && c.email.toLowerCase().includes(q))
-          );
-        }
-
-        // Filtro por estado
-        if (estado === 'activos') {
-          list = list.filter(c => c.activo === true);
-        } else if (estado === 'inactivos') {
-          list = list.filter(c => c.activo === false);
-        }
-
-        const total = list.length;
-        const startIndex = (page - 1) * pageSize;
-        const paginatedItems = list.slice(startIndex, startIndex + pageSize);
-
-        return {
-          items: paginatedItems,
-          total,
-          page: Number(page),
-          pageSize: Number(pageSize),
-          totalPages: Math.ceil(total / pageSize) || 1
-        };
+        const list = this._getLocalClientes();
+        return this._filterAndPaginate(list, { page, pageSize, search, estado });
       }
       throw err;
     }
@@ -219,13 +283,14 @@ class ClientesService {
    */
   async obtenerPorId(id) {
     try {
-      return await apiClient.get(`/clientes/${id}`);
+      const response = await apiClient.get(`/clientes/${id}`);
+      return this._normalizeCliente(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         const list = this._getLocalClientes();
         const cliente = list.find(c => String(c.id) === String(id));
         if (!cliente) throw new Error('Cliente no encontrado');
-        return cliente;
+        return this._normalizeCliente(cliente);
       }
       throw err;
     }
@@ -236,18 +301,23 @@ class ClientesService {
    */
   async crear(clienteData) {
     try {
-      return await apiClient.post('/clientes', clienteData);
+      const payload = {
+        ...clienteData,
+        codigoCliente: clienteData.codigoCliente || clienteData.codigo || null
+      };
+      const response = await apiClient.post('/clientes', payload);
+      return this._normalizeCliente(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         const list = this._getLocalClientes();
         const nextId = list.length > 0 ? Math.max(...list.map(c => Number(c.id) || 0)) + 1 : 1;
-        const nuevoCliente = {
+        const nuevoCliente = this._normalizeCliente({
           ...clienteData,
           id: nextId,
-          codigo: clienteData.codigo || `CLI-00${100 + nextId}`,
+          codigo: clienteData.codigo || clienteData.codigoCliente || `CLI-00${100 + nextId}`,
           activo: clienteData.activo !== undefined ? clienteData.activo : true,
           fechaAlta: new Date().toISOString()
-        };
+        });
         list.unshift(nuevoCliente);
         this._saveLocalClientes(list);
         return nuevoCliente;
@@ -261,13 +331,21 @@ class ClientesService {
    */
   async actualizar(id, clienteData) {
     try {
-      return await apiClient.put(`/clientes/${id}`, clienteData);
+      const estadoCliente = clienteData.estadoCliente ||
+        (clienteData.activo !== undefined ? (clienteData.activo ? 'Activo' : 'Inactivo') : undefined);
+      const payload = {
+        ...clienteData,
+        codigoCliente: clienteData.codigoCliente || clienteData.codigo || undefined,
+        estadoCliente
+      };
+      const response = await apiClient.put(`/clientes/${id}`, payload);
+      return this._normalizeCliente(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         const list = this._getLocalClientes();
         const index = list.findIndex(c => String(c.id) === String(id));
         if (index === -1) throw new Error('Cliente a actualizar no encontrado');
-        list[index] = { ...list[index], ...clienteData, id: Number(id) };
+        list[index] = this._normalizeCliente({ ...list[index], ...clienteData, id: Number(id) });
         this._saveLocalClientes(list);
         return list[index];
       }
@@ -276,22 +354,10 @@ class ClientesService {
   }
 
   /**
-   * Baja lógica de cliente (Soft Delete: cambia activo a false)
+   * Baja lógica de cliente (Soft Delete: cambia activo a false / EstadoCliente a Inactivo)
    */
   async eliminar(id) {
-    try {
-      return await apiClient.delete(`/clientes/${id}`);
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const list = this._getLocalClientes();
-        const index = list.findIndex(c => String(c.id) === String(id));
-        if (index === -1) throw new Error('Cliente no encontrado');
-        list[index].activo = false;
-        this._saveLocalClientes(list);
-        return { success: true, message: 'Baja lógica realizada correctamente' };
-      }
-      throw err;
-    }
+    return this.actualizar(id, { activo: false, estadoCliente: 'Inactivo' });
   }
 
   /**

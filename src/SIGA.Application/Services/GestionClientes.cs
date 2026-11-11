@@ -100,13 +100,14 @@ public class GestionClientes : IGestionClientes
         if (existingWithCode != null)
             throw new ValidationException($"El código de cliente '{codigoCliente}' ya está registrado.");
 
+        var estadoInicial = dto.Activo == false ? EstadoCliente.Inactivo : EstadoCliente.Activo;
         var cliente = new Cliente
         {
             PersonaId = persona.Id,
             CodigoCliente = codigoCliente,
             Observaciones = dto.Observaciones?.Trim(),
-            EstadoCliente = EstadoCliente.Activo,
-            Estado = EstadoParticipante.Activo
+            EstadoCliente = estadoInicial,
+            Estado = estadoInicial == EstadoCliente.Activo ? EstadoParticipante.Activo : EstadoParticipante.Inactivo
         };
 
         await _clienteRepository.AddAsync(cliente, cancellationToken);
@@ -122,9 +123,42 @@ public class GestionClientes : IGestionClientes
         if (cliente == null)
             throw new NotFoundException(nameof(Cliente), id);
 
-        cliente.Observaciones = dto.Observaciones?.Trim();
-        cliente.EstadoCliente = dto.EstadoCliente;
-        cliente.Estado = dto.EstadoCliente == EstadoCliente.Activo ? EstadoParticipante.Activo : EstadoParticipante.Inactivo;
+        if (cliente.Persona != null)
+        {
+            if (!string.IsNullOrWhiteSpace(dto.Nombre))
+                cliente.Persona.Nombre = dto.Nombre.Trim();
+            if (!string.IsNullOrWhiteSpace(dto.Apellido))
+                cliente.Persona.Apellido = dto.Apellido.Trim();
+            if (!string.IsNullOrWhiteSpace(dto.Documento))
+                cliente.Persona.Documento = dto.Documento.Trim();
+            if (dto.Telefono != null)
+                cliente.Persona.Telefono = dto.Telefono.Trim();
+            if (dto.Email != null)
+                cliente.Persona.Email = dto.Email.Trim();
+
+            await _personaRepository.UpdateAsync(cliente.Persona, cancellationToken);
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.CodigoCliente))
+        {
+            cliente.CodigoCliente = dto.CodigoCliente.Trim();
+        }
+
+        if (dto.Observaciones != null)
+        {
+            cliente.Observaciones = dto.Observaciones.Trim();
+        }
+
+        if (dto.EstadoCliente.HasValue)
+        {
+            cliente.EstadoCliente = dto.EstadoCliente.Value;
+        }
+        else if (dto.Activo.HasValue)
+        {
+            cliente.EstadoCliente = dto.Activo.Value ? EstadoCliente.Activo : EstadoCliente.Inactivo;
+        }
+
+        cliente.Estado = cliente.EstadoCliente == EstadoCliente.Activo ? EstadoParticipante.Activo : EstadoParticipante.Inactivo;
 
         await _clienteRepository.UpdateAsync(cliente, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -150,6 +184,8 @@ public class GestionClientes : IGestionClientes
         {
             Id = cliente.Id,
             PersonaId = cliente.PersonaId,
+            Nombre = cliente.Persona?.Nombre ?? string.Empty,
+            Apellido = cliente.Persona?.Apellido ?? string.Empty,
             NombreCompleto = cliente.Persona != null ? cliente.Persona.NombreCompleto : string.Empty,
             Documento = cliente.Persona?.Documento ?? string.Empty,
             Telefono = cliente.Persona?.Telefono,

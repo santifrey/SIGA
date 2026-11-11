@@ -24,6 +24,7 @@ export class VentasView {
     this.selectedTemporadaVentaId = null;
     this.currentModalVenta = null;
     this.filterEstado = 'todos';
+    this.pendingVentaAfterCliente = false;
   }
 
   async render(rootElement) {
@@ -132,13 +133,18 @@ export class VentasView {
             <span class="text-xs text-muted">Cargue el cliente comprador, cantidades por clase y verifique los precios pactados</span>
           </div>
           <div class="card-body p-3">
-            <form id="form-nueva-venta">
+            <form id="form-nueva-venta" novalidate>
               <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
                 <div class="form-group mb-0">
-                  <label for="select-venta-cliente" class="form-label text-xs font-bold uppercase">
-                    Cliente Comprador <span class="required-mark">*</span>
-                  </label>
-                  <select id="select-venta-cliente" class="form-control" required>
+                  <div class="d-flex justify-between align-center" style="margin-bottom: 0.375rem;">
+                    <label for="select-venta-cliente" class="form-label text-xs font-bold uppercase mb-0">
+                      Cliente Comprador <span class="required-mark">*</span>
+                    </label>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="btn-nuevo-cliente-venta" style="padding: 2px 8px; font-size: 0.7rem;" title="Registrar un nuevo cliente">
+                      + Nuevo Cliente
+                    </button>
+                  </div>
+                  <select id="select-venta-cliente" class="form-control">
                     <option value="">Cargando clientes...</option>
                   </select>
                 </div>
@@ -293,6 +299,122 @@ export class VentasView {
             </div>
           </div>
         </div>
+
+        <!-- Modal de Creación de Cliente (misma ventana que en Clientes) -->
+        <div id="modal-cliente" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-cliente-title">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-header">
+              <h3 class="modal-title" id="modal-cliente-title">Nuevo Cliente</h3>
+              <button type="button" class="modal-close-btn" id="btn-close-modal-cliente" aria-label="Cerrar modal">
+                <svg class="icon-svg sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            <form id="form-cliente" novalidate>
+              <div class="modal-body">
+                <input type="hidden" id="cliente-id" />
+
+                <!-- Sección 1: Datos de Persona -->
+                <div class="form-section">
+                  <div class="form-section-title">
+                    <svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span>1. Datos de la Persona</span>
+                  </div>
+
+                  <div class="form-row two-cols">
+                    <div class="form-group">
+                      <label for="cliente-nombre" class="form-label">
+                        Nombre <span class="required-mark">*</span>
+                      </label>
+                      <input type="text" id="cliente-nombre" class="form-control" placeholder="ej. Martín" required />
+                      <div class="invalid-feedback" id="val-nombre">El nombre es obligatorio.</div>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="cliente-apellido" class="form-label">
+                        Apellido <span class="required-mark">*</span>
+                      </label>
+                      <input type="text" id="cliente-apellido" class="form-control" placeholder="ej. Gómez" required />
+                      <div class="invalid-feedback" id="val-apellido">El apellido es obligatorio.</div>
+                    </div>
+                  </div>
+
+                  <div class="form-row two-cols">
+                    <div class="form-group">
+                      <label for="cliente-tipo-doc" class="form-label">Tipo Documento</label>
+                      <select id="cliente-tipo-doc" class="form-control">
+                        <option value="DNI">DNI - Documento Nacional</option>
+                        <option value="CUIT">CUIT / CUIL</option>
+                        <option value="PASAPORTE">Pasaporte</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="cliente-doc" class="form-label">
+                        Número de Documento <span class="required-mark">*</span>
+                      </label>
+                      <input type="text" id="cliente-doc" class="form-control" placeholder="ej. 32456789" required />
+                      <div class="invalid-feedback" id="val-doc">El número de documento es obligatorio.</div>
+                    </div>
+                  </div>
+
+                  <div class="form-row two-cols">
+                    <div class="form-group">
+                      <label for="cliente-email" class="form-label">
+                        Correo Electrónico <span class="required-mark">*</span>
+                      </label>
+                      <input type="email" id="cliente-email" class="form-control" placeholder="ej. cliente@correo.com" required />
+                      <div class="invalid-feedback" id="val-email">Ingrese un correo electrónico válido.</div>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="cliente-telefono" class="form-label">Teléfono / WhatsApp</label>
+                      <input type="text" id="cliente-telefono" class="form-control" placeholder="ej. +54 351 456-7890" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Sección 2: Datos Comerciales de Cliente -->
+                <div>
+                  <div class="form-section-title">
+                    <svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    <span>2. Información Comercial</span>
+                  </div>
+
+                  <div class="form-row two-cols">
+                    <div class="form-group">
+                      <label for="cliente-codigo" class="form-label">
+                        Código de Cliente
+                        <span class="label-hint">(Autogenerado si está vacío)</span>
+                      </label>
+                      <input type="text" id="cliente-codigo" class="form-control" placeholder="ej. CLI-00101" />
+                    </div>
+
+                    <div class="form-group d-flex justify-center" style="margin-top: 1.5rem;">
+                      <label class="form-switch">
+                        <input type="checkbox" id="cliente-activo" class="switch-input" checked />
+                        <span class="switch-slider"></span>
+                        <span class="form-check-label font-semibold">Cliente Habilitado / Activo</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="cliente-observaciones" class="form-label">Observaciones y Notas</label>
+                    <textarea id="cliente-observaciones" class="form-control" rows="3" placeholder="Información crediticia, preferencias o datos de facturación..."></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-modal-cliente">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="btn-save-cliente">
+                  <span class="btn-text">Guardar Cliente</span>
+                  <span class="btn-spinner"></span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     `;
 
@@ -357,18 +479,7 @@ export class VentasView {
       }
 
       // Poblar selector de clientes en Sección 2
-      const selectCliente = document.getElementById('select-venta-cliente');
-      if (selectCliente) {
-        if (this.clientes.length === 0) {
-          selectCliente.innerHTML = '<option value="">No hay clientes registrados</option>';
-        } else {
-          selectCliente.innerHTML = '<option value="">-- Seleccione Cliente Comprador --</option>' +
-            this.clientes.map(c => {
-              const nombre = c.persona ? `${c.persona.nombre} ${c.persona.apellido}` : (c.razonSocial || c.nombreCompleto || c.codigoCliente);
-              return `<option value="${escapeHtml(c.id)}">${escapeHtml(nombre)} (${escapeHtml(c.codigoCliente || 'CLI')})</option>`;
-            }).join('');
-        }
-      }
+      this.renderClientesSelect();
 
       // Cargar precios de referencia de la temporada seleccionada
       if (this.selectedTemporadaPreciosId) {
@@ -382,21 +493,82 @@ export class VentasView {
     }
   }
 
+  renderClientesSelect(selectedId = null) {
+    const selectCliente = document.getElementById('select-venta-cliente');
+    if (!selectCliente) return;
+
+    let opts = '<option value="">-- Seleccione Cliente Comprador (o registrar nuevo) --</option>';
+    opts += this.clientes.map(c => {
+      const nombre = c.persona ? `${c.persona.nombre} ${c.persona.apellido}` : (c.razonSocial || c.nombreCompleto || `${c.nombre || ''} ${c.apellido || ''}`.trim() || c.codigoCliente || c.codigo);
+      const cod = c.codigoCliente || c.codigo || 'CLI';
+      return `<option value="${escapeHtml(c.id)}">${escapeHtml(nombre)} (${escapeHtml(cod)})</option>`;
+    }).join('');
+    opts += '<option value="__nuevo__">+ Registrar nuevo cliente...</option>';
+
+    selectCliente.innerHTML = opts;
+    if (selectedId) {
+      selectCliente.value = String(selectedId);
+    }
+  }
+
+  async recargarClientesSelect(selectedId = null) {
+    try {
+      const clsRes = await clientesService.listar({ pageSize: 100 });
+      this.clientes = Array.isArray(clsRes) ? clsRes : (clsRes.items || []);
+      this.renderClientesSelect(selectedId);
+    } catch (err) {
+      console.warn('[VentasView] Error al recargar clientes:', err);
+    }
+  }
+
+  _parseClaseIndex(val) {
+    if (typeof val === 'number' && !Number.isNaN(val)) return val;
+    const match = String(val ?? '').match(/(\d+)/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  _parseEstadoIndex(estado, nombreEstado) {
+    if (typeof estado === 'number' && !Number.isNaN(estado)) return estado;
+    const map = {
+      registrada: 0,
+      enrevisionadministracion: 1,
+      aprobadaadministracion: 2,
+      facturada: 3,
+      completada: 4,
+      rechazada: 5,
+      anulada: 6
+    };
+    const key = String(estado ?? nombreEstado ?? '').trim().toLowerCase();
+    if (key in map) return map[key];
+    const num = Number(estado);
+    return Number.isNaN(num) ? 0 : num;
+  }
+
   async cargarPreciosReferencia(temporadaId) {
     try {
       const precios = await ventasService.listarPreciosPorTemporada(temporadaId);
       this.preciosClaseActuales = {};
 
       (precios || []).forEach(p => {
-        this.preciosClaseActuales[p.claseBulbo] = Number(p.precioReferencia) || 0;
+        const idx = this._parseClaseIndex(p.claseBulbo ?? p.nombreClase);
+        this.preciosClaseActuales[idx] = Number(p.precioReferencia) || 0;
       });
 
       // Rellenar inputs de la Sección 1
-      for (let c = 0; c <= 4; c++) {
-        const inp = document.getElementById(`input-precio-c${c}`);
-        if (inp) {
-          inp.value = this.preciosClaseActuales[c] !== undefined ? this.preciosClaseActuales[c] : '';
+      if (String(temporadaId) === String(this.selectedTemporadaPreciosId)) {
+        for (let c = 0; c <= 4; c++) {
+          const inp = document.getElementById(`input-precio-c${c}`);
+          if (inp) {
+            inp.value = this.preciosClaseActuales[c] !== undefined ? this.preciosClaseActuales[c] : '';
+          }
         }
+      }
+
+      // Sincronizar selector de temporada en Sección 2 si está vacío o coincide
+      const selectTempVenta = document.getElementById('select-venta-temporada');
+      if (selectTempVenta && (!selectTempVenta.value || String(selectTempVenta.value) === String(temporadaId))) {
+        selectTempVenta.value = String(temporadaId);
+        this.selectedTemporadaVentaId = temporadaId;
       }
 
       // Pre-cargar precios por defecto en la Sección 2 (Nueva Venta)
@@ -411,9 +583,7 @@ export class VentasView {
       const inpPrecio = document.getElementById(`venta-precio-c${c}`);
       if (inpPrecio) {
         const ref = this.preciosClaseActuales[c];
-        if (ref !== undefined && ref > 0) {
-          inpPrecio.value = ref;
-        }
+        inpPrecio.value = (ref !== undefined && ref > 0) ? ref : 0;
       }
     }
     this.actualizarCalculoVenta();
@@ -522,6 +692,147 @@ export class VentasView {
     // Cerrar modales
     document.getElementById('btn-close-modal-circuito')?.addEventListener('click', () => this.closeModalCircuito());
     document.getElementById('btn-close-modal-detalle')?.addEventListener('click', () => this.closeModalDetalle());
+
+    // Nuevo cliente desde Ventas
+    document.getElementById('btn-nuevo-cliente-venta')?.addEventListener('click', () => {
+      this.openModalNuevoCliente(false);
+    });
+
+    const selectCliente = document.getElementById('select-venta-cliente');
+    if (selectCliente) {
+      selectCliente.addEventListener('change', (e) => {
+        if (e.target.value === '__nuevo__') {
+          e.target.value = '';
+          this.openModalNuevoCliente(false);
+        }
+      });
+    }
+
+    document.getElementById('btn-close-modal-cliente')?.addEventListener('click', () => this.closeModalNuevoCliente());
+    document.getElementById('btn-cancel-modal-cliente')?.addEventListener('click', () => this.closeModalNuevoCliente());
+    document.getElementById('form-cliente')?.addEventListener('submit', (e) => this._handleSubmitNuevoCliente(e));
+  }
+
+  openModalNuevoCliente(autoSubmitVenta = false) {
+    this.pendingVentaAfterCliente = Boolean(autoSubmitVenta);
+    const form = document.getElementById('form-cliente');
+    if (form) form.reset();
+
+    const idInput = document.getElementById('cliente-id');
+    if (idInput) idInput.value = '';
+
+    const titleEl = document.getElementById('modal-cliente-title');
+    if (titleEl) titleEl.textContent = 'Nuevo Cliente';
+
+    const activoCheck = document.getElementById('cliente-activo');
+    if (activoCheck) activoCheck.checked = true;
+
+    this._clearClienteValidationErrors();
+
+    const modal = document.getElementById('modal-cliente');
+    if (modal) {
+      modal.classList.add('is-active');
+      setTimeout(() => document.getElementById('cliente-nombre')?.focus(), 100);
+    }
+  }
+
+  closeModalNuevoCliente() {
+    this.pendingVentaAfterCliente = false;
+    const modal = document.getElementById('modal-cliente');
+    if (modal) {
+      modal.classList.remove('is-active');
+    }
+  }
+
+  _clearClienteValidationErrors() {
+    const inputs = document.querySelectorAll('#form-cliente .form-control');
+    inputs.forEach(i => i.classList.remove('is-invalid'));
+  }
+
+  async _handleSubmitNuevoCliente(e) {
+    e.preventDefault();
+
+    const nombre = document.getElementById('cliente-nombre')?.value.trim() || '';
+    const apellido = document.getElementById('cliente-apellido')?.value.trim() || '';
+    const tipoDocumento = document.getElementById('cliente-tipo-doc')?.value || 'DNI';
+    const documento = document.getElementById('cliente-doc')?.value.trim() || '';
+    const email = document.getElementById('cliente-email')?.value.trim() || '';
+    const telefono = document.getElementById('cliente-telefono')?.value.trim() || '';
+    const codigo = document.getElementById('cliente-codigo')?.value.trim() || '';
+    const activo = document.getElementById('cliente-activo')?.checked ?? true;
+    const observaciones = document.getElementById('cliente-observaciones')?.value.trim() || '';
+
+    let valid = true;
+    this._clearClienteValidationErrors();
+
+    if (!nombre) {
+      document.getElementById('cliente-nombre')?.classList.add('is-invalid');
+      valid = false;
+    }
+    if (!apellido) {
+      document.getElementById('cliente-apellido')?.classList.add('is-invalid');
+      valid = false;
+    }
+    if (!documento) {
+      document.getElementById('cliente-doc')?.classList.add('is-invalid');
+      valid = false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      document.getElementById('cliente-email')?.classList.add('is-invalid');
+      valid = false;
+    }
+
+    if (!valid) {
+      toast.warning('Por favor complete los campos obligatorios correctamente.');
+      return;
+    }
+
+    const payload = {
+      nombre,
+      apellido,
+      tipoDocumento,
+      documento,
+      email,
+      telefono,
+      codigo,
+      activo,
+      observaciones
+    };
+
+    const saveBtn = document.getElementById('btn-save-cliente');
+    if (saveBtn) {
+      saveBtn.classList.add('is-loading');
+      saveBtn.disabled = true;
+    }
+
+    const shouldContinueVenta = this.pendingVentaAfterCliente;
+
+    try {
+      const nuevoCliente = await clientesService.crear(payload);
+      toast.success(`Cliente ${nombre} ${apellido} registrado exitosamente.`);
+
+      this.closeModalNuevoCliente();
+      await this.recargarClientesSelect(nuevoCliente?.id);
+
+      // Si el modal se abrió al intentar registrar una venta sin cliente y ya hay cantidades cargadas, continuar con el registro de la venta
+      if (shouldContinueVenta) {
+        let totalBulbosCargados = 0;
+        for (let c = 0; c <= 4; c++) {
+          totalBulbosCargados += Number(document.getElementById(`venta-cant-c${c}`)?.value) || 0;
+        }
+        if (totalBulbosCargados > 0) {
+          await this.handleRegistrarVenta();
+        }
+      }
+    } catch (err) {
+      toast.error(err.message || 'Error al guardar el cliente');
+    } finally {
+      if (saveBtn) {
+        saveBtn.classList.remove('is-loading');
+        saveBtn.disabled = false;
+      }
+    }
   }
 
   async handleGuardarPreciosReferencia() {
@@ -559,8 +870,9 @@ export class VentasView {
 
   async handleRegistrarVenta() {
     const clienteId = document.getElementById('select-venta-cliente')?.value;
-    if (!clienteId) {
-      toast.warning('Debe seleccionar un cliente comprador.');
+    if (!clienteId || clienteId === '__nuevo__') {
+      toast.info('Para registrar la venta sin cliente asignado, registre los datos del nuevo cliente comprador.', 'Registrar Nuevo Cliente');
+      this.openModalNuevoCliente(true);
       return;
     }
 
@@ -613,7 +925,7 @@ export class VentasView {
       const obsInput = document.getElementById('input-venta-obs');
       if (obsInput) obsInput.value = '';
 
-      this.actualizarCalculoVenta();
+      this.aplicarPreciosReferenciaEnFormularioVenta();
       await this.recargarVentas();
     } catch (err) {
       toast.error('Error al registrar venta: ' + err.message);
@@ -636,7 +948,7 @@ export class VentasView {
 
     let lista = [...this.ventas];
     if (this.filterEstado !== 'todos') {
-      lista = lista.filter(v => Number(v.estado) === Number(this.filterEstado));
+      lista = lista.filter(v => this._parseEstadoIndex(v.estado, v.nombreEstado) === Number(this.filterEstado));
     }
 
     if (lista.length === 0) {
@@ -695,7 +1007,7 @@ export class VentasView {
   }
 
   obtenerEstadoInfo(estado, nombreEstado) {
-    const st = Number(estado);
+    const st = this._parseEstadoIndex(estado, nombreEstado);
     switch (st) {
       case 0:
         return { label: 'Registrada', badgeClass: 'badge-secondary' };
@@ -717,7 +1029,7 @@ export class VentasView {
   }
 
   renderBotonesCircuito(v) {
-    const st = Number(v.estado);
+    const st = this._parseEstadoIndex(v.estado, v.nombreEstado);
 
     // 1. En Registrada (0) o Rechazada (5): botón "Enviar a Revisión"
     if (st === 0 || st === 5) {
@@ -1128,10 +1440,22 @@ export class VentasView {
         </table>
       </div>
 
-      <div class="d-flex justify-end mt-4">
+      <div class="d-flex justify-between align-center flex-wrap gap-sm mt-4 pt-3" style="border-top: 1px solid var(--border);" id="detalle-circuito-actions">
+        <div class="d-flex align-center gap-xs flex-wrap">
+          <span class="text-xs font-bold uppercase text-muted mr-2">Siguiente paso del circuito:</span>
+          ${this.renderBotonesCircuito(venta)}
+        </div>
         <button type="button" class="btn btn-secondary btn-sm" id="btn-close-detalle-footer">Cerrar</button>
       </div>
     `;
+
+    const actionsContainer = document.getElementById('detalle-circuito-actions');
+    if (actionsContainer) {
+      actionsContainer.querySelectorAll('button[data-id]').forEach(btn => {
+        btn.addEventListener('click', () => this.closeModalDetalle());
+      });
+      this.bindBotonesCircuito(actionsContainer);
+    }
 
     document.getElementById('btn-close-detalle-footer')?.addEventListener('click', () => this.closeModalDetalle());
     modal.classList.add('is-active');

@@ -100,17 +100,61 @@ class MovimientosService {
     storage.set(CONFIG.STORAGE_KEYS.MOCK_MOVIMIENTOS, list);
   }
 
+  _unwrap(res) {
+    if (res && typeof res === 'object' && 'data' in res && res.data !== null && res.data !== undefined) {
+      return res.data;
+    }
+    return res;
+  }
+
+  _parseClaseIndex(val) {
+    if (typeof val === 'number' && !Number.isNaN(val)) return val;
+    const match = String(val ?? '').match(/(\d+)/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  _normalizeMovimiento(m) {
+    if (!m) return m;
+    const cantidades = (m.cantidades || []).map(c => {
+      const idx = this._parseClaseIndex(c.claseBulbo ?? c.clase);
+      return {
+        ...c,
+        claseBulbo: idx,
+        clase: idx,
+        nombreClase: c.nombreClase || `Clase ${idx}`,
+        cantidad: Number(c.cantidad) || 0
+      };
+    });
+    const totalBulbos = Number(m.totalBulbos) || cantidades.reduce((acc, c) => acc + c.cantidad, 0);
+    return {
+      ...m,
+      numeroComprobante: m.numeroComprobante || `MOV-${String(m.id).padStart(4, '0')}`,
+      estado: String(m.estado || 'Pendiente'),
+      cantidades,
+      totalBulbos
+    };
+  }
+
   /**
    * Listar movimientos con filtros
    */
   async listar({ page = 1, pageSize = 10, clienteId = '', estado = 'todos' } = {}) {
     try {
-      const params = { page, pageSize, clienteId, estado };
-      const response = await apiClient.get('/movimientos', params);
-      if (Array.isArray(response)) {
-        return { items: response, total: response.length, page, pageSize };
+      const params = {};
+      if (clienteId && clienteId !== 'todos' && clienteId !== 'empresa') {
+        params.clienteId = Number(clienteId);
       }
-      return response;
+      if (estado && estado !== 'todos') {
+        params.estado = estado;
+      }
+      const response = await apiClient.get('/movimientos', params);
+      const unwrapped = this._unwrap(response);
+      let list = (Array.isArray(unwrapped) ? unwrapped : (unwrapped?.items || [])).map(m => this._normalizeMovimiento(m));
+      list.sort((a, b) => Number(b.id) - Number(a.id));
+      const total = list.length;
+      const startIndex = (page - 1) * pageSize;
+      const items = list.slice(startIndex, startIndex + pageSize);
+      return { items, total, page: Number(page), pageSize: Number(pageSize) };
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[MovimientosService] Usando repositorio local mock.');
@@ -142,7 +186,8 @@ class MovimientosService {
    */
   async obtenerPorId(id) {
     try {
-      return await apiClient.get(`/movimientos/${id}`);
+      const response = await apiClient.get(`/movimientos/${id}`);
+      return this._normalizeMovimiento(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         const list = this._getLocalMovimientos();
@@ -160,7 +205,20 @@ class MovimientosService {
    */
   async crear(data) {
     try {
-      return await apiClient.post('/movimientos', data);
+      const origenId = (data.origenId === 'empresa' || data.origenId === 0 || data.origenId === '0') ? 1 : Number(data.origenId);
+      const destinoId = (data.destinoId === 'empresa' || data.destinoId === 0 || data.destinoId === '0') ? 1 : Number(data.destinoId);
+      const cantidades = (data.cantidades || []).map(c => ({
+        clase: this._parseClaseIndex(c.claseBulbo ?? c.clase),
+        cantidad: Number(c.cantidad) || 0
+      }));
+      const payload = {
+        origenId,
+        destinoId,
+        observaciones: data.observaciones || null,
+        cantidades
+      };
+      const response = await apiClient.post('/movimientos', payload);
+      return this._normalizeMovimiento(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         const list = this._getLocalMovimientos();

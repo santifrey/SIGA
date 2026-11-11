@@ -41,8 +41,8 @@ export class LoginView {
                   type="text"
                   id="login-email"
                   class="form-control has-icon-left"
-                  placeholder="ej. admin@siga.com"
-                  value="admin@siga.com"
+                  placeholder="ej. admin o admin@azafranmediterraneo.com"
+                  value="admin"
                   required
                   autocomplete="username"
                 />
@@ -67,7 +67,7 @@ export class LoginView {
                   id="login-password"
                   class="form-control has-icon-left has-icon-right"
                   placeholder="••••••••"
-                  value="admin123"
+                  value="Admin123!"
                   required
                   autocomplete="current-password"
                 />
@@ -130,8 +130,8 @@ export class LoginView {
 
     // Rellenado rápido de credenciales demo
     this.container.querySelector('#btn-fill-admin').addEventListener('click', () => {
-      emailInput.value = 'admin@siga.com';
-      passwordInput.value = 'admin123';
+      emailInput.value = 'admin';
+      passwordInput.value = 'Admin123!';
       alertBox.classList.add('hidden');
     });
 

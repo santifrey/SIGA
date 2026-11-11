@@ -63,14 +63,41 @@ class StockService {
     storage.set(CONFIG.STORAGE_KEYS.MOCK_STOCK, stockData);
   }
 
+  _parseClaseIndex(val) {
+    if (typeof val === 'number' && !Number.isNaN(val)) return val;
+    const match = String(val ?? '').match(/(\d+)/);
+    return match ? Number(match[1]) : 0;
+  }
+
   /**
    * Obtiene el stock de bulbos por cliente (Clases 0 a 4)
    * @param {string|number} clienteId
    */
   async obtenerStockPorCliente(clienteId) {
+    if (clienteId === 'empresa' || clienteId === 0 || clienteId === '0') {
+      const allStock = this._getLocalStock();
+      return allStock.empresa || [
+        { claseBulbo: 0, nombreClase: 'Clase 0 (Extra Grande)', cantidad: 0 },
+        { claseBulbo: 1, nombreClase: 'Clase 1 (Grande)', cantidad: 0 },
+        { claseBulbo: 2, nombreClase: 'Clase 2 (Mediano)', cantidad: 0 },
+        { claseBulbo: 3, nombreClase: 'Clase 3 (Chico)', cantidad: 0 },
+        { claseBulbo: 4, nombreClase: 'Clase 4 (Semillero)', cantidad: 0 },
+      ];
+    }
+
     try {
       const response = await apiClient.get(`/stock/por-cliente/${clienteId}`);
-      return response;
+      const unwrapped = (response && typeof response === 'object' && 'data' in response) ? response.data : response;
+      const rawList = Array.isArray(unwrapped)
+        ? unwrapped
+        : (unwrapped?.stockPorClase || unwrapped?.items || []);
+
+      return rawList.map(it => ({
+        ...it,
+        claseBulbo: this._parseClaseIndex(it.claseBulbo ?? it.clase ?? it.nombreClase),
+        nombreClase: it.nombreClase || `Clase ${this._parseClaseIndex(it.claseBulbo ?? it.clase)}`,
+        cantidad: Number(it.cantidad) || 0
+      }));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info(`[StockService] Fallback mock para cliente ${clienteId}`);
