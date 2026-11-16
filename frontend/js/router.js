@@ -99,8 +99,13 @@ export class Router {
       if (!targetRoute) {
         // Ruta no registrada: redirigir a dashboard o login limpiamente
         console.warn(`[Router] Ruta no registrada: ${path}. Redirigiendo...`);
+        const fallback = isAuthenticated ? '#dashboard' : '#login';
+        if (path === fallback || !this.routes[fallback]) {
+          this.currentRoute = path;
+          return;
+        }
         this._isNavigating = false;
-        this.navigate(isAuthenticated ? '#dashboard' : '#login');
+        this.navigate(fallback);
         return;
       }
 

@@ -6,7 +6,7 @@
 .vs/
 .vscode/
 .agents/
-
+.tests/
 *.user
 *.suo
 *.userosscache
@@ -16,6 +16,11 @@
 *.db
 *.db-shm
 *.db-wal
+
+## Environment variables & secrets
+.env
+*.env
+!.env.example
 
 ## Ignore local Development configuration with local secrets/credentials
 **/appsettings.Development.json

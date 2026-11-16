@@ -31,7 +31,7 @@ class AuthService {
       // Manejo de respuesta estándar backend (ApiResponse<LoginResponseDto>)
       const dataPayload = response.data || response;
       const token = dataPayload.token || response.token;
-      
+
       const rawPermisos = Array.isArray(dataPayload.permisos) ? dataPayload.permisos : [];
 
       const user = response.usuario || response.user || (dataPayload.username ? {
@@ -41,13 +41,17 @@ class AuthService {
         email: dataPayload.email || email,
         rol: (dataPayload.roles && dataPayload.roles.length > 0) ? dataPayload.roles[0] : (dataPayload.rol || 'Administrador'),
         roles: dataPayload.roles || [dataPayload.rol || 'ADMINISTRADOR'],
-        permisos: rawPermisos
+        permisos: rawPermisos,
+        activado: dataPayload.activado ?? (dataPayload.debeCambiarPassword === false),
+        debeCambiarPassword: dataPayload.debeCambiarPassword ?? (dataPayload.activado === false)
       } : {
         email,
         nombre: email.split('@')[0],
         rol: 'Administrador',
         roles: ['ADMINISTRADOR'],
-        permisos: rawPermisos
+        permisos: rawPermisos,
+        activado: true,
+        debeCambiarPassword: false
       });
 
       if (!token) {
@@ -133,7 +137,7 @@ class AuthService {
   async logout() {
     try {
       // Intenta avisar al backend de forma opcional (best-effort)
-      await apiClient.post('/auth/logout').catch(() => {});
+      await apiClient.post('/auth/logout').catch(() => { });
     } finally {
       this._permisosSet = null;
       storage.clearSession();
@@ -324,6 +328,28 @@ class AuthService {
     // 3. Fallback vacío
     this._permisosSet = new Set();
     return this._permisosSet;
+  }
+
+  /**
+   * Cambia la contraseña del usuario y activa la cuenta
+   * @param {number} usuarioId
+   * @param {string} passwordActual
+   * @param {string} passwordNueva
+   */
+  async cambiarPassword(usuarioId, passwordActual, passwordNueva) {
+    const res = await apiClient.post(`/usuarios/${usuarioId}/cambiar-password`, {
+      passwordActual,
+      passwordNueva
+    });
+
+    const user = storage.getUser();
+    if (user) {
+      user.activado = true;
+      user.debeCambiarPassword = false;
+      storage.setUser(user);
+    }
+
+    return res;
   }
 
   _extraerPermisosDeJwt(token) {

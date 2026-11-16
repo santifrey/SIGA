@@ -1,7 +1,7 @@
 using Moq;
 using SIGA.Application.Common;
 using SIGA.Application.DTOs.Filas;
-using SIGA.Application.Exceptions;
+using SIGA.Application.Common;
 using SIGA.Application.Services;
 using SIGA.Domain.Entities;
 using SIGA.Domain.Enums;

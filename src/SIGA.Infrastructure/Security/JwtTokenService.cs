@@ -43,6 +43,8 @@ public class JwtTokenService : ITokenService
             new(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
             new(ClaimTypes.Name, usuario.Username),
             new("PersonaId", usuario.PersonaId.ToString()),
+            new("activado", usuario.Activado.ToString().ToLowerInvariant()),
+            new("debeCambiarPassword", (!usuario.Activado).ToString().ToLowerInvariant()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

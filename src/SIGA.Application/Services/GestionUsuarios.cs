@@ -73,6 +73,8 @@ public class GestionUsuarios : IGestionUsuarios
             Email = usuario.Persona?.Email ?? string.Empty,
             RolId = usuario.RolId,
             Rol = rolNombre,
+            Activado = usuario.Activado,
+            DebeCambiarPassword = !usuario.Activado,
             Permisos = permisos,
             Roles = string.IsNullOrEmpty(rolNombre) ? new List<string>() : new List<string> { rolNombre }
         };
@@ -106,6 +108,8 @@ public class GestionUsuarios : IGestionUsuarios
             Telefono = usuario.Persona?.Telefono,
             RolId = usuario.RolId,
             Rol = rolNombre,
+            Activado = usuario.Activado,
+            DebeCambiarPassword = !usuario.Activado,
             Permisos = permisos,
             UltimoAcceso = usuario.UltimoAcceso,
             Estado = usuario.Estado,
@@ -179,7 +183,8 @@ public class GestionUsuarios : IGestionUsuarios
             PersonaId = persona.Id,
             Username = dto.Username.Trim(),
             PasswordHash = passwordHash,
-            Estado = EstadoUsuario.Activo
+            Estado = EstadoUsuario.Activo,
+            Activado = false
         };
 
         int targetRolId = dto.RolId > 0 ? dto.RolId : (dto.RolIds != null && dto.RolIds.Any() ? dto.RolIds.First() : 0);
@@ -321,7 +326,11 @@ public class GestionUsuarios : IGestionUsuarios
         if (string.IsNullOrWhiteSpace(dto.PasswordNueva) || dto.PasswordNueva.Length < 6)
             throw new ValidationException("La nueva contraseña debe tener al menos 6 caracteres.");
 
+        if (dto.PasswordActual == dto.PasswordNueva)
+            throw new ValidationException("La nueva contraseña no puede ser igual a la contraseña actual.");
+
         usuario.PasswordHash = _passwordHasher.HashPassword(dto.PasswordNueva);
+        usuario.Activado = true;
         await _usuarioRepository.UpdateAsync(usuario, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -342,6 +351,7 @@ public class GestionUsuarios : IGestionUsuarios
             RolId = usuario.RolId,
             Rol = rolNombre,
             Estado = usuario.Estado,
+            Activado = usuario.Activado,
             FechaCreacion = usuario.FechaCreacion,
             UltimoAcceso = usuario.UltimoAcceso,
             Roles = string.IsNullOrEmpty(rolNombre) ? new List<string>() : new List<string> { rolNombre }

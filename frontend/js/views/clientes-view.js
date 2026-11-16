@@ -686,7 +686,7 @@ export class ClientesView {
         toast.success(`Cliente ${nombre} ${apellido} actualizado exitosamente.`);
       } else {
         await clientesService.crear(payload);
-        toast.success(`Cliente ${nombre} ${apellido} registrado exitosamente.`);
+        toast.success(`Cliente ${nombre} ${apellido} registrado. Acceso: ${email} | Clave: DNI`);
       }
 
       this.closeModalCliente();

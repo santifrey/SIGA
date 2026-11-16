@@ -107,6 +107,42 @@ export class LoginView {
             </div>
           </div>
         </div>
+
+        <!-- Modal Cambio de Contraseña Obligatorio por Primer Ingreso -->
+        <div id="modal-cambio-password-inicial" class="modal">
+          <div class="modal-card" style="max-width: 440px; border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);">
+            <div class="modal-card-head" style="background: var(--surface); border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem;">
+              <h3 class="modal-card-title text-base font-bold" style="color: var(--primary);">Activación de Cuenta requerida</h3>
+            </div>
+            <div class="modal-card-body" style="padding: 1.5rem;">
+              <div class="alert alert-info mb-3" style="font-size: 0.8125rem; line-height: 1.4;">
+                <strong>¡Primer ingreso detectado!</strong> Por motivos de seguridad del sistema, debes cambiar tu contraseña inicial (DNI) para activar tu cuenta y poder ingresar.
+              </div>
+              <form id="form-cambio-password-inicial">
+                <div class="form-group mb-3">
+                  <label class="form-label font-medium" for="cp-actual">Contraseña actual (tu DNI)</label>
+                  <input type="password" id="cp-actual" class="form-control" required />
+                </div>
+                <div class="form-group mb-3">
+                  <label class="form-label font-medium" for="cp-nueva">Nueva Contraseña <span class="text-danger">*</span></label>
+                  <input type="password" id="cp-nueva" class="form-control" placeholder="Mínimo 6 caracteres" required minlength="6" />
+                </div>
+                <div class="form-group mb-3">
+                  <label class="form-label font-medium" for="cp-confirmar">Confirmar Nueva Contraseña <span class="text-danger">*</span></label>
+                  <input type="password" id="cp-confirmar" class="form-control" placeholder="Reingrese la nueva contraseña" required minlength="6" />
+                </div>
+                <div id="cp-error" class="alert alert-danger hidden mb-3" style="font-size: 0.8125rem;"></div>
+                <div class="d-flex justify-between align-center mt-4">
+                  <button type="button" class="btn btn-outline" id="btn-cancelar-activacion">Cerrar Sesión</button>
+                  <button type="submit" class="btn btn-primary" id="btn-submit-activacion">
+                    <span class="btn-text">Activar Cuenta y Continuar</span>
+                    <span class="btn-spinner"></span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
     `;
 
@@ -176,6 +212,12 @@ export class LoginView {
 
       try {
         const user = await authService.login(email, password, remember);
+
+        if (user.activado === false || user.debeCambiarPassword === true) {
+          this._mostrarModalActivacion(user, password);
+          return;
+        }
+
         toast.success(`Bienvenido/a al sistema, ${user.nombre}.`, 'Acceso Concedido');
         this.router.navigate('#dashboard');
       } catch (err) {
@@ -192,5 +234,82 @@ export class LoginView {
         submitBtn.disabled = false;
       }
     });
+  }
+
+  _mostrarModalActivacion(user, currentPassword) {
+    const modal = this.container.querySelector('#modal-cambio-password-inicial');
+    if (!modal) return;
+
+    const actualInput = modal.querySelector('#cp-actual');
+    const nuevaInput = modal.querySelector('#cp-nueva');
+    const confirmarInput = modal.querySelector('#cp-confirmar');
+    const errorBox = modal.querySelector('#cp-error');
+    const formCP = modal.querySelector('#form-cambio-password-inicial');
+    const cancelBtn = modal.querySelector('#btn-cancelar-activacion');
+    const submitBtn = modal.querySelector('#btn-submit-activacion');
+
+    actualInput.value = currentPassword || '';
+    nuevaInput.value = '';
+    confirmarInput.value = '';
+    errorBox.classList.add('hidden');
+    errorBox.textContent = '';
+
+    modal.classList.add('is-active');
+
+    cancelBtn.onclick = async () => {
+      await authService.logout();
+      modal.classList.remove('is-active');
+      this.router.navigate('#login');
+    };
+
+    formCP.onsubmit = async (e) => {
+      e.preventDefault();
+      errorBox.classList.add('hidden');
+      errorBox.textContent = '';
+
+      const pActual = actualInput.value.trim();
+      const pNueva = nuevaInput.value;
+      const pConfirmar = confirmarInput.value;
+
+      if (!pActual || !pNueva || !pConfirmar) {
+        errorBox.textContent = 'Por favor complete todos los campos.';
+        errorBox.classList.remove('hidden');
+        return;
+      }
+
+      if (pNueva.length < 6) {
+        errorBox.textContent = 'La nueva contraseña debe tener al menos 6 caracteres.';
+        errorBox.classList.remove('hidden');
+        return;
+      }
+
+      if (pNueva === pActual) {
+        errorBox.textContent = 'La nueva contraseña no puede ser igual a tu contraseña actual.';
+        errorBox.classList.remove('hidden');
+        return;
+      }
+
+      if (pNueva !== pConfirmar) {
+        errorBox.textContent = 'Las contraseñas no coinciden.';
+        errorBox.classList.remove('hidden');
+        return;
+      }
+
+      submitBtn.classList.add('is-loading');
+      submitBtn.disabled = true;
+
+      try {
+        await authService.cambiarPassword(user.id, pActual, pNueva);
+        modal.classList.remove('is-active');
+        toast.success(`Cuenta activada con éxito. Bienvenido/a, ${user.nombre}.`, 'Activación Exitosa');
+        this.router.navigate('#dashboard');
+      } catch (err) {
+        errorBox.textContent = err.message || 'Error al cambiar la contraseña. Verifique su contraseña actual.';
+        errorBox.classList.remove('hidden');
+      } finally {
+        submitBtn.classList.remove('is-loading');
+        submitBtn.disabled = false;
+      }
+    };
   }
 }

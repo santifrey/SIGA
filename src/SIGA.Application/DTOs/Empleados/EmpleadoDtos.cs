@@ -16,6 +16,7 @@ public class EmpleadoDto
     public int RolId { get; set; }
     public string Rol { get; set; } = string.Empty;
     public EstadoUsuario Estado { get; set; }
+    public bool Activado { get; set; }
     public DateTime? UltimoAcceso { get; set; }
     public DateTime FechaCreacion { get; set; }
 }
@@ -29,9 +30,9 @@ public class CrearEmpleadoDto
     public string? Telefono { get; set; }
     public string? Email { get; set; }
 
-    // Datos de Usuario
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
+    // Datos de Usuario (Opcionales: si se omiten, Username = Email y Password = Documento)
+    public string? Username { get; set; }
+    public string? Password { get; set; }
     public int RolId { get; set; }
 }
 

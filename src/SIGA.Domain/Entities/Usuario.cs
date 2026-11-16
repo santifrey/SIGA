@@ -11,6 +11,7 @@ public class Usuario : BaseEntity
     public string Username { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public EstadoUsuario Estado { get; set; } = EstadoUsuario.Activo;
+    public bool Activado { get; set; } = false;
     public DateTime? UltimoAcceso { get; set; }
 
     // Relación 1:N con Rol (cada usuario tiene exactamente un rol asignado)

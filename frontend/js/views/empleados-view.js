@@ -155,21 +155,6 @@ export class EmpleadosView {
                   <input type="email" id="emp-email" class="form-control" required />
                 </div>
 
-                <hr style="border: 0; border-top: 1px solid var(--border); margin: 1rem 0;" />
-                <h4 class="text-xs text-muted font-bold text-uppercase mb-2">Credenciales y Acceso al Sistema</h4>
-
-                <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                  <div class="form-group">
-                    <label class="form-label" for="emp-username">Nombre de Usuario <span class="text-danger">*</span></label>
-                    <input type="text" id="emp-username" class="form-control" required />
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label" for="emp-password" id="lbl-emp-password">Contraseña <span class="text-danger">*</span></label>
-                    <input type="password" id="emp-password" class="form-control" />
-                    <span class="text-xs text-muted" id="help-emp-password">Dejar en blanco para no modificar si edita.</span>
-                  </div>
-                </div>
-
                 <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                   <div class="form-group">
                     <label class="form-label" for="emp-rol">Rol del Empleado <span class="text-danger">*</span></label>
@@ -182,6 +167,17 @@ export class EmpleadosView {
                       <input type="checkbox" id="emp-activo" checked />
                       <span class="font-medium text-sm">Usuario Activo</span>
                     </label>
+                  </div>
+                </div>
+
+                <div class="alert alert-info d-flex align-center gap-sm mb-3" style="background: rgba(30, 58, 138, 0.06); border: 1px solid rgba(30, 58, 138, 0.2); border-radius: var(--radius-md); padding: 0.75rem 1rem;">
+                  <svg class="icon-svg sm text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                  </svg>
+                  <div class="text-xs text-muted">
+                    <strong class="text-main">Credenciales automáticas:</strong> El usuario de acceso será su <strong>correo electrónico</strong> y la contraseña inicial su <strong>DNI</strong>. En el primer inicio de sesión se le exigirá cambiar la contraseña para activar su cuenta.
                   </div>
                 </div>
 
@@ -489,9 +485,6 @@ export class EmpleadosView {
     this.container.querySelector('#emp-id').value = '';
     this.container.querySelector('#modal-empleado-title').textContent = 'Nuevo Empleado';
     this.container.querySelector('#emp-activo').checked = true;
-    this.container.querySelector('#emp-password').required = true;
-    this.container.querySelector('#lbl-emp-password').innerHTML = 'Contraseña <span class="text-danger">*</span>';
-    this.container.querySelector('#help-emp-password').textContent = 'Mínimo 6 caracteres con mayúsculas y números.';
 
     const errBox = this.container.querySelector('#form-empleado-error');
     errBox.classList.add('hidden');
@@ -516,11 +509,6 @@ export class EmpleadosView {
       this.container.querySelector('#emp-documento').value = emp.documento || '';
       this.container.querySelector('#emp-telefono').value = emp.telefono || '';
       this.container.querySelector('#emp-email').value = emp.email || '';
-      this.container.querySelector('#emp-username').value = emp.username || '';
-      this.container.querySelector('#emp-password').value = '';
-      this.container.querySelector('#emp-password').required = false;
-      this.container.querySelector('#lbl-emp-password').innerHTML = 'Contraseña (Opcional)';
-      this.container.querySelector('#help-emp-password').textContent = 'Dejar en blanco para conservar la contraseña actual.';
       this.container.querySelector('#emp-rol').value = emp.rolId || '';
       this.container.querySelector('#emp-activo').checked = emp.estado === 'Activo' || emp.estado === 1 || emp.activo === true;
 
@@ -551,19 +539,11 @@ export class EmpleadosView {
     const documento = this.container.querySelector('#emp-documento').value.trim();
     const telefono = this.container.querySelector('#emp-telefono').value.trim();
     const email = this.container.querySelector('#emp-email').value.trim();
-    const username = this.container.querySelector('#emp-username').value.trim();
-    const password = this.container.querySelector('#emp-password').value;
     const rolIdVal = this.container.querySelector('#emp-rol').value;
     const activo = this.container.querySelector('#emp-activo').checked;
 
-    if (!nombre || !apellido || !documento || !email || !username || !rolIdVal) {
-      errBox.textContent = 'Por favor complete todos los campos obligatorios.';
-      errBox.classList.remove('hidden');
-      return;
-    }
-
-    if (!id && !password) {
-      errBox.textContent = 'Debe especificar una contraseña para el nuevo empleado.';
+    if (!nombre || !apellido || !documento || !email || !rolIdVal) {
+      errBox.textContent = 'Por favor complete todos los campos obligatorios (Nombre, Apellido, Documento, Email y Rol).';
       errBox.classList.remove('hidden');
       return;
     }
@@ -591,14 +571,15 @@ export class EmpleadosView {
       documento,
       telefono: telefono || null,
       email,
-      username,
+      username: email.toLowerCase(),
       rolId: parseInt(rolIdVal, 10),
       activo,
       estado: activo ? 'Activo' : 'Inactivo'
     };
 
-    if (password) {
-      payload.password = password;
+    if (!id) {
+      // Siempre asignar DNI como clave inicial para nuevos empleados
+      payload.password = documento;
     }
 
     saveBtn.disabled = true;
@@ -610,7 +591,7 @@ export class EmpleadosView {
         toast.success(`Empleado ${nombre} ${apellido} actualizado correctamente.`);
       } else {
         await empleadosService.crear(payload);
-        toast.success(`Empleado ${nombre} ${apellido} creado exitosamente.`);
+        toast.success(`Empleado ${nombre} ${apellido} creado exitosamente. Acceso: ${email.toLowerCase()} | Clave: DNI`);
       }
 
       this.closeModalEmpleado();

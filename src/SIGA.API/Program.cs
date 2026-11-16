@@ -13,6 +13,13 @@ using SIGA.Application.Common;
 using SIGA.Infrastructure;
 using SIGA.Infrastructure.Persistence;
 
+// -1. Carga de variables de entorno desde archivo .env local si existe (raíz de proyecto o carpeta de ejecución)
+DotNetEnv.Env.TraversePath().Load();
+if (File.Exists("src/.env"))
+{
+    DotNetEnv.Env.Load("src/.env");
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // 0. Soporte de puerto dinámico para Google Cloud Run / App Engine (variable PORT)

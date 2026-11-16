@@ -132,6 +132,26 @@ public static class DatabaseSeeder
                 await context.Database.EnsureCreatedAsync();
             }
 
+            // Asegurar columna Activado si la tabla Usuarios ya fue creada previamente
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Usuarios ADD COLUMN Activado TINYINT(1) NOT NULL DEFAULT 0;");
+            }
+            catch
+            {
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE Usuarios ADD COLUMN Activado INTEGER NOT NULL DEFAULT 0;");
+                }
+                catch { }
+            }
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("UPDATE Usuarios SET Activado = 1 WHERE Username = 'admin';");
+            }
+            catch { }
+
             // 1. Asegurar Roles del Sistema (EsSistema = true)
             var systemRoles = new (int Id, string Nombre, string Descripcion)[]
             {
@@ -258,6 +278,7 @@ public static class DatabaseSeeder
                         Username = bootstrapUsername.Trim(),
                         PasswordHash = passwordHasher.HashPassword(bootstrapPassword),
                         Estado = EstadoUsuario.Activo,
+                        Activado = true,
                         RolId = adminRole.Id, // Foreign key directa al rol ADMINISTRADOR
                         FechaCreacion = DateTime.UtcNow
                     };

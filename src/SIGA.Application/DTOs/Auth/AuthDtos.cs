@@ -19,6 +19,8 @@ public class LoginResponseDto
     public string Email { get; set; } = string.Empty;
     public int RolId { get; set; }
     public string Rol { get; set; } = string.Empty;
+    public bool Activado { get; set; }
+    public bool DebeCambiarPassword { get; set; }
     public List<string> Permisos { get; set; } = new();
     public List<string> Roles { get; set; } = new(); // Backward compatibility
 }
@@ -36,6 +38,8 @@ public class UserInfoResponseDto
     public string? Telefono { get; set; }
     public int RolId { get; set; }
     public string Rol { get; set; } = string.Empty;
+    public bool Activado { get; set; }
+    public bool DebeCambiarPassword { get; set; }
     public List<string> Permisos { get; set; } = new();
     public DateTime? UltimoAcceso { get; set; }
     public EstadoUsuario Estado { get; set; }

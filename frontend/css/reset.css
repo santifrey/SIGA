@@ -17,10 +17,13 @@ html {
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
   height: 100%;
+  overflow: hidden;
 }
 
 body {
+  height: 100%;
   min-height: 100%;
+  overflow: hidden;
   font-family: var(--font-family);
   font-size: var(--font-size-base);
   line-height: 1.5;

@@ -26,6 +26,10 @@ public class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.Property(u => u.Estado)
             .IsRequired();
 
+        builder.Property(u => u.Activado)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.Property(u => u.FechaCreacion)
             .IsRequired();
 

@@ -2,7 +2,7 @@ using Moq;
 using SIGA.Application.Common;
 using SIGA.Application.DTOs.Plantaciones;
 using SIGA.Application.DTOs.Stock;
-using SIGA.Application.Exceptions;
+using SIGA.Application.Common;
 using SIGA.Application.Interfaces;
 using SIGA.Application.Services;
 using SIGA.Domain.Entities;

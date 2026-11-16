@@ -89,6 +89,7 @@ public class UsuariosController : BaseApiController
     }
 
     [HttpPut("{id:int}/password")]
+    [HttpPost("{id:int}/cambiar-password")]
     [Authorize] // Permite al propio usuario o admin cambiar contraseña
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<bool>>> CambiarPassword(int id, [FromBody] CambiarPasswordDto dto, CancellationToken cancellationToken)

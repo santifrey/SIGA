@@ -128,10 +128,23 @@ class App {
 
     if (isLogin) {
       // Pantalla limpia para Login sin layout empresarial
+      const faModal = document.getElementById('modal-forzar-activacion');
+      if (faModal) faModal.remove();
+
       this.appRoot.className = 'login-mode';
       this.appRoot.innerHTML = '<div id="login-container"></div>';
       view.render(this.appRoot.querySelector('#login-container'), params);
       return;
+    }
+
+    // Comprobar si el usuario autenticado requiere cambio obligatorio de contraseña para activar su cuenta
+    const currentUser = authService.getUsuarioActual();
+    if (currentUser && (currentUser.activado === false || currentUser.debeCambiarPassword === true)) {
+      this._forzarActivacionModal(currentUser);
+      return;
+    } else {
+      const faModal = document.getElementById('modal-forzar-activacion');
+      if (faModal) faModal.remove();
     }
 
     // Si ya existe la estructura del layout principal, actualizamos vista y navegación
@@ -474,24 +487,61 @@ class App {
     sections.forEach(section => {
       const sectionId = section.getAttribute('data-section');
       const header = section.querySelector('.nav-section-header');
+      const content = section.querySelector('.nav-section-content');
 
       // Restaurar estado guardado en localStorage
       if (savedState[sectionId] === true) {
         section.classList.add('collapsed');
         if (header) header.setAttribute('aria-expanded', 'false');
+        if (content) {
+          content.style.maxHeight = '0px';
+          content.style.opacity = '0';
+        }
       } else {
         section.classList.remove('collapsed');
         if (header) header.setAttribute('aria-expanded', 'true');
+        if (content) {
+          content.style.maxHeight = '';
+          content.style.opacity = '1';
+        }
       }
 
       // Conectar evento toggle
       if (header) {
         header.addEventListener('click', () => {
-          const isNowCollapsed = !section.classList.contains('collapsed');
-          section.classList.toggle('collapsed', isNowCollapsed);
-          header.setAttribute('aria-expanded', String(!isNowCollapsed));
+          const isCurrentlyCollapsed = section.classList.contains('collapsed');
+
+          if (isCurrentlyCollapsed) {
+            // Expandir de 0 a scrollHeight instantáneamente
+            section.classList.remove('collapsed');
+            header.setAttribute('aria-expanded', 'true');
+            if (content) {
+              const fullHeight = content.scrollHeight;
+              content.style.maxHeight = fullHeight + 'px';
+              content.style.opacity = '1';
+
+              const onEnd = (e) => {
+                if (e.propertyName === 'max-height') {
+                  content.style.maxHeight = '';
+                  content.removeEventListener('transitionend', onEnd);
+                }
+              };
+              content.addEventListener('transitionend', onEnd);
+            }
+          } else {
+            // Colapsar de scrollHeight a 0 sin latencia
+            if (content) {
+              content.style.maxHeight = content.scrollHeight + 'px';
+              void content.offsetHeight; // Forzar reflow para registrar el punto de inicio exacto
+              content.style.maxHeight = '0px';
+              content.style.opacity = '0';
+            }
+            section.classList.add('collapsed');
+            header.setAttribute('aria-expanded', 'false');
+          }
+
           if (sectionId) {
-            saveCollapsedSectionState(sectionId, isNowCollapsed);
+            saveCollapsedSectionState(sectionId, !isCurrentlyCollapsed);
           }
         });
       }
@@ -572,6 +622,11 @@ class App {
       const parentSection = activeItem.closest('.nav-section');
       if (parentSection && parentSection.classList.contains('collapsed')) {
         parentSection.classList.remove('collapsed');
+        const content = parentSection.querySelector('.nav-section-content');
+        if (content) {
+          content.style.maxHeight = '';
+          content.style.opacity = '1';
+        }
         const header = parentSection.querySelector('.nav-section-header');
         if (header) header.setAttribute('aria-expanded', 'true');
 
@@ -580,6 +635,108 @@ class App {
           saveCollapsedSectionState(sectionId, false);
         }
       }
+    }
+  }
+
+  _forzarActivacionModal(user) {
+    let modal = document.getElementById('modal-forzar-activacion');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'modal-forzar-activacion';
+      modal.className = 'modal is-active';
+      modal.innerHTML = `
+        <div class="modal-card" style="max-width: 440px; border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); z-index: 10000;">
+          <div class="modal-card-head" style="background: var(--surface); border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem;">
+            <h3 class="modal-card-title text-base font-bold" style="color: var(--primary);">Activación de Cuenta requerida</h3>
+          </div>
+          <div class="modal-card-body" style="padding: 1.5rem;">
+            <div class="alert alert-info mb-3" style="font-size: 0.8125rem; line-height: 1.4;">
+              <strong>¡Primer ingreso detectado!</strong> Por motivos de seguridad del sistema, debes cambiar tu contraseña inicial (DNI) para activar tu cuenta y poder utilizar la aplicación.
+            </div>
+            <form id="form-forzar-activacion">
+              <div class="form-group mb-3">
+                <label class="form-label font-medium" for="fa-actual">Contraseña actual (tu DNI)</label>
+                <input type="password" id="fa-actual" class="form-control" required />
+              </div>
+              <div class="form-group mb-3">
+                <label class="form-label font-medium" for="fa-nueva">Nueva Contraseña <span class="text-danger">*</span></label>
+                <input type="password" id="fa-nueva" class="form-control" placeholder="Mínimo 6 caracteres" required minlength="6" />
+              </div>
+              <div class="form-group mb-3">
+                <label class="form-label font-medium" for="fa-confirmar">Confirmar Nueva Contraseña <span class="text-danger">*</span></label>
+                <input type="password" id="fa-confirmar" class="form-control" placeholder="Reingrese la nueva contraseña" required minlength="6" />
+              </div>
+              <div id="fa-error" class="alert alert-danger hidden mb-3" style="font-size: 0.8125rem;"></div>
+              <div class="d-flex justify-between align-center mt-4">
+                <button type="button" class="btn btn-outline" id="btn-fa-logout">Cerrar Sesión</button>
+                <button type="submit" class="btn btn-primary" id="btn-fa-submit">
+                  <span class="btn-text">Activar Cuenta</span>
+                  <span class="btn-spinner"></span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      modal.querySelector('#btn-fa-logout').onclick = async () => {
+        await authService.logout();
+        modal.remove();
+        this.router.navigate('#login');
+      };
+
+      modal.querySelector('#form-forzar-activacion').onsubmit = async (e) => {
+        e.preventDefault();
+        const errorBox = modal.querySelector('#fa-error');
+        const submitBtn = modal.querySelector('#btn-fa-submit');
+        errorBox.classList.add('hidden');
+        errorBox.textContent = '';
+
+        const pActual = modal.querySelector('#fa-actual').value.trim();
+        const pNueva = modal.querySelector('#fa-nueva').value;
+        const pConfirmar = modal.querySelector('#fa-confirmar').value;
+
+        if (!pActual || !pNueva || !pConfirmar) {
+          errorBox.textContent = 'Por favor complete todos los campos.';
+          errorBox.classList.remove('hidden');
+          return;
+        }
+
+        if (pNueva.length < 6) {
+          errorBox.textContent = 'La nueva contraseña debe tener al menos 6 caracteres.';
+          errorBox.classList.remove('hidden');
+          return;
+        }
+
+        if (pNueva === pActual) {
+          errorBox.textContent = 'La nueva contraseña no puede ser igual a tu contraseña actual.';
+          errorBox.classList.remove('hidden');
+          return;
+        }
+
+        if (pNueva !== pConfirmar) {
+          errorBox.textContent = 'Las contraseñas no coinciden.';
+          errorBox.classList.remove('hidden');
+          return;
+        }
+
+        submitBtn.classList.add('is-loading');
+        submitBtn.disabled = true;
+
+        try {
+          await authService.cambiarPassword(user.id, pActual, pNueva);
+          modal.remove();
+          toast.success(`Cuenta activada con éxito. Bienvenido/a, ${user.nombre}.`, 'Activación Exitosa');
+          this.router.navigate('#dashboard');
+        } catch (err) {
+          errorBox.textContent = err.message || 'Error al cambiar la contraseña. Verifique su contraseña actual.';
+          errorBox.classList.remove('hidden');
+        } finally {
+          submitBtn.classList.remove('is-loading');
+          submitBtn.disabled = false;
+        }
+      };
     }
   }
 }

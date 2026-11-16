@@ -81,10 +81,12 @@ class ToastService {
       }, { once: true });
     };
 
-    closeBtn.addEventListener('click', removeToast);
+    if (closeBtn) {
+      closeBtn.addEventListener('click', removeToast);
+    }
 
     // Animación de la barra de progreso
-    if (duration > 0) {
+    if (progressBar && duration > 0) {
       progressBar.style.transition = `transform ${duration}ms linear`;
       // Forzar reflujo antes de iniciar la transición
       requestAnimationFrame(() => {

@@ -15,12 +15,17 @@ public static class DependencyInjection
         this IServiceCollection services, 
         IConfiguration configuration)
     {
-        // 1. Configuración de Base de Datos (SQL Server o fallback a SQLite)
-        var useSqlite = configuration.GetValue<bool>("UseSqlite", true);
-        var sqliteConnection = configuration.GetConnectionString("SqliteConnection") 
+        // 1. Configuración de Base de Datos (MySQL o fallback a SQLite)
+        var useSqliteEnv = Environment.GetEnvironmentVariable("USE_SQLITE");
+        var useSqlite = !string.IsNullOrWhiteSpace(useSqliteEnv)
+            ? bool.TryParse(useSqliteEnv, out var parsedSqlite) && parsedSqlite
+            : configuration.GetValue<bool>("UseSqlite", true);
+
+        var sqliteConnection = Environment.GetEnvironmentVariable("SQLITE_CONNECTION_STRING")
+            ?? configuration.GetConnectionString("SqliteConnection") 
             ?? "Data Source=siga_dev.db";
-        var sqlServerConnection = configuration.GetConnectionString("SqlServerConnection") 
-            ?? "Server=(localdb)\\mssqllocaldb;Database=SIGA_Db;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
+
+        var mySqlConnection = ResolveMySqlConnectionString(configuration);
 
         services.AddDbContext<SigaDbContext>(options =>
         {
@@ -30,7 +35,18 @@ public static class DependencyInjection
             }
             else
             {
-                options.UseSqlServer(sqlServerConnection);
+                ServerVersion serverVersion;
+                try
+                {
+                    serverVersion = ServerVersion.AutoDetect(mySqlConnection);
+                }
+                catch
+                {
+                    // Fallback a versión estándar si el servidor MySQL no responde durante la configuración
+                    serverVersion = new MySqlServerVersion(new Version(8, 0, 36));
+                }
+
+                options.UseMySql(mySqlConnection, serverVersion);
             }
         });
 
@@ -59,5 +75,40 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;
+    }
+
+    private static string ResolveMySqlConnectionString(IConfiguration configuration)
+    {
+        // 1. Cadena de conexión completa desde variables de entorno o appsettings
+        var explicitConn = Environment.GetEnvironmentVariable("MYSQL_CONNECTION_STRING")
+            ?? Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+            ?? configuration.GetConnectionString("MySqlConnection");
+
+        // 2. Parámetros individuales desde variables de entorno (.env o contenedor)
+        var dbHost = Environment.GetEnvironmentVariable("DB_HOST") 
+            ?? Environment.GetEnvironmentVariable("MYSQL_HOST");
+        var dbPort = Environment.GetEnvironmentVariable("DB_PORT") 
+            ?? Environment.GetEnvironmentVariable("MYSQL_PORT") 
+            ?? "3306";
+        var dbName = Environment.GetEnvironmentVariable("DB_DATABASE") 
+            ?? Environment.GetEnvironmentVariable("DB_NAME") 
+            ?? Environment.GetEnvironmentVariable("MYSQL_DATABASE") 
+            ?? "siga_db";
+        var dbUser = Environment.GetEnvironmentVariable("DB_USER") 
+            ?? Environment.GetEnvironmentVariable("MYSQL_USER");
+        var dbPass = Environment.GetEnvironmentVariable("DB_PASSWORD") 
+            ?? Environment.GetEnvironmentVariable("MYSQL_PASSWORD");
+
+        if (!string.IsNullOrWhiteSpace(dbHost) && !string.IsNullOrWhiteSpace(dbUser))
+        {
+            return $"Server={dbHost};Port={dbPort};Database={dbName};User={dbUser};Password={dbPass};";
+        }
+
+        if (!string.IsNullOrWhiteSpace(explicitConn))
+        {
+            return explicitConn;
+        }
+
+        return "Server=localhost;Port=3306;Database=siga_db;User=root;Password=root;";
     }
 }

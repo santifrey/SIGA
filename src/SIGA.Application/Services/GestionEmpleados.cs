@@ -61,11 +61,21 @@ public class GestionEmpleados : IGestionEmpleados
         if (string.IsNullOrWhiteSpace(dto.Documento))
             throw new ValidationException("El número de documento es requerido.");
 
-        if (string.IsNullOrWhiteSpace(dto.Username))
-            throw new ValidationException("El nombre de usuario es requerido.");
+        if (string.IsNullOrWhiteSpace(dto.Email) && string.IsNullOrWhiteSpace(dto.Username))
+            throw new ValidationException("El correo electrónico es requerido para generar el usuario del empleado.");
 
-        if (string.IsNullOrWhiteSpace(dto.Password) || dto.Password.Length < 6)
-            throw new ValidationException("La contraseña debe tener al menos 6 caracteres.");
+        // Username = Email (o Username si fue explícitamente provisto)
+        var username = !string.IsNullOrWhiteSpace(dto.Username)
+            ? dto.Username.Trim()
+            : dto.Email!.Trim().ToLowerInvariant();
+
+        // Password = DNI / Documento (o Password si fue explícitamente provista)
+        var rawPassword = !string.IsNullOrWhiteSpace(dto.Password)
+            ? dto.Password.Trim()
+            : dto.Documento.Trim();
+
+        if (rawPassword.Length < 4)
+            throw new ValidationException("La contraseña / documento debe tener al menos 4 caracteres.");
 
         var rol = await _rolRepository.GetByIdAsync(dto.RolId, cancellationToken);
         if (rol == null)
@@ -74,9 +84,9 @@ public class GestionEmpleados : IGestionEmpleados
         if (string.Equals(rol.Nombre, "CLIENTE", StringComparison.OrdinalIgnoreCase))
             throw new ValidationException("No se puede asignar el rol de CLIENTE a un empleado del sistema.");
 
-        var existingUser = await _usuarioRepository.GetByUsernameWithRolesAsync(dto.Username.Trim(), cancellationToken);
+        var existingUser = await _usuarioRepository.GetByUsernameWithRolesAsync(username, cancellationToken);
         if (existingUser != null)
-            throw new ValidationException($"El nombre de usuario '{dto.Username}' ya está en uso.");
+            throw new ValidationException($"El nombre de usuario/correo '{username}' ya está en uso.");
 
         var existingPersona = await _personaRepository.GetByDocumentoAsync(dto.Documento.Trim(), cancellationToken);
         if (existingPersona != null)
@@ -97,14 +107,15 @@ public class GestionEmpleados : IGestionEmpleados
             await _personaRepository.AddAsync(persona, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            var passwordHash = _passwordHasher.HashPassword(dto.Password);
+            var passwordHash = _passwordHasher.HashPassword(rawPassword);
             var usuario = new Usuario
             {
                 PersonaId = persona.Id,
                 Persona = persona,
-                Username = dto.Username.Trim(),
+                Username = username,
                 PasswordHash = passwordHash,
                 Estado = EstadoUsuario.Activo,
+                Activado = false,
                 RolId = rol.Id,
                 Rol = rol,
                 FechaCreacion = DateTime.UtcNow
@@ -251,6 +262,7 @@ public class GestionEmpleados : IGestionEmpleados
             RolId = usuario.RolId,
             Rol = usuario.Rol?.Nombre ?? string.Empty,
             Estado = usuario.Estado,
+            Activado = usuario.Activado,
             UltimoAcceso = usuario.UltimoAcceso,
             FechaCreacion = usuario.FechaCreacion
         };

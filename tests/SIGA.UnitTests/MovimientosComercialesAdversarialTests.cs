@@ -1,6 +1,7 @@
 using Moq;
 using SIGA.Application.Common;
 using SIGA.Application.DTOs.MovimientosComerciales;
+using SIGA.Application.Interfaces;
 using SIGA.Application.Services;
 using SIGA.Domain.Entities;
 using SIGA.Domain.Enums;

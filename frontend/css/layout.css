@@ -5,10 +5,12 @@
 
 /* Shell Base */
 #app {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: var(--bg-app);
+  overflow: hidden;
 }
 
 /* ==========================================================================
@@ -16,24 +18,30 @@
    ========================================================================== */
 .app-container {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   width: 100%;
   position: relative;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 /* Sidebar */
 .app-sidebar {
   width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  max-width: var(--sidebar-width);
+  height: 100vh;
+  max-height: 100vh;
   background-color: var(--bg-sidebar);
   color: var(--text-sidebar);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  transition: width var(--transition-normal), transform var(--transition-normal);
+  transition: width var(--transition-normal), min-width var(--transition-normal), max-width var(--transition-normal), transform var(--transition-normal);
   z-index: var(--z-sticky);
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   position: relative;
+  overflow: hidden;
 }
 
 /* Sidebar Header & Brand */
@@ -99,9 +107,29 @@
   flex: 1;
   padding: var(--spacing-md) var(--spacing-sm);
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xxs);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* ==========================================================================
@@ -163,7 +191,7 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   flex-shrink: 0;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1);
   transform: rotate(0deg);
 }
 
@@ -174,22 +202,20 @@
 /* Collapsible Content Container */
 .nav-section-content {
   overflow: hidden;
-  max-height: 500px;
+  max-height: 260px;
   opacity: 1;
-  transform: translateY(0);
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.2s ease,
-              transform 0.25s ease;
+  transition: max-height 0.18s cubic-bezier(0.2, 0, 0, 1),
+              opacity 0.14s ease-out;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xxs);
   padding-top: var(--spacing-xxs);
+  will-change: max-height, opacity;
 }
 
 .nav-section.collapsed .nav-section-content {
-  max-height: 0;
-  opacity: 0;
-  transform: translateY(-4px);
+  max-height: 0 !important;
+  opacity: 0 !important;
   pointer-events: none;
   padding-top: 0;
 }
@@ -395,7 +421,9 @@
   flex: 1;
   padding: var(--spacing-xl);
   overflow-y: auto;
+  overflow-x: hidden;
   background-color: var(--bg-app);
+  scrollbar-gutter: stable;
 }
 
 /* ==========================================================================
@@ -489,6 +517,8 @@
    ========================================================================== */
 .sidebar-collapsed .app-sidebar {
   width: var(--sidebar-collapsed-width);
+  min-width: var(--sidebar-collapsed-width);
+  max-width: var(--sidebar-collapsed-width);
 }
 
 .sidebar-collapsed .brand-text,

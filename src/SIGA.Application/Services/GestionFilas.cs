@@ -1,8 +1,8 @@
 using SIGA.Application.Common;
 using SIGA.Application.DTOs.Filas;
-using SIGA.Application.Exceptions;
 using SIGA.Application.Interfaces;
 using SIGA.Domain.Entities;
+using SIGA.Domain.Enums;
 using SIGA.Domain.Interfaces;
 
 namespace SIGA.Application.Services;
