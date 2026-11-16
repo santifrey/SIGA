@@ -15,7 +15,8 @@ public class SigaDbContext : DbContext
     public DbSet<Persona> Personas => Set<Persona>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Rol> Roles => Set<Rol>();
-    public DbSet<UsuarioRol> UsuarioRoles => Set<UsuarioRol>();
+    public DbSet<Permiso> Permisos => Set<Permiso>();
+    public DbSet<RolPermiso> RolPermisos => Set<RolPermiso>();
     public DbSet<ParticipanteComercial> ParticipantesComerciales => Set<ParticipanteComercial>();
     public DbSet<Cliente> Clientes => Set<Cliente>();
     public DbSet<Empresa> Empresas => Set<Empresa>();
@@ -32,6 +33,9 @@ public class SigaDbContext : DbContext
     public DbSet<Cosecha> Cosechas => Set<Cosecha>();
     public DbSet<DetalleCosecha> DetallesCosecha => Set<DetalleCosecha>();
     public DbSet<PrecioClase> PreciosClase => Set<PrecioClase>();
+    public DbSet<PrecioClase> PreciosClases => PreciosClase;
+    public DbSet<MovimientoComercial> MovimientosComerciales => Set<MovimientoComercial>();
+    public DbSet<DetalleMovimientoComercial> DetallesMovimientosComerciales => Set<DetalleMovimientoComercial>();
     public DbSet<Venta> Ventas => Set<Venta>();
     public DbSet<DetalleVenta> DetalleVentas => Set<DetalleVenta>();
     public DbSet<Contrato> Contratos => Set<Contrato>();
@@ -46,7 +50,8 @@ public class SigaDbContext : DbContext
         modelBuilder.ApplyConfiguration(new PersonaConfiguration());
         modelBuilder.ApplyConfiguration(new UsuarioConfiguration());
         modelBuilder.ApplyConfiguration(new RolConfiguration());
-        modelBuilder.ApplyConfiguration(new UsuarioRolConfiguration());
+        modelBuilder.ApplyConfiguration(new PermisoConfiguration());
+        modelBuilder.ApplyConfiguration(new RolPermisoConfiguration());
         modelBuilder.ApplyConfiguration(new ParticipanteComercialConfiguration());
         modelBuilder.ApplyConfiguration(new ClienteConfiguration());
         modelBuilder.ApplyConfiguration(new EmpresaConfiguration());
@@ -63,6 +68,8 @@ public class SigaDbContext : DbContext
         modelBuilder.ApplyConfiguration(new CosechaConfiguration());
         modelBuilder.ApplyConfiguration(new DetalleCosechaConfiguration());
         modelBuilder.ApplyConfiguration(new PrecioClaseConfiguration());
+        modelBuilder.ApplyConfiguration(new MovimientoComercialConfiguration());
+        modelBuilder.ApplyConfiguration(new DetalleMovimientoComercialConfiguration());
         modelBuilder.ApplyConfiguration(new VentaConfiguration());
         modelBuilder.ApplyConfiguration(new DetalleVentaConfiguration());
         modelBuilder.ApplyConfiguration(new ContratoConfiguration());
@@ -85,6 +92,8 @@ public class SigaDbContext : DbContext
         modelBuilder.Entity<Cosecha>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<DetalleCosecha>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<PrecioClase>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<MovimientoComercial>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<DetalleMovimientoComercial>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Venta>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<DetalleVenta>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Contrato>().HasQueryFilter(e => !e.IsDeleted);
@@ -97,13 +106,13 @@ public class SigaDbContext : DbContext
 
     private static void SeedInitialData(ModelBuilder modelBuilder)
     {
-        // 1. Roles estructurales del sistema
+        // 1. Roles estructurales del sistema (EsSistema = true)
         modelBuilder.Entity<Rol>().HasData(
-            new Rol { Id = 1, Nombre = "ADMINISTRADOR", Descripcion = "Acceso total a las funciones del sistema" },
-            new Rol { Id = 2, Nombre = "VENDEDOR", Descripcion = "Gestión comercial y relaciones con clientes" },
-            new Rol { Id = 3, Nombre = "SECRETARIA", Descripcion = "Gestión administrativa y atención" },
-            new Rol { Id = 4, Nombre = "CLIENTE", Descripcion = "Acceso a portal de cliente e inversiones" },
-            new Rol { Id = 5, Nombre = "CONTABILIDAD", Descripcion = "Gestión financiera y contable" }
+            new Rol { Id = 1, Nombre = "ADMINISTRADOR", Descripcion = "Acceso total a las funciones del sistema", EsSistema = true },
+            new Rol { Id = 2, Nombre = "VENDEDOR", Descripcion = "Gestión comercial y relaciones con clientes", EsSistema = true },
+            new Rol { Id = 3, Nombre = "SECRETARIA", Descripcion = "Gestión administrativa y atención", EsSistema = true },
+            new Rol { Id = 4, Nombre = "CLIENTE", Descripcion = "Acceso a portal de cliente e inversiones", EsSistema = true },
+            new Rol { Id = 5, Nombre = "CONTABILIDAD", Descripcion = "Gestión financiera y contable", EsSistema = true }
         );
 
         // 2. Empresa Singleton del Dominio: Azafrán Mediterráneo S.A.

@@ -6,8 +6,13 @@ namespace SIGA.Domain.Entities;
 
 public class Factura : BaseEntity
 {
-    public int VentaId { get; set; }
-    public virtual Venta Venta { get; set; } = null!;
+    public int MovimientoComercialId { get; set; }
+    public virtual MovimientoComercial? MovimientoComercial { get; set; }
+
+    [Obsolete("Utilizar MovimientoComercialId en su lugar.")]
+    public int VentaId { get => MovimientoComercialId; set => MovimientoComercialId = value; }
+    [Obsolete("Utilizar MovimientoComercial en su lugar.")]
+    public virtual Venta? Venta { get; set; }
 
     public string NumeroFactura { get; set; } = string.Empty;
     public DateTime FechaEmision { get; set; } = DateTime.UtcNow;
@@ -22,14 +27,14 @@ public class Factura : BaseEntity
     {
     }
 
-    public Factura(int ventaId, string numeroFactura, decimal montoTotal, int usuarioEmisionId, string? archivoUrl = null)
+    public Factura(int movimientoComercialId, string numeroFactura, decimal montoTotal, int usuarioEmisionId, string? archivoUrl = null)
     {
         if (string.IsNullOrWhiteSpace(numeroFactura))
             throw new OperacionInvalidaException("El número de factura es obligatorio.");
         if (montoTotal <= 0)
             throw new OperacionInvalidaException("El monto total de la factura debe ser mayor a cero.");
 
-        VentaId = ventaId;
+        MovimientoComercialId = movimientoComercialId;
         NumeroFactura = numeroFactura.Trim();
         MontoTotal = montoTotal;
         UsuarioEmisionId = usuarioEmisionId;
@@ -44,5 +49,10 @@ public class Factura : BaseEntity
             throw new OperacionInvalidaException("No se puede marcar como pagada una factura anulada.");
 
         Estado = EstadoFactura.Pagada;
+    }
+
+    public void Anular()
+    {
+        Estado = EstadoFactura.Anulada;
     }
 }

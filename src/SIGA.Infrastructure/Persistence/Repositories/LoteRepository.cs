@@ -71,4 +71,10 @@ public class LoteRepository : Repository<Lote>, ILoteRepository
 
         return (maxOrden ?? 0) + 1;
     }
+
+    public async Task<bool> ExisteOrdenEnFilaAsync(int filaId, int orden, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .AnyAsync(l => l.FilaId == filaId && l.Orden == orden && !l.IsDeleted, cancellationToken);
+    }
 }

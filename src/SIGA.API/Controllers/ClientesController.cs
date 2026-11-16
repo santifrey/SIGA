@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SIGA.API.Authorization;
 using SIGA.Application.Common;
@@ -7,7 +6,6 @@ using SIGA.Application.Interfaces;
 
 namespace SIGA.API.Controllers;
 
-[Authorize(Roles = Roles.Personal)]
 public class ClientesController : BaseApiController
 {
     private readonly IGestionClientes _gestionClientes;
@@ -18,6 +16,7 @@ public class ClientesController : BaseApiController
     }
 
     [HttpGet]
+    [RequierePermiso(Permisos.ClientesVer)]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<ClienteDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<ClienteDto>>>> GetAll([FromQuery] string? busqueda, CancellationToken cancellationToken)
     {
@@ -26,6 +25,7 @@ public class ClientesController : BaseApiController
     }
 
     [HttpGet("{id}")]
+    [RequierePermiso(Permisos.ClientesVer)]
     [ProducesResponseType(typeof(ApiResponse<ClienteDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<ClienteDto>>> GetById(int id, CancellationToken cancellationToken)
@@ -35,6 +35,7 @@ public class ClientesController : BaseApiController
     }
 
     [HttpGet("codigo/{codigo}")]
+    [RequierePermiso(Permisos.ClientesVer)]
     [ProducesResponseType(typeof(ApiResponse<ClienteDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<ClienteDto>>> GetByCodigo(string codigo, CancellationToken cancellationToken)
@@ -44,6 +45,7 @@ public class ClientesController : BaseApiController
     }
 
     [HttpPost]
+    [RequierePermiso(Permisos.ClientesGestionar)]
     [ProducesResponseType(typeof(ApiResponse<ClienteDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<ClienteDto>>> Create([FromBody] CreateClienteDto dto, CancellationToken cancellationToken)
@@ -53,6 +55,7 @@ public class ClientesController : BaseApiController
     }
 
     [HttpPut("{id}")]
+    [RequierePermiso(Permisos.ClientesGestionar)]
     [ProducesResponseType(typeof(ApiResponse<ClienteDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<ClienteDto>>> Update(int id, [FromBody] UpdateClienteDto dto, CancellationToken cancellationToken)
@@ -62,7 +65,7 @@ public class ClientesController : BaseApiController
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [RequierePermiso(Permisos.ClientesGestionar)]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> Delete(int id, CancellationToken cancellationToken)

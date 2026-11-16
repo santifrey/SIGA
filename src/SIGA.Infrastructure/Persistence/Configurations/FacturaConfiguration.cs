@@ -12,6 +12,9 @@ public class FacturaConfiguration : IEntityTypeConfiguration<Factura>
 
         builder.HasKey(f => f.Id);
 
+        builder.Ignore(f => f.VentaId);
+        builder.Ignore(f => f.Venta);
+
         builder.Property(f => f.NumeroFactura)
             .HasMaxLength(60)
             .IsRequired();

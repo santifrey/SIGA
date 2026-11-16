@@ -17,7 +17,13 @@ public class JwtTokenService : ITokenService
         _configuration = configuration;
     }
 
-    public string GenerateToken(Usuario usuario, IEnumerable<string> roles)
+    public string GenerateToken(Usuario usuario, IEnumerable<string>? permisos = null)
+    {
+        var rolNombre = usuario.Rol?.Nombre;
+        return GenerateToken(usuario, rolNombre, permisos);
+    }
+
+    public string GenerateToken(Usuario usuario, string? rol, IEnumerable<string>? permisos)
     {
         var secretKey = GetValidatedSecretKey();
         var issuer = _configuration["JwtSettings:Issuer"] ?? "SIGA.API";
@@ -48,9 +54,20 @@ public class JwtTokenService : ITokenService
             claims.Add(new Claim("NombreCompleto", usuario.Persona.NombreCompleto));
         }
 
-        foreach (var role in roles)
+        // 1. Emitir claim de rol único
+        var effectiveRole = !string.IsNullOrWhiteSpace(rol) ? rol : usuario.Rol?.Nombre;
+        if (!string.IsNullOrWhiteSpace(effectiveRole))
         {
-            claims.Add(new Claim(ClaimTypes.Role, role));
+            claims.Add(new Claim(ClaimTypes.Role, effectiveRole));
+        }
+
+        // 2. Emitir claims individuales de permiso
+        if (permisos != null)
+        {
+            foreach (var permiso in permisos.Where(p => !string.IsNullOrWhiteSpace(p)))
+            {
+                claims.Add(new Claim("permiso", permiso));
+            }
         }
 
         var tokenDescriptor = new SecurityTokenDescriptor

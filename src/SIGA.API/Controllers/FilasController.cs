@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SIGA.API.Authorization;
 using SIGA.Application.Common;
@@ -7,7 +6,7 @@ using SIGA.Application.Interfaces;
 
 namespace SIGA.API.Controllers;
 
-[Authorize(Roles = Roles.Personal)]
+[RequierePermiso(Permisos.PlantacionesVer)]
 public class FilasController : BaseApiController
 {
     private readonly IGestionFilas _gestionFilas;
@@ -17,7 +16,7 @@ public class FilasController : BaseApiController
         _gestionFilas = gestionFilas;
     }
 
-    [HttpGet("por-sucursal/{sucursalId}/temporada/{temporadaId}")]
+    [HttpGet("por-sucursal/{sucursalId:int}/temporada/{temporadaId:int}")]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<FilaDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<FilaDto>>>> GetBySucursalYTemporada(
         int sucursalId, 
@@ -28,7 +27,7 @@ public class FilasController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<FilaDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<FilaDto>>> GetById(
@@ -36,6 +35,18 @@ public class FilasController : BaseApiController
         CancellationToken cancellationToken)
     {
         var result = await _gestionFilas.ObtenerPorIdAsync(id, cancellationToken);
+        return CustomResult(result);
+    }
+
+    [HttpPost]
+    [RequierePermiso(Permisos.PlantacionesGestionar)]
+    [ProducesResponseType(typeof(ApiResponse<FilaDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<FilaDto>>> Crear(
+        [FromBody] CreateFilaDto dto, 
+        CancellationToken cancellationToken)
+    {
+        var result = await _gestionFilas.CrearFilaAsync(dto, cancellationToken);
         return CustomResult(result);
     }
 }

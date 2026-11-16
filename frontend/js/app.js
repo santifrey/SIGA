@@ -1,6 +1,8 @@
 /**
  * SIGA - js/app.js
  * Orquestador principal de la Single Page Application (SPA)
+ * Implementa Shell de 5 Secciones Colapsables, Animaciones, Persistencia Local,
+ * Auto-expansión, Route Guards, Filtrado de Navegación por Permisos y Navegación de Perfil (Features 24-27).
  */
 
 import { Router } from './router.js';
@@ -19,15 +21,42 @@ import { TemporadasView } from './views/temporadas-view.js';
 import { PlantacionesView } from './views/plantaciones-view.js';
 import { TransferenciasView } from './views/transferencias-view.js';
 import { CosechasView } from './views/cosechas-view.js';
-import { VentasView } from './views/ventas-view.js';
+import { MovimientosComercialesView } from './views/movimientos-comerciales-view.js';
 import { ReportesView } from './views/reportes-view.js';
+
+// Nuevas Vistas (Milestone 4)
+import { PerfilView } from './views/perfil-view.js';
+import { EmpleadosView } from './views/empleados-view.js';
+import { RolesView } from './views/roles-view.js';
+import { PreciosReferenciaView } from './views/precios-referencia-view.js';
+
+const STORAGE_KEY_COLLAPSED_SECTIONS = 'siga_sidebar_collapsed_sections';
+
+function getCollapsedSectionsState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_COLLAPSED_SECTIONS);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCollapsedSectionState(sectionId, isCollapsed) {
+  try {
+    const state = getCollapsedSectionsState();
+    state[sectionId] = isCollapsed;
+    localStorage.setItem(STORAGE_KEY_COLLAPSED_SECTIONS, JSON.stringify(state));
+  } catch (err) {
+    console.warn('[Sidebar] Error al guardar estado de sección:', err);
+  }
+}
 
 class App {
   constructor() {
     this.appRoot = document.getElementById('app');
     this.router = new Router();
 
-    // Vistas
+    // Vistas existentes
     this.loginView = new LoginView(this.router);
     this.dashboardView = new DashboardView(this.router);
     this.clientesView = new ClientesView(this.router);
@@ -38,8 +67,14 @@ class App {
     this.plantacionesView = new PlantacionesView(this.router);
     this.transferenciasView = new TransferenciasView(this.router);
     this.cosechasView = new CosechasView(this.router);
-    this.ventasView = new VentasView(this.router);
+    this.movimientosComercialesView = new MovimientosComercialesView(this.router);
     this.reportesView = new ReportesView(this.router);
+
+    // Nuevas vistas M4
+    this.perfilView = new PerfilView(this.router);
+    this.empleadosView = new EmpleadosView(this.router);
+    this.rolesView = new RolesView(this.router);
+    this.preciosReferenciaView = new PreciosReferenciaView(this.router);
 
     this.isSidebarCollapsed = false;
     this.isMobileOpen = false;
@@ -52,19 +87,34 @@ class App {
       this.router.navigate('#login');
     });
 
-    // Registrar rutas de la SPA
-    this.router.register('#login', this.loginView, false, 'Iniciar Sesión');
-    this.router.register('#dashboard', this.dashboardView, true, 'Panel de Control');
-    this.router.register('#reportes', this.reportesView, true, 'Reportes Ejecutivos y Trazabilidad');
-    this.router.register('#clientes', this.clientesView, true, 'Gestión de Clientes');
-    this.router.register('#sucursales', this.sucursalesView, true, 'Gestión de Sucursales');
-    this.router.register('#ventas', this.ventasView, true, 'Ventas y Circuito Administrativo');
-    this.router.register('#stock', this.stockView, true, 'Consulta de Stock');
-    this.router.register('#movimientos', this.movimientosView, true, 'Movimientos de Stock');
-    this.router.register('#temporadas', this.temporadasView, true, 'Gestión de Temporadas');
-    this.router.register('#plantaciones', this.plantacionesView, true, 'Estructura Productiva y Plantaciones');
-    this.router.register('#transferencias', this.transferenciasView, true, 'Transferencias de Lotes Completos');
-    this.router.register('#cosechas', this.cosechasView, true, 'Cosechas por Sucursal');
+    // Registrar rutas de la SPA con sus respectivos permisos requeridos (Feature 26)
+    this.router.register('#login', this.loginView, false, 'Iniciar Sesión', null);
+    this.router.register('#dashboard', this.dashboardView, true, 'Panel de Control', null);
+    this.router.register('#reportes', this.reportesView, true, 'Reportes Ejecutivos', 'REPORTES_VER');
+
+    // Movimientos comerciales (reemplaza #ventas con fallback de compatibilidad)
+    this.router.register('#movimientos-comerciales', this.movimientosComercialesView, true, 'Movimientos Comerciales', 'MOVCOM_VER');
+    this.router.register('#ventas', this.movimientosComercialesView, true, 'Movimientos Comerciales', 'MOVCOM_VER');
+
+    // Stock y Bulbos
+    this.router.register('#stock', this.stockView, true, 'Consulta de Stock', 'STOCK_VER');
+    this.router.register('#movimientos', this.movimientosView, true, 'Movimientos de Stock', 'STOCK_VER');
+
+    // Producción y Campo
+    this.router.register('#temporadas', this.temporadasView, true, 'Gestión de Temporadas', 'TEMPORADAS_VER');
+    this.router.register('#plantaciones', this.plantacionesView, true, 'Estructura Productiva y Plantaciones', 'PLANTACIONES_VER');
+    this.router.register('#transferencias', this.transferenciasView, true, 'Transferencias de Lotes Completos', 'TRANSFERENCIAS_VER');
+    this.router.register('#cosechas', this.cosechasView, true, 'Cosechas por Sucursal', 'COSECHAS_VER');
+
+    // Administración
+    this.router.register('#clientes', this.clientesView, true, 'Gestión de Clientes', 'CLIENTES_VER');
+    this.router.register('#sucursales', this.sucursalesView, true, 'Gestión de Sucursales', 'SUCURSALES_VER');
+    this.router.register('#empleados', this.empleadosView, true, 'Gestión de Empleados', 'EMPLEADOS_VER');
+    this.router.register('#roles', this.rolesView, true, 'Roles y Permisos', 'ROLES_VER');
+    this.router.register('#precios-referencia', this.preciosReferenciaView, true, 'Precios de Referencia', ['PRECIOS_REF_VER', 'PRECIOS_REF_GESTIONAR']);
+
+    // Mi Perfil
+    this.router.register('#perfil', this.perfilView, true, 'Mi Perfil de Usuario', null);
 
     // Escucha cambios de ruta
     this.router.setOnRouteChange((routeInfo) => this._renderRoute(routeInfo));
@@ -96,7 +146,10 @@ class App {
     // Actualizar perfil de usuario en la barra superior
     this._updateUserProfile();
 
-    // Actualizar indicador activo en el sidebar
+    // Aplicar filtrado de navegación según permisos del usuario activo (Feature 26)
+    this._applyNavPermissionFiltering();
+
+    // Actualizar indicador activo en el sidebar y auto-expandir la sección contenedora (Feature 25)
     this._updateActiveNav(path);
 
     // Renderizar la vista dentro del contenedor principal
@@ -127,7 +180,7 @@ class App {
         <!-- Backdrop para dispositivos móviles -->
         <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
-        <!-- Sidebar Lateral -->
+        <!-- Sidebar Lateral con 5 Secciones Colapsables (Feature 24 & 25) -->
         <aside class="app-sidebar" id="app-sidebar">
           <div class="sidebar-header">
             <a href="#dashboard" class="brand">
@@ -139,113 +192,179 @@ class App {
             </a>
           </div>
 
-          <nav class="sidebar-nav">
-            <div class="nav-section-title">Principal</div>
-            <a href="#dashboard" class="nav-item" data-path="#dashboard">
-              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="7" height="9"></rect>
-                <rect x="14" y="3" width="7" height="5"></rect>
-                <rect x="14" y="12" width="7" height="9"></rect>
-                <rect x="3" y="16" width="7" height="5"></rect>
-              </svg>
-              <span class="nav-text">Dashboard</span>
-            </a>
+          <nav class="sidebar-nav" id="sidebar-nav">
+            <!-- 1. Principal -->
+            <div class="nav-section" data-section="principal">
+              <button type="button" class="nav-section-header" data-toggle="section" aria-expanded="true">
+                <span class="nav-section-title">Principal</span>
+                <svg class="nav-section-chevron" viewBox="0 0 24 24">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div class="nav-section-content">
+                <a href="#dashboard" class="nav-item" data-path="#dashboard">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="9"></rect>
+                    <rect x="14" y="3" width="7" height="5"></rect>
+                    <rect x="14" y="12" width="7" height="9"></rect>
+                    <rect x="3" y="16" width="7" height="5"></rect>
+                  </svg>
+                  <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="#reportes" class="nav-item" data-path="#reportes" data-permiso="REPORTES_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                  </svg>
+                  <span class="nav-text">Reportes Ejecutivos</span>
+                </a>
+              </div>
+            </div>
 
-            <a href="#reportes" class="nav-item" data-path="#reportes">
-              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="20" x2="18" y2="10"></line>
-                <line x1="12" y1="20" x2="12" y2="4"></line>
-                <line x1="6" y1="20" x2="6" y2="14"></line>
-              </svg>
-              <span class="nav-text">Reportes Ejecutivos</span>
-            </a>
+            <!-- 2. Movimientos Comerciales -->
+            <div class="nav-section" data-section="movimientos-comerciales">
+              <button type="button" class="nav-section-header" data-toggle="section" aria-expanded="true">
+                <span class="nav-section-title">Movimientos Comerciales</span>
+                <svg class="nav-section-chevron" viewBox="0 0 24 24">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div class="nav-section-content">
+                <a href="#movimientos-comerciales" class="nav-item" data-path="#movimientos-comerciales" data-permiso="MOVCOM_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                  <span class="nav-text">Movimientos Comerciales</span>
+                </a>
+              </div>
+            </div>
 
-            <div class="nav-section-title">Administración</div>
-            <a href="#clientes" class="nav-item" data-path="#clientes">
-              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-              </svg>
-              <span class="nav-text">Clientes</span>
-            </a>
+            <!-- 3. Stock y Bulbos -->
+            <div class="nav-section" data-section="stock">
+              <button type="button" class="nav-section-header" data-toggle="section" aria-expanded="true">
+                <span class="nav-section-title">Stock y Bulbos</span>
+                <svg class="nav-section-chevron" viewBox="0 0 24 24">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div class="nav-section-content">
+                <a href="#stock" class="nav-item" data-path="#stock" data-permiso="STOCK_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                  </svg>
+                  <span class="nav-text">Consulta Stock</span>
+                </a>
+                <a href="#movimientos" class="nav-item" data-path="#movimientos" data-permiso="STOCK_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="17 1 21 5 17 9"></polyline>
+                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                    <polyline points="7 23 3 19 7 15"></polyline>
+                    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                  </svg>
+                  <span class="nav-text">Movimientos de Stock</span>
+                </a>
+              </div>
+            </div>
 
-            <a href="#sucursales" class="nav-item" data-path="#sucursales">
-              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-              </svg>
-              <span class="nav-text">Sucursales</span>
-            </a>
+            <!-- 4. Producción y Campo -->
+            <div class="nav-section" data-section="produccion">
+              <button type="button" class="nav-section-header" data-toggle="section" aria-expanded="true">
+                <span class="nav-section-title">Producción y Campo</span>
+                <svg class="nav-section-chevron" viewBox="0 0 24 24">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div class="nav-section-content">
+                <a href="#temporadas" class="nav-item" data-path="#temporadas" data-permiso="TEMPORADAS_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <span class="nav-text">Temporadas</span>
+                </a>
+                <a href="#plantaciones" class="nav-item" data-path="#plantaciones" data-permiso="PLANTACIONES_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                  </svg>
+                  <span class="nav-text">Plantaciones</span>
+                </a>
+                <a href="#transferencias" class="nav-item" data-path="#transferencias" data-permiso="TRANSFERENCIAS_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 1l4 4-4 4"></path>
+                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                    <path d="M7 23l-4-4 4-4"></path>
+                    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                  </svg>
+                  <span class="nav-text">Transferir Lotes</span>
+                </a>
+                <a href="#cosechas" class="nav-item" data-path="#cosechas" data-permiso="COSECHAS_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path>
+                    <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path>
+                  </svg>
+                  <span class="nav-text">Cosechas</span>
+                </a>
+              </div>
+            </div>
 
-            <a href="#ventas" class="nav-item" data-path="#ventas">
-              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-              </svg>
-              <span class="nav-text">Ventas y Contratos</span>
-            </a>
-
-            <div class="nav-section-title">Stock y Bulbos</div>
-            <a href="#stock" class="nav-item" data-path="#stock">
-              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                <line x1="12" y1="22.08" x2="12" y2="12"></line>
-              </svg>
-              <span class="nav-text">Consulta Stock</span>
-            </a>
-
-            <a href="#movimientos" class="nav-item" data-path="#movimientos">
-              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="17 1 21 5 17 9"></polyline>
-                <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
-                <polyline points="7 23 3 19 7 15"></polyline>
-                <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
-              </svg>
-              <span class="nav-text">Movimientos</span>
-            </a>
-            <div class="nav-section-title">Producción y Campo</div>
-            <a href="#temporadas" class="nav-item" data-path="#temporadas">
-              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-              </svg>
-              <span class="nav-text">Temporadas</span>
-            </a>
-
-            <a href="#plantaciones" class="nav-item" data-path="#plantaciones">
-              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-                <path d="M2 17l10 5 10-5"></path>
-                <path d="M2 12l10 5 10-5"></path>
-              </svg>
-              <span class="nav-text">Plantaciones</span>
-            </a>
-
-            <a href="#transferencias" class="nav-item" data-path="#transferencias">
-              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 1l4 4-4 4"></path>
-                <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
-                <path d="M7 23l-4-4 4-4"></path>
-                <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
-              </svg>
-              <span class="nav-text">Transferir Lotes</span>
-            </a>
-
-            <a href="#cosechas" class="nav-item" data-path="#cosechas">
-              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path>
-                <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path>
-              </svg>
-              <span class="nav-text">Cosechas</span>
-            </a>
+            <!-- 5. Administración -->
+            <div class="nav-section" data-section="administracion">
+              <button type="button" class="nav-section-header" data-toggle="section" aria-expanded="true">
+                <span class="nav-section-title">Administración</span>
+                <svg class="nav-section-chevron" viewBox="0 0 24 24">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div class="nav-section-content">
+                <a href="#clientes" class="nav-item" data-path="#clientes" data-permiso="CLIENTES_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                  <span class="nav-text">Clientes</span>
+                </a>
+                <a href="#sucursales" class="nav-item" data-path="#sucursales" data-permiso="SUCURSALES_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                  </svg>
+                  <span class="nav-text">Sucursales</span>
+                </a>
+                <a href="#empleados" class="nav-item" data-path="#empleados" data-permiso="EMPLEADOS_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  <span class="nav-text">Empleados</span>
+                </a>
+                <a href="#roles" class="nav-item" data-path="#roles" data-permiso="ROLES_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  </svg>
+                  <span class="nav-text">Roles y Permisos</span>
+                </a>
+                <a href="#precios-referencia" class="nav-item" data-path="#precios-referencia" data-permiso="PRECIOS_REF_VER,PRECIOS_REF_GESTIONAR">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                  </svg>
+                  <span class="nav-text">Precios de Referencia</span>
+                </a>
+              </div>
+            </div>
           </nav>
 
           <div class="sidebar-footer">
@@ -258,11 +377,11 @@ class App {
 
         <!-- Contenedor Principal (Topbar + Contenido) -->
         <div class="app-main">
-          <!-- Topbar Superior -->
+          <!-- Topbar Superior (Feature 27: sin campana de notificaciones) -->
           <header class="app-topbar">
             <div class="topbar-left">
               <button type="button" class="btn-sidebar-toggle" id="btn-toggle-sidebar" aria-label="Colapsar o expandir menú">
-                <svg class="icon-svg" viewBox="0 0 24 24">
+                <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="3" y1="12" x2="21" y2="12"></line>
                   <line x1="3" y1="6" x2="21" y2="6"></line>
                   <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -272,8 +391,8 @@ class App {
             </div>
 
             <div class="topbar-right">
-              <!-- Perfil de Usuario -->
-              <div class="user-profile" id="user-profile-badge" title="Usuario activo">
+              <!-- Perfil de Usuario con Navegación a #perfil (Feature 27) -->
+              <div class="user-profile" id="user-profile-badge" role="button" tabindex="0" title="Ver mi perfil">
                 <div class="user-avatar" id="topbar-user-avatar">${escapeHtml(initials)}</div>
                 <div class="user-info">
                   <span class="user-name" id="topbar-user-name">${escapeHtml(user.nombre)}</span>
@@ -283,7 +402,7 @@ class App {
 
               <!-- Botón de Cerrar Sesión -->
               <button type="button" class="btn btn-sm btn-outline" id="btn-topbar-logout" title="Cerrar sesión segura">
-                <svg class="icon-svg sm" viewBox="0 0 24 24" style="color: var(--danger);">
+                <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--danger);">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                   <polyline points="16 17 21 12 16 7"></polyline>
                   <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -299,28 +418,108 @@ class App {
       </div>
     `;
 
-    // Eventos del Layout
+    // 1. Inicializar persistencia y eventos de colapso de secciones (Features 24 & 25)
+    this._initSidebarSections();
+
+    // 2. Conectar navegación al hacer clic en el badge de perfil (Feature 27)
+    const profileBadge = document.getElementById('user-profile-badge');
+    if (profileBadge) {
+      profileBadge.addEventListener('click', () => {
+        this.router.navigate('#perfil');
+      });
+      profileBadge.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.router.navigate('#perfil');
+        }
+      });
+    }
+
+    // 3. Eventos del Layout
     const toggleBtn = document.getElementById('btn-toggle-sidebar');
     const backdrop = document.getElementById('sidebar-backdrop');
     const logoutBtn = document.getElementById('btn-topbar-logout');
 
-    toggleBtn.addEventListener('click', () => {
-      if (window.innerWidth <= 992) {
-        this.setMobileSidebar(!this.isMobileOpen);
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        if (window.innerWidth <= 992) {
+          this.setMobileSidebar(!this.isMobileOpen);
+        } else {
+          this.toggleSidebarCollapse();
+        }
+      });
+    }
+
+    if (backdrop) {
+      backdrop.addEventListener('click', () => {
+        this.setMobileSidebar(false);
+      });
+    }
+
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        if (confirm('¿Está seguro de que desea cerrar la sesión actual?')) {
+          authService.logout();
+          toast.info('Sesión finalizada correctamente.');
+          this.router.navigate('#login');
+        }
+      });
+    }
+  }
+
+  _initSidebarSections() {
+    const savedState = getCollapsedSectionsState();
+    const sections = this.appRoot.querySelectorAll('.nav-section');
+
+    sections.forEach(section => {
+      const sectionId = section.getAttribute('data-section');
+      const header = section.querySelector('.nav-section-header');
+
+      // Restaurar estado guardado en localStorage
+      if (savedState[sectionId] === true) {
+        section.classList.add('collapsed');
+        if (header) header.setAttribute('aria-expanded', 'false');
       } else {
-        this.toggleSidebarCollapse();
+        section.classList.remove('collapsed');
+        if (header) header.setAttribute('aria-expanded', 'true');
+      }
+
+      // Conectar evento toggle
+      if (header) {
+        header.addEventListener('click', () => {
+          const isNowCollapsed = !section.classList.contains('collapsed');
+          section.classList.toggle('collapsed', isNowCollapsed);
+          header.setAttribute('aria-expanded', String(!isNowCollapsed));
+          if (sectionId) {
+            saveCollapsedSectionState(sectionId, isNowCollapsed);
+          }
+        });
+      }
+    });
+  }
+
+  _applyNavPermissionFiltering() {
+    // 1. Filtrar ítems individuales según authService.tienePermiso(codigo) o lista separada por comas (Feature 26)
+    const navItems = this.appRoot.querySelectorAll('.sidebar-nav .nav-item[data-permiso]');
+    navItems.forEach(item => {
+      const permisoAttr = item.getAttribute('data-permiso');
+      if (permisoAttr) {
+        const perms = permisoAttr.split(',').map(p => p.trim());
+        const allowed = perms.length > 1 ? authService.tieneAlgunPermiso(perms) : authService.tienePermiso(perms[0]);
+        item.classList.toggle('hidden', !allowed);
+      } else {
+        item.classList.remove('hidden');
       }
     });
 
-    backdrop.addEventListener('click', () => {
-      this.setMobileSidebar(false);
-    });
-
-    logoutBtn.addEventListener('click', () => {
-      if (confirm('¿Está seguro de que desea cerrar la sesión actual?')) {
-        authService.logout();
-        toast.info('Sesión finalizada correctamente.');
-        this.router.navigate('#login');
+    // 2. Ocultar secciones completas si todos sus ítems están ocultos
+    const sections = this.appRoot.querySelectorAll('.sidebar-nav .nav-section');
+    sections.forEach(section => {
+      const visibleItems = section.querySelectorAll('.nav-section-content .nav-item:not(.hidden)');
+      if (visibleItems.length === 0) {
+        section.classList.add('hidden');
+      } else {
+        section.classList.remove('hidden');
       }
     });
   }
@@ -352,14 +551,36 @@ class App {
 
   _updateActiveNav(currentPath) {
     const navItems = this.appRoot.querySelectorAll('.sidebar-nav .nav-item');
+    let activeItem = null;
+
     navItems.forEach(item => {
       const itemPath = item.getAttribute('data-path');
-      if (itemPath === currentPath) {
+      const matches = (itemPath === currentPath) ||
+        (currentPath === '#ventas' && itemPath === '#movimientos-comerciales') ||
+        (currentPath === '#movimientos-comerciales' && itemPath === '#ventas');
+
+      if (matches) {
         item.classList.add('active');
+        activeItem = item;
       } else {
         item.classList.remove('active');
       }
     });
+
+    // Auto-expansión: expandir la sección que contiene la ruta activa si estaba colapsada (Feature 25)
+    if (activeItem) {
+      const parentSection = activeItem.closest('.nav-section');
+      if (parentSection && parentSection.classList.contains('collapsed')) {
+        parentSection.classList.remove('collapsed');
+        const header = parentSection.querySelector('.nav-section-header');
+        if (header) header.setAttribute('aria-expanded', 'true');
+
+        const sectionId = parentSection.getAttribute('data-section');
+        if (sectionId) {
+          saveCollapsedSectionState(sectionId, false);
+        }
+      }
+    }
   }
 }
 

@@ -5,10 +5,15 @@ namespace SIGA.Domain.Entities;
 
 public class RegistroAprobacion : BaseEntity
 {
-    public int VentaId { get; set; }
-    public virtual Venta Venta { get; set; } = null!;
+    public int MovimientoComercialId { get; set; }
+    public virtual MovimientoComercial? MovimientoComercial { get; set; }
 
-    public string TipoEntidad { get; set; } = "Venta";
+    [Obsolete("Utilizar MovimientoComercialId en su lugar.")]
+    public int VentaId { get => MovimientoComercialId; set => MovimientoComercialId = value; }
+    [Obsolete("Utilizar MovimientoComercial en su lugar.")]
+    public virtual Venta? Venta { get; set; }
+
+    public string TipoEntidad { get; set; } = "MovimientoComercial";
     public int EntidadId { get; set; }
 
     public int UsuarioAprobadorId { get; set; }
@@ -22,11 +27,11 @@ public class RegistroAprobacion : BaseEntity
     {
     }
 
-    public RegistroAprobacion(int ventaId, int usuarioAprobadorId, AccionAprobacion accion, string? observaciones = null)
+    public RegistroAprobacion(int movimientoComercialId, int usuarioAprobadorId, AccionAprobacion accion, string? observaciones = null)
     {
-        VentaId = ventaId;
-        EntidadId = ventaId;
-        TipoEntidad = "Venta";
+        MovimientoComercialId = movimientoComercialId;
+        EntidadId = movimientoComercialId;
+        TipoEntidad = "MovimientoComercial";
         UsuarioAprobadorId = usuarioAprobadorId;
         Accion = accion;
         Observaciones = observaciones;

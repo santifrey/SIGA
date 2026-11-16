@@ -42,6 +42,28 @@ public class FilaRepository : Repository<Fila>, IFilaRepository
                 cancellationToken);
     }
 
+    public async Task<Fila?> GetByNumeroAsync(
+        int sucursalId, 
+        int temporadaId, 
+        int numeroFila, 
+        CancellationToken cancellationToken = default)
+    {
+        var numStr = numeroFila.ToString();
+        return await _dbSet
+            .Include(f => f.Sucursal)
+            .Include(f => f.Temporada)
+            .Include(f => f.Lotes)
+                .ThenInclude(l => l.Cliente)
+                    .ThenInclude(c => c.Persona)
+            .Include(f => f.Lotes)
+                .ThenInclude(l => l.DetallesPlantacion)
+            .FirstOrDefaultAsync(
+                f => f.SucursalId == sucursalId && 
+                     f.TemporadaId == temporadaId && 
+                     (f.NumeroFila == numeroFila || f.Identificacion == numStr), 
+                cancellationToken);
+    }
+
     public async Task<Fila?> GetByIdWithLotesAsync(int id, CancellationToken cancellationToken = default)
     {
         return await _dbSet

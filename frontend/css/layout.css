@@ -104,15 +104,94 @@
   gap: var(--spacing-xxs);
 }
 
-.nav-section-title {
+/* ==========================================================================
+   Sidebar 5 Collapsible Sections & Animation (Features 24 & 25)
+   ========================================================================== */
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--spacing-xxs);
+}
+
+.nav-section.hidden {
+  display: none !important;
+}
+
+.nav-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
   padding: var(--spacing-xs) var(--spacing-md);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-sidebar-muted);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+  user-select: none;
+}
+
+.nav-section-header:hover {
+  color: #ffffff;
+  background-color: var(--bg-sidebar-hover);
+}
+
+.nav-section-header:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.nav-section-title {
   font-size: 0.6875rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
-  color: var(--text-sidebar-muted);
-  margin-top: var(--spacing-sm);
-  margin-bottom: var(--spacing-xxs);
+  color: inherit;
+  margin: 0;
+  padding: 0;
+}
+
+/* Chevron: Down (0deg) when expanded, Rotates -90deg (pointing Right) when collapsed */
+.nav-section-chevron {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: rotate(0deg);
+}
+
+.nav-section.collapsed .nav-section-chevron {
+  transform: rotate(-90deg);
+}
+
+/* Collapsible Content Container */
+.nav-section-content {
+  overflow: hidden;
+  max-height: 500px;
+  opacity: 1;
+  transform: translateY(0);
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease,
+              transform 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+  padding-top: var(--spacing-xxs);
+}
+
+.nav-section.collapsed .nav-section-content {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  padding-top: 0;
 }
 
 .nav-item {
@@ -428,6 +507,17 @@
 .sidebar-collapsed .nav-item {
   justify-content: center;
   padding: 0.75rem 0;
+}
+
+.sidebar-collapsed .nav-section-header {
+  display: none;
+}
+
+.sidebar-collapsed .nav-section.collapsed .nav-section-content {
+  max-height: none;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
 }
 
 /* ==========================================================================

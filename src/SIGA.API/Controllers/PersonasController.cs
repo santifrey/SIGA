@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SIGA.API.Authorization;
 using SIGA.Application.Common;
@@ -7,7 +6,6 @@ using SIGA.Application.Interfaces;
 
 namespace SIGA.API.Controllers;
 
-[Authorize(Roles = Roles.Personal)]
 public class PersonasController : BaseApiController
 {
     private readonly IGestionPersonas _gestionPersonas;
@@ -18,6 +16,7 @@ public class PersonasController : BaseApiController
     }
 
     [HttpGet]
+    [RequierePermiso(Permisos.PersonasVer)]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<PersonaDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<PersonaDto>>>> GetAll(CancellationToken cancellationToken)
     {
@@ -25,7 +24,8 @@ public class PersonasController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
+    [RequierePermiso(Permisos.PersonasVer)]
     [ProducesResponseType(typeof(ApiResponse<PersonaDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<PersonaDto>>> GetById(int id, CancellationToken cancellationToken)
@@ -35,6 +35,7 @@ public class PersonasController : BaseApiController
     }
 
     [HttpGet("documento/{documento}")]
+    [RequierePermiso(Permisos.PersonasVer)]
     [ProducesResponseType(typeof(ApiResponse<PersonaDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<PersonaDto>>> GetByDocumento(string documento, CancellationToken cancellationToken)
@@ -44,6 +45,7 @@ public class PersonasController : BaseApiController
     }
 
     [HttpPost]
+    [RequierePermiso(Permisos.PersonasGestionar)]
     [ProducesResponseType(typeof(ApiResponse<PersonaDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<PersonaDto>>> Create([FromBody] CreatePersonaDto dto, CancellationToken cancellationToken)
@@ -52,7 +54,8 @@ public class PersonasController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
+    [RequierePermiso(Permisos.PersonasGestionar)]
     [ProducesResponseType(typeof(ApiResponse<PersonaDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<PersonaDto>>> Update(int id, [FromBody] UpdatePersonaDto dto, CancellationToken cancellationToken)
@@ -61,8 +64,8 @@ public class PersonasController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpDelete("{id}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [HttpDelete("{id:int}")]
+    [RequierePermiso(Permisos.PersonasGestionar)]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> Delete(int id, CancellationToken cancellationToken)

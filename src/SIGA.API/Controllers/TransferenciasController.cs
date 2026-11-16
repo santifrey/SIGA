@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SIGA.API.Authorization;
 using SIGA.Application.Common;
@@ -8,7 +7,6 @@ using SIGA.Domain.Enums;
 
 namespace SIGA.API.Controllers;
 
-[Authorize(Roles = Roles.Personal)]
 public class TransferenciasController : BaseApiController
 {
     private readonly IGestionTransferencias _gestionTransferencias;
@@ -19,6 +17,7 @@ public class TransferenciasController : BaseApiController
     }
 
     [HttpGet]
+    [RequierePermiso(Permisos.TransferenciasVer)]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<TransferenciaLoteDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<TransferenciaLoteDto>>>> GetAll(
         [FromQuery] int? loteId,
@@ -29,7 +28,8 @@ public class TransferenciasController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
+    [RequierePermiso(Permisos.TransferenciasVer)]
     [ProducesResponseType(typeof(ApiResponse<TransferenciaLoteDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<TransferenciaLoteDto>>> GetById(
@@ -40,7 +40,8 @@ public class TransferenciasController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpGet("lote/{loteId}/historial")]
+    [HttpGet("lote/{loteId:int}/historial")]
+    [RequierePermiso(Permisos.TransferenciasVer)]
     [ProducesResponseType(typeof(ApiResponse<HistorialTitularidadDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<HistorialTitularidadDto>>> GetHistorialTitularidad(
@@ -52,6 +53,7 @@ public class TransferenciasController : BaseApiController
     }
 
     [HttpPost]
+    [RequierePermiso(Permisos.TransferenciasCrear)]
     [ProducesResponseType(typeof(ApiResponse<TransferenciaLoteDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<TransferenciaLoteDto>>> TransferirLote(
@@ -62,8 +64,8 @@ public class TransferenciasController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpPost("{id}/confirmar")]
-    [Authorize(Roles = Roles.Gestion)]
+    [HttpPost("{id:int}/confirmar")]
+    [RequierePermiso(Permisos.TransferenciasGestionar)]
     [ProducesResponseType(typeof(ApiResponse<TransferenciaLoteDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -75,8 +77,8 @@ public class TransferenciasController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpPost("{id}/anular")]
-    [Authorize(Roles = Roles.Gestion)]
+    [HttpPost("{id:int}/anular")]
+    [RequierePermiso(Permisos.TransferenciasGestionar)]
     [ProducesResponseType(typeof(ApiResponse<TransferenciaLoteDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

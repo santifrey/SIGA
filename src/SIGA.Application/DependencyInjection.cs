@@ -9,6 +9,9 @@ public static class DependencyInjection
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         services.AddScoped<IGestionUsuarios, GestionUsuarios>();
+        services.AddScoped<IGestionRoles, GestionRoles>();
+        services.AddScoped<IGestionPermisos, GestionPermisos>();
+        services.AddScoped<IGestionEmpleados, GestionEmpleados>();
         services.AddScoped<IGestionPersonas, GestionPersonas>();
         services.AddScoped<IGestionClientes, GestionClientes>();
         services.AddScoped<IGestionSucursales, GestionSucursales>();
@@ -21,6 +24,8 @@ public static class DependencyInjection
         services.AddScoped<IGestionTransferencias, GestionTransferencias>();
         services.AddScoped<IGestionCosechas, GestionCosechas>();
         services.AddScoped<IGestionVentas, GestionVentas>();
+        services.AddScoped<IGestionMovimientosComerciales, GestionMovimientosComerciales>();
+        services.AddScoped<IGestionPreciosReferencia, GestionPreciosReferencia>();
         services.AddScoped<IGestionReportes, GestionReportes>();
 
         return services;

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SIGA.API.Authorization;
 using SIGA.Application.Common;
@@ -7,7 +6,7 @@ using SIGA.Application.Interfaces;
 
 namespace SIGA.API.Controllers;
 
-[Authorize(Roles = Roles.Personal)]
+[RequierePermiso(Permisos.ReportesVer)]
 public class ReportesController : BaseApiController
 {
     private readonly IGestionReportes _gestionReportes;

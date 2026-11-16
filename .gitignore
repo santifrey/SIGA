@@ -5,6 +5,8 @@
 [Ll]ogs/
 .vs/
 .vscode/
+.agents/
+
 *.user
 *.suo
 *.userosscache

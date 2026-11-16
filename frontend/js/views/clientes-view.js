@@ -7,6 +7,7 @@ import { clientesService } from '../services/clientes-service.js';
 import { toast } from '../utils/toast.js';
 import { CONFIG } from '../config.js';
 import { escapeHtml } from '../utils/escape-html.js';
+import { getProhibitionIcon } from '../utils/icons.js';
 
 export class ClientesView {
   constructor(router) {
@@ -252,12 +253,8 @@ export class ClientesView {
             </button>
           </div>
           <div class="modal-body text-center">
-            <div style="width: 54px; height: 54px; border-radius: 50%; background: var(--danger-bg); color: var(--danger); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
-              <svg class="icon-svg lg" viewBox="0 0 24 24">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: var(--danger-bg); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+              ${getProhibitionIcon({ size: 'lg', title: 'Baja de Cliente' })}
             </div>
             <h4 class="mb-2">¿Dar de baja a este cliente?</h4>
             <p class="text-sm text-muted mb-3" id="delete-cliente-prompt">
@@ -425,10 +422,7 @@ export class ClientesView {
                 </button>
                 ${cliente.activo ? `
                   <button class="btn-icon btn-action-delete" data-id="${escapeHtml(cliente.id)}" data-name="${escapeHtml(cliente.nombre)} ${escapeHtml(cliente.apellido)}" title="Dar de baja (soft delete)">
-                    <svg class="icon-svg sm" viewBox="0 0 24 24" style="color: var(--danger);">
-                      <polyline points="3 6 5 6 21 6"></polyline>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
+                    ${getProhibitionIcon({ size: 'sm', title: 'Dar de baja (soft delete)' })}
                   </button>
                 ` : `
                   <button class="btn-icon btn-action-reactivate" data-id="${escapeHtml(cliente.id)}" title="Reactivar cliente">

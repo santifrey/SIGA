@@ -8,4 +8,5 @@ public interface ILoteRepository : IRepository<Lote>
     Task<IReadOnlyList<Lote>> GetByClienteAsync(int clienteId, CancellationToken cancellationToken = default);
     Task<Lote?> GetByIdWithDetailsAsync(int id, CancellationToken cancellationToken = default);
     Task<int> GetNextOrdenAsync(int filaId, CancellationToken cancellationToken = default);
+    Task<bool> ExisteOrdenEnFilaAsync(int filaId, int orden, CancellationToken cancellationToken = default);
 }

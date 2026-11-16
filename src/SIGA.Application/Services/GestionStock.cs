@@ -93,7 +93,25 @@ public class GestionStock : IGestionStock
         }
 
         var saldoPorClase = await ObtenerSaldoPorClaseAsync(clienteId, cancellationToken);
-        var stockDisponible = saldoPorClase.TryGetValue(clase, out var stock) ? stock : 0;
+
+        int stockDisponible;
+        bool disponible;
+
+        if (clase == ClaseBulbo.MIX)
+        {
+            int c1 = saldoPorClase.TryGetValue(ClaseBulbo.Clase1, out var s1) ? s1 : 0;
+            int c2 = saldoPorClase.TryGetValue(ClaseBulbo.Clase2, out var s2) ? s2 : 0;
+            int c3 = saldoPorClase.TryGetValue(ClaseBulbo.Clase3, out var s3) ? s3 : 0;
+
+            stockDisponible = Math.Min(c1, Math.Min(c2, c3)) * 3;
+            int requeridoPorCalibre = (int)Math.Ceiling(cantidad / 3.0);
+            disponible = c1 >= requeridoPorCalibre && c2 >= requeridoPorCalibre && c3 >= requeridoPorCalibre;
+        }
+        else
+        {
+            stockDisponible = saldoPorClase.TryGetValue(clase, out var stock) ? stock : 0;
+            disponible = stockDisponible >= cantidad;
+        }
 
         var response = new DisponibilidadStockResponseDto
         {
@@ -101,7 +119,7 @@ public class GestionStock : IGestionStock
             Clase = clase,
             CantidadSolicitada = cantidad,
             StockDisponible = stockDisponible,
-            Disponible = stockDisponible >= cantidad
+            Disponible = disponible
         };
 
         return ApiResponse<DisponibilidadStockResponseDto>.Ok(response);

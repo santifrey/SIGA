@@ -2,9 +2,11 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using SIGA.API.Authorization;
 using SIGA.API.Middlewares;
 using SIGA.Application;
 using SIGA.Application.Common;
@@ -67,7 +69,10 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// 3.1. Configuración de Autorización Basada en Permisos Dinámicos
 builder.Services.AddAuthorization();
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 // 4. Rate Limiting nativo para proteger /api/v1/auth/login contra fuerza bruta
 builder.Services.AddRateLimiter(options =>

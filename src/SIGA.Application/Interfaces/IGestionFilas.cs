@@ -7,4 +7,5 @@ public interface IGestionFilas
 {
     Task<ApiResponse<IEnumerable<FilaDto>>> ListarPorSucursalYTemporadaAsync(int sucursalId, int temporadaId, CancellationToken cancellationToken = default);
     Task<ApiResponse<FilaDto>> ObtenerPorIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<ApiResponse<FilaDto>> CrearFilaAsync(CreateFilaDto dto, CancellationToken cancellationToken = default);
 }

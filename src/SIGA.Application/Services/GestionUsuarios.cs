@@ -53,11 +53,14 @@ public class GestionUsuarios : IGestionUsuarios
         await _usuarioRepository.UpdateAsync(usuario, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var roles = usuario.UsuarioRoles
-            .Where(ur => ur.Rol != null)
-            .Select(ur => ur.Rol.Nombre)
-            .ToList();
-        var token = _tokenService.GenerateToken(usuario, roles);
+        var rolNombre = usuario.Rol?.Nombre ?? string.Empty;
+        var permisos = usuario.Rol?.RolPermisos?
+            .Where(rp => rp.Permiso != null)
+            .Select(rp => rp.Permiso.Codigo)
+            .Distinct()
+            .ToList() ?? new List<string>();
+
+        var token = _tokenService.GenerateToken(usuario, rolNombre, permisos);
 
         var response = new LoginResponseDto
         {
@@ -68,7 +71,10 @@ public class GestionUsuarios : IGestionUsuarios
             Username = usuario.Username,
             NombreCompleto = usuario.Persona != null ? usuario.Persona.NombreCompleto : usuario.Username,
             Email = usuario.Persona?.Email ?? string.Empty,
-            Roles = roles
+            RolId = usuario.RolId,
+            Rol = rolNombre,
+            Permisos = permisos,
+            Roles = string.IsNullOrEmpty(rolNombre) ? new List<string>() : new List<string> { rolNombre }
         };
 
         return ApiResponse<LoginResponseDto>.Ok(response, "Inicio de sesión exitoso.");
@@ -80,18 +86,30 @@ public class GestionUsuarios : IGestionUsuarios
         if (usuario == null)
             throw new NotFoundException("Usuario no encontrado.");
 
+        var rolNombre = usuario.Rol?.Nombre ?? string.Empty;
+        var permisos = usuario.Rol?.RolPermisos?
+            .Where(rp => rp.Permiso != null)
+            .Select(rp => rp.Permiso.Codigo)
+            .Distinct()
+            .ToList() ?? new List<string>();
+
         var response = new UserInfoResponseDto
         {
             UsuarioId = usuario.Id,
             PersonaId = usuario.PersonaId,
             Username = usuario.Username,
-            NombreCompleto = usuario.Persona != null ? usuario.Persona.NombreCompleto : usuario.Username,
+            Nombre = usuario.Persona?.Nombre ?? string.Empty,
+            Apellido = usuario.Persona?.Apellido ?? string.Empty,
+            NombreCompleto = usuario.Persona?.NombreCompleto ?? usuario.Username,
             Email = usuario.Persona?.Email ?? string.Empty,
             Documento = usuario.Persona?.Documento ?? string.Empty,
-            Roles = usuario.UsuarioRoles
-                .Where(ur => ur.Rol != null)
-                .Select(ur => ur.Rol.Nombre)
-                .ToList()
+            Telefono = usuario.Persona?.Telefono,
+            RolId = usuario.RolId,
+            Rol = rolNombre,
+            Permisos = permisos,
+            UltimoAcceso = usuario.UltimoAcceso,
+            Estado = usuario.Estado,
+            Roles = string.IsNullOrEmpty(rolNombre) ? new List<string>() : new List<string> { rolNombre }
         };
 
         return ApiResponse<UserInfoResponseDto>.Ok(response);
@@ -164,19 +182,14 @@ public class GestionUsuarios : IGestionUsuarios
             Estado = EstadoUsuario.Activo
         };
 
-        if (dto.RolIds != null && dto.RolIds.Any())
+        int targetRolId = dto.RolId > 0 ? dto.RolId : (dto.RolIds != null && dto.RolIds.Any() ? dto.RolIds.First() : 0);
+        if (targetRolId > 0)
         {
-            foreach (var rolId in dto.RolIds)
+            var rol = await _rolRepository.GetByIdAsync(targetRolId, cancellationToken);
+            if (rol != null)
             {
-                var rol = await _rolRepository.GetByIdAsync(rolId, cancellationToken);
-                if (rol != null)
-                {
-                    usuario.UsuarioRoles.Add(new UsuarioRol
-                    {
-                        Usuario = usuario,
-                        RolId = rol.Id
-                    });
-                }
+                usuario.RolId = rol.Id;
+                usuario.Rol = rol;
             }
         }
 
@@ -193,22 +206,28 @@ public class GestionUsuarios : IGestionUsuarios
         if (usuario == null)
             throw new NotFoundException(nameof(Usuario), id);
 
+        if (usuario.Rol?.Nombre == "ADMINISTRADOR" && usuario.Estado == EstadoUsuario.Activo && dto.Estado != EstadoUsuario.Activo)
+        {
+            var activeAdmins = await _usuarioRepository.CountAsync(
+                u => u.Rol.Nombre == "ADMINISTRADOR" && u.Estado == EstadoUsuario.Activo && !u.IsDeleted,
+                cancellationToken);
+
+            if (activeAdmins <= 1)
+            {
+                throw new ReglaNegocioException("No se puede desactivar el único administrador activo.");
+            }
+        }
+
         usuario.Estado = dto.Estado;
 
-        if (dto.RolIds != null)
+        int newRolId = dto.RolId > 0 ? dto.RolId : (dto.RolIds != null && dto.RolIds.Any() ? dto.RolIds.First() : 0);
+        if (newRolId > 0)
         {
-            usuario.UsuarioRoles.Clear();
-            foreach (var rolId in dto.RolIds)
+            var rol = await _rolRepository.GetByIdAsync(newRolId, cancellationToken);
+            if (rol != null)
             {
-                var rol = await _rolRepository.GetByIdAsync(rolId, cancellationToken);
-                if (rol != null)
-                {
-                    usuario.UsuarioRoles.Add(new UsuarioRol
-                    {
-                        UsuarioId = usuario.Id,
-                        RolId = rol.Id
-                    });
-                }
+                usuario.RolId = rol.Id;
+                usuario.Rol = rol;
             }
         }
 
@@ -221,9 +240,21 @@ public class GestionUsuarios : IGestionUsuarios
 
     public async Task<ApiResponse<bool>> DeleteAsync(int id, CancellationToken cancellationToken = default)
     {
-        var usuario = await _usuarioRepository.GetByIdAsync(id, cancellationToken);
+        var usuario = await _usuarioRepository.GetByIdWithRolesAsync(id, cancellationToken);
         if (usuario == null)
             throw new NotFoundException(nameof(Usuario), id);
+
+        if (usuario.Rol?.Nombre == "ADMINISTRADOR" && usuario.Estado == EstadoUsuario.Activo)
+        {
+            var activeAdmins = await _usuarioRepository.CountAsync(
+                u => u.Rol.Nombre == "ADMINISTRADOR" && u.Estado == EstadoUsuario.Activo && !u.IsDeleted,
+                cancellationToken);
+
+            if (activeAdmins <= 1)
+            {
+                throw new ReglaNegocioException("No se puede eliminar el único administrador activo.");
+            }
+        }
 
         await _usuarioRepository.DeleteAsync(usuario, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -233,9 +264,21 @@ public class GestionUsuarios : IGestionUsuarios
 
     public async Task<ApiResponse<bool>> CambiarEstadoAsync(int id, EstadoUsuario nuevoEstado, CancellationToken cancellationToken = default)
     {
-        var usuario = await _usuarioRepository.GetByIdAsync(id, cancellationToken);
+        var usuario = await _usuarioRepository.GetByIdWithRolesAsync(id, cancellationToken);
         if (usuario == null)
             throw new NotFoundException(nameof(Usuario), id);
+
+        if (usuario.Rol?.Nombre == "ADMINISTRADOR" && usuario.Estado == EstadoUsuario.Activo && nuevoEstado != EstadoUsuario.Activo)
+        {
+            var activeAdmins = await _usuarioRepository.CountAsync(
+                u => u.Rol.Nombre == "ADMINISTRADOR" && u.Estado == EstadoUsuario.Activo && !u.IsDeleted,
+                cancellationToken);
+
+            if (activeAdmins <= 1)
+            {
+                throw new ReglaNegocioException("No se puede desactivar el único administrador activo.");
+            }
+        }
 
         usuario.Estado = nuevoEstado;
         await _usuarioRepository.UpdateAsync(usuario, cancellationToken);
@@ -250,17 +293,13 @@ public class GestionUsuarios : IGestionUsuarios
         if (usuario == null)
             throw new NotFoundException(nameof(Usuario), id);
 
-        usuario.UsuarioRoles.Clear();
-        foreach (var rolId in rolIds)
+        if (rolIds != null && rolIds.Any())
         {
-            var rol = await _rolRepository.GetByIdAsync(rolId, cancellationToken);
+            var rol = await _rolRepository.GetByIdAsync(rolIds.First(), cancellationToken);
             if (rol != null)
             {
-                usuario.UsuarioRoles.Add(new UsuarioRol
-                {
-                    UsuarioId = usuario.Id,
-                    RolId = rol.Id
-                });
+                usuario.RolId = rol.Id;
+                usuario.Rol = rol;
             }
         }
 
@@ -291,6 +330,7 @@ public class GestionUsuarios : IGestionUsuarios
 
     private static UsuarioDto MapToDto(Usuario usuario)
     {
+        var rolNombre = usuario.Rol?.Nombre ?? string.Empty;
         return new UsuarioDto
         {
             Id = usuario.Id,
@@ -299,10 +339,12 @@ public class GestionUsuarios : IGestionUsuarios
             NombreCompleto = usuario.Persona != null ? usuario.Persona.NombreCompleto : string.Empty,
             Documento = usuario.Persona?.Documento ?? string.Empty,
             Email = usuario.Persona?.Email,
+            RolId = usuario.RolId,
+            Rol = rolNombre,
             Estado = usuario.Estado,
             FechaCreacion = usuario.FechaCreacion,
             UltimoAcceso = usuario.UltimoAcceso,
-            Roles = usuario.UsuarioRoles.Select(ur => ur.Rol?.Nombre ?? string.Empty).Where(r => !string.IsNullOrEmpty(r)).ToList()
+            Roles = string.IsNullOrEmpty(rolNombre) ? new List<string>() : new List<string> { rolNombre }
         };
     }
 }

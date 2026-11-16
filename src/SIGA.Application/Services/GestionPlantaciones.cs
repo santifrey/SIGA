@@ -86,8 +86,24 @@ public class GestionPlantaciones : IGestionPlantaciones
         if (dto.Detalles.Any(d => d.Cantidad <= 0))
             throw new ValidationException("Todas las cantidades de bulbos a plantar deben ser mayores a cero.");
 
-        if (string.IsNullOrWhiteSpace(dto.IdentificacionFila))
-            throw new ValidationException("La identificación de la fila es obligatoria.");
+        if (dto.CapacidadFila < 0)
+            throw new ValidationException("La capacidad de la fila no puede ser negativa.");
+
+        if (dto.NumeroFila.HasValue && dto.NumeroFila.Value <= 0)
+            throw new ValidationException("El número de fila debe ser un entero mayor a cero.");
+
+        if (dto.NumeroLote.HasValue && dto.NumeroLote.Value <= 0)
+            throw new ValidationException("El orden/número de lote debe ser un entero mayor a cero.");
+
+        bool hasFilaId = dto.FilaId.HasValue && dto.FilaId.Value > 0;
+        bool hasNumeroFila = dto.NumeroFila.HasValue && dto.NumeroFila.Value > 0;
+        bool hasIdentificacion = !string.IsNullOrWhiteSpace(dto.IdentificacionFila);
+
+        if (!hasFilaId && !hasNumeroFila && !hasIdentificacion)
+            throw new ValidationException("Debe especificar la fila mediante FilaId, NumeroFila o IdentificacionFila.");
+
+        if (string.IsNullOrWhiteSpace(dto.IdentificacionFila) && hasNumeroFila)
+            dto.IdentificacionFila = dto.NumeroFila!.Value.ToString();
 
         // 1. Validar Cliente
         var cliente = await _clienteRepository.GetByIdWithPersonaAsync(dto.ClienteId, cancellationToken);
@@ -122,21 +138,75 @@ public class GestionPlantaciones : IGestionPlantaciones
                 }
             }
 
-            // 5. Obtener o crear Fila
-            var fila = await _filaRepository.GetByIdentificacionAsync(
-                dto.SucursalId, 
-                dto.TemporadaId, 
-                dto.IdentificacionFila, 
-                cancellationToken);
+            // 5. Obtener o crear Fila estructurada
+            Fila? fila = null;
 
-            if (fila == null)
+            if (hasFilaId)
             {
-                fila = new Fila(dto.SucursalId, dto.TemporadaId, dto.IdentificacionFila, dto.CapacidadFila);
-                await _filaRepository.AddAsync(fila, cancellationToken);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                fila = await _filaRepository.GetByIdWithLotesAsync(dto.FilaId!.Value, cancellationToken);
+                if (fila == null)
+                    throw new NotFoundException(nameof(Fila), dto.FilaId.Value);
+
+                if (fila.SucursalId != dto.SucursalId || fila.TemporadaId != dto.TemporadaId)
+                    throw new ValidationException("La fila seleccionada no corresponde a la sucursal o temporada indicada.");
+            }
+            else if (hasNumeroFila)
+            {
+                var numStr = dto.NumeroFila!.Value.ToString();
+                fila = await _filaRepository.GetByNumeroAsync(dto.SucursalId, dto.TemporadaId, dto.NumeroFila.Value, cancellationToken);
+                if (fila == null)
+                {
+                    fila = await _filaRepository.GetByIdentificacionAsync(dto.SucursalId, dto.TemporadaId, numStr, cancellationToken);
+                }
+
+                if (fila == null)
+                {
+                    fila = new Fila(dto.SucursalId, dto.TemporadaId, dto.NumeroFila.Value, dto.CapacidadFila);
+                    await _filaRepository.AddAsync(fila, cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                }
+            }
+            else
+            {
+                var ident = dto.IdentificacionFila.Trim();
+                fila = await _filaRepository.GetByIdentificacionAsync(dto.SucursalId, dto.TemporadaId, ident, cancellationToken);
+                if (fila == null)
+                {
+                    fila = new Fila(dto.SucursalId, dto.TemporadaId, ident, dto.CapacidadFila);
+                    await _filaRepository.AddAsync(fila, cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                }
             }
 
-            // 6. Obtener o crear Plantacion
+            // 6. Validar Capacidad de la Fila
+            var totalPlantado = dto.Detalles.Sum(d => d.Cantidad);
+            var ocupacionActual = fila.Lotes?.Where(l => !l.IsDeleted).Sum(l => l.CantidadPlantadaTotal) ?? 0;
+
+            if (fila.Capacidad > 0 && (ocupacionActual + totalPlantado > fila.Capacidad))
+            {
+                var disponible = Math.Max(0, fila.Capacidad - ocupacionActual);
+                throw new ValidationException(
+                    $"La cantidad total de bulbos ({ocupacionActual + totalPlantado}) supera la capacidad máxima de la fila ({fila.Capacidad}). Capacidad disponible: {disponible}.");
+            }
+
+            // 7. Resolver y Validar Orden / Número de Lote
+            int orden;
+            if (dto.NumeroLote.HasValue && dto.NumeroLote.Value > 0)
+            {
+                orden = dto.NumeroLote.Value;
+                var existeOrden = (fila.Lotes != null && fila.Lotes.Any(l => !l.IsDeleted && l.Orden == orden)) ||
+                                  await _loteRepository.ExisteOrdenEnFilaAsync(fila.Id, orden, cancellationToken);
+                if (existeOrden)
+                {
+                    throw new ValidationException($"El orden de lote {orden} ya se encuentra ocupado en la fila '{fila.Identificacion}'.");
+                }
+            }
+            else
+            {
+                orden = await _loteRepository.GetNextOrdenAsync(fila.Id, cancellationToken);
+            }
+
+            // 8. Obtener o crear Plantacion
             Plantacion? plantacion = null;
             if (dto.PlantacionId.HasValue && dto.PlantacionId.Value > 0)
             {
@@ -165,10 +235,7 @@ public class GestionPlantaciones : IGestionPlantaciones
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
 
-            // 7. Crear el Lote
-            var orden = await _loteRepository.GetNextOrdenAsync(fila.Id, cancellationToken);
-            var totalPlantado = dto.Detalles.Sum(d => d.Cantidad);
-
+            // 9. Crear el Lote
             var lote = new Lote(fila.Id, dto.ClienteId, dto.TemporadaId, orden)
             {
                 CantidadPlantadaTotal = totalPlantado,
@@ -178,7 +245,7 @@ public class GestionPlantaciones : IGestionPlantaciones
             await _loteRepository.AddAsync(lote, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            // 8. Crear Detalles de Plantación
+            // 10. Crear Detalles de Plantación
             foreach (var det in dto.Detalles)
             {
                 var detalle = new DetallePlantacion(plantacion.Id, lote.Id, det.Clase, det.Cantidad);
@@ -189,25 +256,29 @@ public class GestionPlantaciones : IGestionPlantaciones
             fila.Estado = EstadoFila.Plantada;
             await _filaRepository.UpdateAsync(fila, cancellationToken);
 
-            // 9. Registrar movimiento de salida del cliente hacia Empresa (Id: 1) para balance de stock
+            // 11. Registrar movimiento de salida del cliente hacia Empresa (Id: 1) para balance de stock
             var operacion = new OperacionComercial
             {
                 Fecha = DateTime.UtcNow,
                 Tipo = TipoOperacionComercial.AjusteStock,
                 Estado = EstadoOperacion.Confirmada,
                 UsuarioCreadorId = usuarioId,
-                Observaciones = $"Plantación - Temporada {temporada.Nombre} - Fila {fila.Identificacion} - Lote #{lote.Id}"
+                Observaciones = $"Plantación - Temporada {temporada.Nombre} - Fila {fila.Identificacion} - Lote #{lote.Id} (Orden {orden})"
             };
 
             await _operacionRepository.AddAsync(operacion, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+            int destinoId = dto.ClienteId == Empresa.SingletonId
+                ? (dto.SucursalId != Empresa.SingletonId && dto.SucursalId > 0 ? dto.SucursalId : 99998)
+                : Empresa.SingletonId;
+
             var movimiento = new MovimientoBulbos(
                 operacion.Id, 
                 dto.ClienteId, 
-                Empresa.SingletonId, // Destino Empresa Singleton
+                destinoId, 
                 usuarioId, 
-                $"Salida por plantación en Fila {fila.Identificacion}, Lote #{lote.Id}");
+                $"Salida por plantación en Fila {fila.Identificacion}, Lote #{lote.Id} (Orden {orden})");
 
             foreach (var det in dto.Detalles)
             {
@@ -222,7 +293,9 @@ public class GestionPlantaciones : IGestionPlantaciones
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
             var loteCompleto = await _loteRepository.GetByIdWithDetailsAsync(lote.Id, cancellationToken);
-            return ApiResponse<LoteDto>.Created(MapLoteToDto(loteCompleto ?? lote), "Distribución de plantación registrada con éxito.");
+            var loteParaDto = loteCompleto ?? lote;
+            loteParaDto.Fila ??= fila;
+            return ApiResponse<LoteDto>.Created(MapLoteToDto(loteParaDto), "Distribución de plantación registrada con éxito.");
         }
         catch
         {

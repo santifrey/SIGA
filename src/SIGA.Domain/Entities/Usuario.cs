@@ -13,5 +13,7 @@ public class Usuario : BaseEntity
     public EstadoUsuario Estado { get; set; } = EstadoUsuario.Activo;
     public DateTime? UltimoAcceso { get; set; }
 
-    public virtual ICollection<UsuarioRol> UsuarioRoles { get; set; } = new List<UsuarioRol>();
+    // Relación 1:N con Rol (cada usuario tiene exactamente un rol asignado)
+    public int RolId { get; set; }
+    public virtual Rol Rol { get; set; } = null!;
 }

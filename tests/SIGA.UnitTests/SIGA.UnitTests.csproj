@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\src\SIGA.Domain\SIGA.Domain.csproj" />
     <ProjectReference Include="..\..\src\SIGA.Application\SIGA.Application.csproj" />
     <ProjectReference Include="..\..\src\SIGA.Infrastructure\SIGA.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\SIGA.API\SIGA.API.csproj" />
   </ItemGroup>
 
 </Project>

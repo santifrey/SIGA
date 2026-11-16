@@ -9,8 +9,12 @@ public class FilaDto
     public string NombreSucursal { get; set; } = string.Empty;
     public int TemporadaId { get; set; }
     public string NombreTemporada { get; set; } = string.Empty;
+    public int? NumeroFila { get; set; }
+    public int? Numero => NumeroFila;
     public string Identificacion { get; set; } = string.Empty;
     public int Capacidad { get; set; }
+    public int CapacidadDisponible { get; set; }
+    public int OcupacionActual { get; set; }
     public EstadoFila Estado { get; set; }
     public string NombreEstado => Estado.ToString();
     public int TotalLotes { get; set; }
@@ -21,6 +25,7 @@ public class CreateFilaDto
 {
     public int SucursalId { get; set; }
     public int TemporadaId { get; set; }
+    public int? NumeroFila { get; set; }
     public string Identificacion { get; set; } = string.Empty;
     public int Capacidad { get; set; } = 0;
 }

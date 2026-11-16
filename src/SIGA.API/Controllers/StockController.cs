@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SIGA.API.Authorization;
 using SIGA.Application.Common;
@@ -8,7 +7,7 @@ using SIGA.Domain.Enums;
 
 namespace SIGA.API.Controllers;
 
-[Authorize(Roles = Roles.Personal)]
+[RequierePermiso(Permisos.StockVer)]
 public class StockController : BaseApiController
 {
     private readonly IGestionStock _gestionStock;

@@ -21,5 +21,19 @@ public class RolConfiguration : IEntityTypeConfiguration<Rol>
 
         builder.Property(r => r.Descripcion)
             .HasMaxLength(255);
+
+        builder.Property(r => r.EsSistema)
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        builder.HasMany(r => r.Usuarios)
+            .WithOne(u => u.Rol)
+            .HasForeignKey(u => u.RolId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(r => r.RolPermisos)
+            .WithOne(rp => rp.Rol)
+            .HasForeignKey(rp => rp.RolId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

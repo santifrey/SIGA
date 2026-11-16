@@ -36,5 +36,14 @@ public class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
             .WithOne(p => p.Usuario)
             .HasForeignKey<Usuario>(u => u.PersonaId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Relación 1:N con Rol
+        builder.Property(u => u.RolId)
+            .IsRequired();
+
+        builder.HasOne(u => u.Rol)
+            .WithMany(r => r.Usuarios)
+            .HasForeignKey(u => u.RolId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

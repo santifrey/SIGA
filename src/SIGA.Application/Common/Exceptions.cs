@@ -33,10 +33,26 @@ public class ValidationException : AppException
     }
 }
 
+public class ReglaNegocioException : ValidationException
+{
+    public ReglaNegocioException(string message, List<string>? errors = null) 
+        : base(message, errors)
+    {
+    }
+}
+
 public class UnauthorizedException : AppException
 {
     public UnauthorizedException(string message = "No autorizado.") 
         : base(message, 401)
+    {
+    }
+}
+
+public class ForbiddenException : AppException
+{
+    public ForbiddenException(string message = "No tiene permisos para realizar esta operación.") 
+        : base(message, 403)
     {
     }
 }

@@ -6,6 +6,7 @@
 import { sucursalesService } from '../services/sucursales-service.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/escape-html.js';
+import { getProhibitionIcon } from '../utils/icons.js';
 
 export class SucursalesView {
   constructor(router) {
@@ -310,8 +311,9 @@ export class SucursalesView {
                       Editar
                     </button>
                     ${s.activa ? `
-                      <button class="btn btn-sm btn-outline btn-disable-sucursal" data-id="${escapeHtml(s.id)}" style="color: var(--danger); border-color: var(--danger-border);">
-                        Desactivar
+                      <button class="btn btn-sm btn-outline btn-disable-sucursal d-flex align-center gap-xs" data-id="${escapeHtml(s.id)}" style="color: var(--danger); border-color: var(--danger-border);">
+                        ${getProhibitionIcon({ size: 'sm', title: 'Desactivar' })}
+                        <span>Desactivar</span>
                       </button>
                     ` : ''}
                   </div>
@@ -356,6 +358,11 @@ export class SucursalesView {
                           <button class="btn-icon btn-edit-sucursal" data-id="${escapeHtml(s.id)}" title="Editar">
                             <svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                           </button>
+                          ${s.activa ? `
+                            <button class="btn-icon btn-disable-sucursal" data-id="${escapeHtml(s.id)}" title="Desactivar">
+                              ${getProhibitionIcon({ size: 'sm', title: 'Desactivar sucursal' })}
+                            </button>
+                          ` : ''}
                         </div>
                       </td>
                     </tr>

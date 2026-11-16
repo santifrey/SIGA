@@ -15,8 +15,9 @@ public class UsuarioRepository : Repository<Usuario>, IUsuarioRepository
         var normalized = username.Trim().ToLower();
         return await _dbSet
             .Include(u => u.Persona)
-            .Include(u => u.UsuarioRoles)
-                .ThenInclude(ur => ur.Rol)
+            .Include(u => u.Rol)
+                .ThenInclude(r => r.RolPermisos)
+                    .ThenInclude(rp => rp.Permiso)
             .FirstOrDefaultAsync(u => u.Username.ToLower() == normalized || (u.Persona != null && u.Persona.Email.ToLower() == normalized), cancellationToken);
     }
 
@@ -24,8 +25,9 @@ public class UsuarioRepository : Repository<Usuario>, IUsuarioRepository
     {
         return await _dbSet
             .Include(u => u.Persona)
-            .Include(u => u.UsuarioRoles)
-                .ThenInclude(ur => ur.Rol)
+            .Include(u => u.Rol)
+                .ThenInclude(r => r.RolPermisos)
+                    .ThenInclude(rp => rp.Permiso)
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
     }
 
@@ -33,8 +35,9 @@ public class UsuarioRepository : Repository<Usuario>, IUsuarioRepository
     {
         return await _dbSet
             .Include(u => u.Persona)
-            .Include(u => u.UsuarioRoles)
-                .ThenInclude(ur => ur.Rol)
+            .Include(u => u.Rol)
+                .ThenInclude(r => r.RolPermisos)
+                    .ThenInclude(rp => rp.Permiso)
             .ToListAsync(cancellationToken);
     }
 }

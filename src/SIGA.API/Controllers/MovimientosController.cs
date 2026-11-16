@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SIGA.API.Authorization;
 using SIGA.Application.Common;
@@ -8,7 +7,6 @@ using SIGA.Domain.Enums;
 
 namespace SIGA.API.Controllers;
 
-[Authorize(Roles = Roles.Personal)]
 public class MovimientosController : BaseApiController
 {
     private readonly IGestionMovimientos _gestionMovimientos;
@@ -19,6 +17,7 @@ public class MovimientosController : BaseApiController
     }
 
     [HttpGet]
+    [RequierePermiso(Permisos.MovimientosVer)]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<MovimientoBulbosDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<MovimientoBulbosDto>>>> GetAll(
         [FromQuery] EstadoMovimiento? estado,
@@ -35,7 +34,8 @@ public class MovimientosController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
+    [RequierePermiso(Permisos.MovimientosVer)]
     [ProducesResponseType(typeof(ApiResponse<MovimientoBulbosDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<MovimientoBulbosDto>>> GetById(int id, CancellationToken cancellationToken)
@@ -44,7 +44,8 @@ public class MovimientosController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpGet("por-cliente/{clienteId}")]
+    [HttpGet("por-cliente/{clienteId:int}")]
+    [RequierePermiso(Permisos.MovimientosVer)]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<MovimientoBulbosDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<MovimientoBulbosDto>>>> GetByCliente(int clienteId, CancellationToken cancellationToken)
     {
@@ -53,6 +54,7 @@ public class MovimientosController : BaseApiController
     }
 
     [HttpPost]
+    [RequierePermiso(Permisos.MovimientosCrear)]
     [ProducesResponseType(typeof(ApiResponse<MovimientoBulbosDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<MovimientoBulbosDto>>> Create([FromBody] CrearMovimientoDto dto, CancellationToken cancellationToken)
@@ -61,8 +63,8 @@ public class MovimientosController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpPost("{id}/confirmar")]
-    [Authorize(Roles = Roles.Gestion)]
+    [HttpPost("{id:int}/confirmar")]
+    [RequierePermiso(Permisos.MovimientosConfirmar)]
     [ProducesResponseType(typeof(ApiResponse<MovimientoBulbosDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -72,8 +74,8 @@ public class MovimientosController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpPost("{id}/anular")]
-    [Authorize(Roles = Roles.Gestion)]
+    [HttpPost("{id:int}/anular")]
+    [RequierePermiso(Permisos.MovimientosAnular)]
     [ProducesResponseType(typeof(ApiResponse<MovimientoBulbosDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

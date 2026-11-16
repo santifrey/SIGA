@@ -12,6 +12,28 @@ public class RolRepository : Repository<Rol>, IRolRepository
 
     public async Task<Rol?> GetByNombreAsync(string nombre, CancellationToken cancellationToken = default)
     {
-        return await _dbSet.FirstOrDefaultAsync(r => r.Nombre.ToLower() == nombre.ToLower(), cancellationToken);
+        return await _dbSet
+            .Include(r => r.RolPermisos)
+                .ThenInclude(rp => rp.Permiso)
+            .Include(r => r.Usuarios)
+            .FirstOrDefaultAsync(r => r.Nombre.ToLower() == nombre.ToLower(), cancellationToken);
+    }
+
+    public async Task<Rol?> GetByIdWithPermisosAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Include(r => r.RolPermisos)
+                .ThenInclude(rp => rp.Permiso)
+            .Include(r => r.Usuarios)
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Rol>> GetAllWithPermisosAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Include(r => r.RolPermisos)
+                .ThenInclude(rp => rp.Permiso)
+            .Include(r => r.Usuarios)
+            .ToListAsync(cancellationToken);
     }
 }

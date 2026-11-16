@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SIGA.API.Authorization;
 using SIGA.Application.Common;
@@ -7,7 +6,6 @@ using SIGA.Application.Interfaces;
 
 namespace SIGA.API.Controllers;
 
-[Authorize(Roles = Roles.Personal)]
 public class SucursalesController : BaseApiController
 {
     private readonly IGestionSucursales _gestionSucursales;
@@ -18,6 +16,7 @@ public class SucursalesController : BaseApiController
     }
 
     [HttpGet]
+    [RequierePermiso(Permisos.SucursalesVer)]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<SucursalDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<SucursalDto>>>> GetAll(CancellationToken cancellationToken)
     {
@@ -26,6 +25,7 @@ public class SucursalesController : BaseApiController
     }
 
     [HttpGet("{id}")]
+    [RequierePermiso(Permisos.SucursalesVer)]
     [ProducesResponseType(typeof(ApiResponse<SucursalDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<SucursalDto>>> GetById(int id, CancellationToken cancellationToken)
@@ -35,7 +35,7 @@ public class SucursalesController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Roles = Roles.Administrador)]
+    [RequierePermiso(Permisos.SucursalesGestionar)]
     [ProducesResponseType(typeof(ApiResponse<SucursalDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<SucursalDto>>> Create([FromBody] CreateSucursalDto dto, CancellationToken cancellationToken)
@@ -45,7 +45,7 @@ public class SucursalesController : BaseApiController
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [RequierePermiso(Permisos.SucursalesGestionar)]
     [ProducesResponseType(typeof(ApiResponse<SucursalDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<SucursalDto>>> Update(int id, [FromBody] UpdateSucursalDto dto, CancellationToken cancellationToken)
@@ -55,7 +55,7 @@ public class SucursalesController : BaseApiController
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [RequierePermiso(Permisos.SucursalesGestionar)]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> Delete(int id, CancellationToken cancellationToken)

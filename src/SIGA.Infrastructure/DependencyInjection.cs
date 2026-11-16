@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<ICosechaRepository, CosechaRepository>();
         services.AddScoped<IPrecioClaseRepository, PrecioClaseRepository>();
         services.AddScoped<IVentaRepository, VentaRepository>();
+        services.AddScoped<IMovimientoComercialRepository, MovimientoComercialRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;

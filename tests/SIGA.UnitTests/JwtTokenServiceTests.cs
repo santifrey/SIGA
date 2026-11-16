@@ -37,6 +37,8 @@ public class JwtTokenServiceTests
             Id = 10,
             PersonaId = 5,
             Username = "juanperez",
+            RolId = 2,
+            Rol = new Rol { Id = 2, Nombre = "VENDEDOR" },
             Persona = new Persona
             {
                 Id = 5,
@@ -46,10 +48,10 @@ public class JwtTokenServiceTests
                 Email = "juan.perez@azafranmediterraneo.com"
             }
         };
-        var roles = new List<string> { "ADMINISTRADOR", "VENDEDOR" };
+        var permisos = new List<string> { "CLIENTES_VER", "CLIENTES_GESTIONAR", "STOCK_VER" };
 
         // Act
-        var tokenString = _jwtService.GenerateToken(usuario, roles);
+        var tokenString = _jwtService.GenerateToken(usuario, "VENDEDOR", permisos);
 
         // Assert
         Assert.NotNull(tokenString);
@@ -73,9 +75,17 @@ public class JwtTokenServiceTests
         Assert.NotNull(emailClaim);
         Assert.Equal("juan.perez@azafranmediterraneo.com", emailClaim.Value);
 
+        // Single role claim assertion
         var roleClaims = jwt.Claims.Where(c => c.Type == ClaimTypes.Role || c.Type == "role").Select(c => c.Value).ToList();
-        Assert.Contains("ADMINISTRADOR", roleClaims);
-        Assert.Contains("VENDEDOR", roleClaims);
+        Assert.Single(roleClaims);
+        Assert.Equal("VENDEDOR", roleClaims[0]);
+
+        // Individual permission claims assertion
+        var permisoClaims = jwt.Claims.Where(c => c.Type == "permiso").Select(c => c.Value).ToList();
+        Assert.Equal(3, permisoClaims.Count);
+        Assert.Contains("CLIENTES_VER", permisoClaims);
+        Assert.Contains("CLIENTES_GESTIONAR", permisoClaims);
+        Assert.Contains("STOCK_VER", permisoClaims);
     }
 
     [Fact]
@@ -89,6 +99,6 @@ public class JwtTokenServiceTests
         var usuario = new Usuario { Id = 1, PersonaId = 1, Username = "admin" };
 
         // Act & Assert
-        Assert.Throws<InvalidOperationException>(() => service.GenerateToken(usuario, new[] { "ADMINISTRADOR" }));
+        Assert.Throws<InvalidOperationException>(() => service.GenerateToken(usuario, new[] { "ROLES_VER" }));
     }
 }

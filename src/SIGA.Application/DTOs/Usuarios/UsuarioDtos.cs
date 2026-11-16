@@ -10,6 +10,8 @@ public class UsuarioDto
     public string NombreCompleto { get; set; } = string.Empty;
     public string Documento { get; set; } = string.Empty;
     public string? Email { get; set; }
+    public int RolId { get; set; }
+    public string Rol { get; set; } = string.Empty;
     public EstadoUsuario Estado { get; set; }
     public DateTime FechaCreacion { get; set; }
     public DateTime? UltimoAcceso { get; set; }
@@ -28,12 +30,14 @@ public class CreateUsuarioDto
 
     public string Username { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
+    public int RolId { get; set; }
     public List<int> RolIds { get; set; } = new();
 }
 
 public class UpdateUsuarioDto
 {
     public EstadoUsuario Estado { get; set; }
+    public int RolId { get; set; }
     public List<int> RolIds { get; set; } = new();
 }
 
@@ -50,5 +54,6 @@ public class CambiarPasswordDto
 
 public class AsignarRolesDto
 {
+    public int RolId { get; set; }
     public List<int> RolIds { get; set; } = new();
 }

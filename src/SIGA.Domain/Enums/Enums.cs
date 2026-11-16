@@ -34,13 +34,30 @@ public enum TipoParticipante
     Proveedor = 3
 }
 
+public enum TipoMovimientoComercial
+{
+    VentaACliente = 1,
+    CompraACliente = 2,
+    TraspasoEntreClientes = 3
+}
+
+public enum EstadoMovimientoComercial
+{
+    PendienteRevision = 0,
+    AprobadoAdmin = 1,
+    Facturado = 2,
+    Finalizado = 3,
+    Rechazado = 4
+}
+
 public enum ClaseBulbo
 {
     Clase0 = 0,
     Clase1 = 1,
     Clase2 = 2,
     Clase3 = 3,
-    Clase4 = 4
+    Clase4 = 4,
+    MIX = 5
 }
 
 public enum EstadoOperacion
@@ -114,6 +131,7 @@ public enum EstadoCosecha
     Cerrada = 2
 }
 
+[Obsolete("Utilizar EstadoMovimientoComercial en su lugar.")]
 public enum EstadoVenta
 {
     Registrada = 0,
@@ -141,12 +159,16 @@ public enum EstadoFactura
 
 public enum AccionAprobacion
 {
+    Registrado = 0,
     EnviadoARevision = 0,
+    AprobadoAdmin = 1,
     AprobadoAdministracion = 1,
     Observado = 2,
     Facturado = 3,
+    Finalizado = 4,
     AprobacionFinal = 4,
-    Rechazado = 5
+    Rechazado = 5,
+    Corregido = 6
 }
 
 

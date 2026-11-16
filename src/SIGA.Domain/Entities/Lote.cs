@@ -16,6 +16,7 @@ public class Lote : BaseEntity
     public virtual Temporada Temporada { get; set; } = null!;
 
     public int Orden { get; set; }
+    public int NumeroLote => Orden;
     public int CantidadPlantadaTotal { get; set; }
     public EstadoLote Estado { get; set; } = EstadoLote.Asignado;
 
@@ -46,8 +47,8 @@ public class Lote : BaseEntity
             throw new OperacionInvalidaException("El cliente titular es requerido para el lote.");
         if (temporadaId <= 0)
             throw new OperacionInvalidaException("La temporada es requerida para el lote.");
-        if (orden < 0)
-            throw new OperacionInvalidaException("El orden del lote en la fila debe ser mayor o igual a cero.");
+        if (orden <= 0)
+            throw new OperacionInvalidaException("El orden del lote en la fila debe ser mayor a cero.");
 
         FilaId = filaId;
         ClienteId = clienteId;

@@ -26,6 +26,7 @@ public class LoteDto
     public int TemporadaId { get; set; }
     public string NombreTemporada { get; set; } = string.Empty;
     public int Orden { get; set; }
+    public int NumeroLote => Orden;
     public int CantidadPlantadaTotal { get; set; }
     public EstadoLote Estado { get; set; }
     public string NombreEstado => Estado.ToString();

@@ -12,6 +12,9 @@ public class FilaConfiguration : IEntityTypeConfiguration<Fila>
 
         builder.HasKey(f => f.Id);
 
+        builder.Property(f => f.NumeroFila)
+            .IsRequired(false);
+
         builder.Property(f => f.Identificacion)
             .IsRequired()
             .HasMaxLength(50);

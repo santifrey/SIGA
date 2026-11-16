@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SIGA.API.Authorization;
 using SIGA.Application.Common;
 using SIGA.Application.DTOs.Usuarios;
 using SIGA.Application.Interfaces;
@@ -7,7 +8,6 @@ using SIGA.Domain.Enums;
 
 namespace SIGA.API.Controllers;
 
-[Authorize(Roles = "ADMINISTRADOR")]
 public class UsuariosController : BaseApiController
 {
     private readonly IGestionUsuarios _gestionUsuarios;
@@ -18,6 +18,7 @@ public class UsuariosController : BaseApiController
     }
 
     [HttpGet]
+    [RequierePermiso(Permisos.UsuariosVer)]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<UsuarioDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<UsuarioDto>>>> GetAll(CancellationToken cancellationToken)
     {
@@ -25,7 +26,8 @@ public class UsuariosController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
+    [RequierePermiso(Permisos.UsuariosVer)]
     [ProducesResponseType(typeof(ApiResponse<UsuarioDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<UsuarioDto>>> GetById(int id, CancellationToken cancellationToken)
@@ -35,6 +37,7 @@ public class UsuariosController : BaseApiController
     }
 
     [HttpPost]
+    [RequierePermiso(Permisos.UsuariosGestionar)]
     [ProducesResponseType(typeof(ApiResponse<UsuarioDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<UsuarioDto>>> Create([FromBody] CreateUsuarioDto dto, CancellationToken cancellationToken)
@@ -43,7 +46,8 @@ public class UsuariosController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
+    [RequierePermiso(Permisos.UsuariosGestionar)]
     [ProducesResponseType(typeof(ApiResponse<UsuarioDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<UsuarioDto>>> Update(int id, [FromBody] UpdateUsuarioDto dto, CancellationToken cancellationToken)
@@ -52,7 +56,8 @@ public class UsuariosController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
+    [RequierePermiso(Permisos.UsuariosGestionar)]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> Delete(int id, CancellationToken cancellationToken)
@@ -61,7 +66,8 @@ public class UsuariosController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpPut("{id}/estado")]
+    [HttpPut("{id:int}/estado")]
+    [RequierePermiso(Permisos.UsuariosGestionar)]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<bool>>> CambiarEstado(int id, [FromBody] CambiarEstadoUsuarioDto dto, CancellationToken cancellationToken)
     {
@@ -69,21 +75,26 @@ public class UsuariosController : BaseApiController
         return CustomResult(result);
     }
 
-    [HttpPost("{id}/roles")]
+    [HttpPost("{id:int}/roles")]
+    [RequierePermiso(Permisos.UsuariosGestionar)]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<bool>>> AsignarRoles(int id, [FromBody] AsignarRolesDto dto, CancellationToken cancellationToken)
     {
-        var result = await _gestionUsuarios.AsignarRolesAsync(id, dto.RolIds, cancellationToken);
+        var rolIds = dto.RolIds != null && dto.RolIds.Any()
+            ? dto.RolIds
+            : (dto.RolId > 0 ? new List<int> { dto.RolId } : new List<int>());
+
+        var result = await _gestionUsuarios.AsignarRolesAsync(id, rolIds, cancellationToken);
         return CustomResult(result);
     }
 
-    [HttpPut("{id}/password")]
+    [HttpPut("{id:int}/password")]
     [Authorize] // Permite al propio usuario o admin cambiar contraseña
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<bool>>> CambiarPassword(int id, [FromBody] CambiarPasswordDto dto, CancellationToken cancellationToken)
     {
-        // Un usuario sólo puede cambiar su propia contraseña a menos que sea ADMINISTRADOR
-        if (CurrentUserId != id && !User.IsInRole("ADMINISTRADOR"))
+        // Un usuario sólo puede cambiar su propia contraseña a menos que sea ADMINISTRADOR o tenga USUARIOS_GESTIONAR
+        if (CurrentUserId != id && !User.IsInRole("ADMINISTRADOR") && !User.HasClaim("permiso", Permisos.UsuariosGestionar))
         {
             return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<bool>.Failure("No tiene permisos para modificar la contraseña de otro usuario.", 403));
         }

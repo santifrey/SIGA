@@ -17,6 +17,8 @@ export class PlantacionesView {
     this.temporadas = [];
     this.sucursales = [];
     this.clientes = [];
+    this.filas = [];
+    this.isNuevaFila = false;
     this.selectedTemporadaId = null;
     this.selectedSucursalId = null;
     this.lotes = [];
@@ -80,28 +82,83 @@ export class PlantacionesView {
           <div class="card-body">
             <form id="form-distribucion" novalidate>
               <div class="form-row two-cols mb-3">
+                <!-- Columna 1: Selección y Creación de Fila -->
                 <div class="form-group">
-                  <label for="fila-id" class="form-label">
-                    Identificador de Fila / Surco <span class="required-mark">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="fila-id"
-                    class="form-control"
-                    placeholder="ej. F-01, Fila Norte 3"
-                    required
-                  />
-                  <small class="text-muted text-xs">Identificador único del surco o bancal en el campo</small>
+                  <div class="d-flex justify-between align-center mb-1">
+                    <label for="select-fila" class="form-label mb-0">
+                      Fila / Surco <span class="required-mark">*</span>
+                    </label>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-toggle-nueva-fila" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
+                      + Nueva Fila
+                    </button>
+                  </div>
+                  <select id="select-fila" class="form-control" required>
+                    <option value="">-- Seleccionar Fila --</option>
+                  </select>
+                  <small class="text-muted text-xs" id="help-fila">Seleccione una fila existente o agregue una nueva</small>
+
+                  <!-- Panel desplegable para Nueva Fila (oculto por defecto) -->
+                  <div id="panel-nueva-fila" class="mt-2 p-2 border rounded hidden" style="background: var(--surface-alt); border: 1px dashed var(--border) !important; border-radius: var(--radius-sm);">
+                    <div class="d-flex justify-between align-center mb-2">
+                      <span class="font-bold text-xs" style="color: var(--primary);">Parámetros de Nueva Fila:</span>
+                      <button type="button" class="btn btn-sm btn-secondary" id="btn-cancel-nueva-fila" style="padding: 0.1rem 0.4rem; font-size: 0.7rem;">✕ Cancelar</button>
+                    </div>
+                    <div class="form-row two-cols">
+                      <div class="form-group mb-0">
+                        <label for="input-nueva-fila-num" class="form-label text-xs mb-1">Número de Fila <span class="required-mark">*</span></label>
+                        <input
+                          type="number"
+                          id="input-nueva-fila-num"
+                          class="form-control"
+                          min="1"
+                          step="1"
+                          placeholder="ej. 15"
+                        />
+                      </div>
+                      <div class="form-group mb-0">
+                        <label for="input-nueva-fila-cap" class="form-label text-xs mb-1">Capacidad Total <span class="required-mark">*</span></label>
+                        <input
+                          type="number"
+                          id="input-nueva-fila-cap"
+                          class="form-control"
+                          min="100"
+                          step="100"
+                          value="5000"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div class="form-group">
-                  <label for="select-cliente" class="form-label">
-                    Cliente (Titular del Lote) <span class="required-mark">*</span>
-                  </label>
-                  <select id="select-cliente" class="form-control" required>
-                    <option value="">-- Seleccionar Cliente --</option>
-                  </select>
-                  <small class="text-muted text-xs">Inversor o propietario de los bulbos plantados</small>
+                <!-- Columna 2: Orden de Lote y Cliente Titular -->
+                <div>
+                  <div class="form-group mb-3">
+                    <label for="input-lote-orden" class="form-label">
+                      Número / Orden de Lote <span class="required-mark">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      id="input-lote-orden"
+                      class="form-control"
+                      min="1"
+                      step="1"
+                      placeholder="ej. 1"
+                      required
+                    />
+                    <small class="text-muted text-xs" id="help-lote-orden">
+                      Orden correlativo dentro de la fila seleccionada
+                    </small>
+                  </div>
+
+                  <div class="form-group mb-0">
+                    <label for="select-cliente" class="form-label">
+                      Cliente (Titular del Lote) <span class="required-mark">*</span>
+                    </label>
+                    <select id="select-cliente" class="form-control" required>
+                      <option value="">-- Seleccionar Cliente --</option>
+                    </select>
+                    <small class="text-muted text-xs">Inversor o propietario de los bulbos plantados</small>
+                  </div>
                 </div>
               </div>
 
@@ -185,21 +242,45 @@ export class PlantacionesView {
   }
 
   _bindEvents() {
-    this.container.querySelector('#btn-refresh-plantaciones').addEventListener('click', () => {
-      this._reloadLotes();
+    this.container.querySelector('#btn-refresh-plantaciones').addEventListener('click', async () => {
+      await Promise.all([
+        this._reloadFilas(),
+        this._reloadLotes()
+      ]);
+      toast.info('Datos de plantación actualizados');
     });
 
     // Cambio de temporada seleccionada
     const tempSelect = this.container.querySelector('#select-temporada');
-    tempSelect.addEventListener('change', (e) => {
+    tempSelect.addEventListener('change', async (e) => {
       this.selectedTemporadaId = e.target.value;
-      this._reloadLotes();
+      await Promise.all([
+        this._reloadFilas(),
+        this._reloadLotes()
+      ]);
     });
 
     // Cambio de sucursal
     const sucSelect = this.container.querySelector('#select-sucursal');
-    sucSelect.addEventListener('change', (e) => {
+    sucSelect.addEventListener('change', async (e) => {
       this.selectedSucursalId = e.target.value;
+      await this._reloadFilas();
+    });
+
+    // Selector de fila existente
+    const filaSelect = this.container.querySelector('#select-fila');
+    filaSelect.addEventListener('change', () => {
+      this._handleFilaSelectionChange();
+    });
+
+    // Toggle Nueva Fila
+    this.container.querySelector('#btn-toggle-nueva-fila').addEventListener('click', () => {
+      this._setNuevaFilaMode(!this.isNuevaFila);
+    });
+
+    // Cancelar Nueva Fila
+    this.container.querySelector('#btn-cancel-nueva-fila').addEventListener('click', () => {
+      this._setNuevaFilaMode(false);
     });
 
     // Cálculo dinámico de total al tipear en cantidades
@@ -282,10 +363,124 @@ export class PlantacionesView {
       }
 
       if (this.selectedTemporadaId) {
-        await this._reloadLotes();
+        await Promise.all([
+          this._reloadFilas(),
+          this._reloadLotes()
+        ]);
       }
     } catch (err) {
       toast.error('Error al inicializar listas para plantación: ' + err.message);
+    }
+  }
+
+  async _reloadFilas() {
+    const filaSelect = this.container.querySelector('#select-fila');
+    if (!filaSelect) return;
+
+    if (!this.selectedSucursalId || !this.selectedTemporadaId) {
+      filaSelect.innerHTML = '<option value="">Seleccione temporada y sucursal</option>';
+      filaSelect.disabled = true;
+      return;
+    }
+
+    filaSelect.disabled = false;
+    filaSelect.innerHTML = '<option value="">Cargando filas...</option>';
+
+    try {
+      const filas = await plantacionesService.listarFilasPorSucursalYTemporada(
+        this.selectedSucursalId,
+        this.selectedTemporadaId
+      );
+      this.filas = Array.isArray(filas) ? filas : (filas?.items || []);
+
+      if (this.filas.length > 0) {
+        filaSelect.innerHTML = `
+          <option value="">-- Seleccionar Fila (${this.filas.length} disponibles) --</option>
+          ${this.filas.map(f => `
+            <option value="${escapeHtml(f.id)}">
+              Fila ${escapeHtml(f.identificacion)} (Cap: ${(f.capacidad || 0).toLocaleString()} | Lotes: ${f.totalLotes || 0})
+            </option>
+          `).join('')}
+          <option value="__nueva__">+ Crear Nueva Fila...</option>
+        `;
+      } else {
+        filaSelect.innerHTML = `
+          <option value="">No hay filas registradas aún</option>
+          <option value="__nueva__">+ Crear Nueva Fila...</option>
+        `;
+      }
+
+      if (!this.isNuevaFila) {
+        this._handleFilaSelectionChange();
+      }
+    } catch (err) {
+      filaSelect.innerHTML = '<option value="">Error al cargar filas</option>';
+      toast.error('Error al cargar filas: ' + err.message);
+    }
+  }
+
+  _handleFilaSelectionChange() {
+    const filaSelect = this.container.querySelector('#select-fila');
+    const loteInput = this.container.querySelector('#input-lote-orden');
+    const helpLote = this.container.querySelector('#help-lote-orden');
+    const selectedVal = filaSelect.value;
+
+    if (selectedVal === '__nueva__') {
+      this._setNuevaFilaMode(true);
+      return;
+    }
+
+    if (!selectedVal) {
+      loteInput.value = '';
+      helpLote.textContent = 'Seleccione una fila para calcular el orden sugerido';
+      return;
+    }
+
+    const selectedFila = this.filas.find(f => String(f.id) === String(selectedVal));
+    if (selectedFila) {
+      const nextOrden = (selectedFila.totalLotes || 0) + 1;
+      loteInput.value = nextOrden;
+      helpLote.textContent = `Sugerido: Lote #${nextOrden} (${selectedFila.totalLotes || 0} lotes existentes en Fila ${selectedFila.identificacion})`;
+    }
+  }
+
+  _setNuevaFilaMode(enable) {
+    this.isNuevaFila = enable;
+    const panel = this.container.querySelector('#panel-nueva-fila');
+    const toggleBtn = this.container.querySelector('#btn-toggle-nueva-fila');
+    const filaSelect = this.container.querySelector('#select-fila');
+    const inputNum = this.container.querySelector('#input-nueva-fila-num');
+    const inputCap = this.container.querySelector('#input-nueva-fila-cap');
+    const loteInput = this.container.querySelector('#input-lote-orden');
+    const helpLote = this.container.querySelector('#help-lote-orden');
+
+    if (enable) {
+      panel.classList.remove('hidden');
+      toggleBtn.classList.add('active');
+      toggleBtn.textContent = '✕ Cancelar Nueva';
+      filaSelect.value = '__nueva__';
+
+      // Sugerir próximo número entero de fila disponible
+      const existingNums = this.filas
+        .map(f => parseInt(f.identificacion, 10))
+        .filter(n => !isNaN(n) && n > 0);
+      const nextFilaNum = existingNums.length > 0 ? Math.max(...existingNums) + 1 : (this.filas.length + 1);
+      inputNum.value = nextFilaNum;
+      inputCap.value = 5000;
+
+      // Para nueva fila, el primer lote siempre es orden 1
+      loteInput.value = 1;
+      helpLote.textContent = 'Sugerido: Lote #1 (Primer lote de la nueva fila)';
+      inputNum.focus();
+    } else {
+      panel.classList.add('hidden');
+      toggleBtn.classList.remove('active');
+      toggleBtn.textContent = '+ Nueva Fila';
+      inputNum.value = '';
+      if (filaSelect.value === '__nueva__') {
+        filaSelect.value = '';
+      }
+      this._handleFilaSelectionChange();
     }
   }
 
@@ -303,11 +498,17 @@ export class PlantacionesView {
 
     try {
       // Obtener o inicializar la plantación de la temporada
-      this.currentPlantacion = await plantacionesService.obtenerPorTemporada(this.selectedTemporadaId);
+      this.currentPlantacion = await plantacionesService.obtenerPorTemporada(this.selectedTemporadaId).catch(() => null);
+
+      if (!this.currentPlantacion) {
+        this.lotes = [];
+        this._renderTablaLotes();
+        return;
+      }
 
       // Obtener lotes de la temporada
-      const lotes = await plantacionesService.listarLotes(this.selectedTemporadaId);
-      this.lotes = Array.isArray(lotes) ? lotes : (lotes.items || []);
+      const lotes = await plantacionesService.listarLotes(this.selectedTemporadaId).catch(() => []);
+      this.lotes = Array.isArray(lotes) ? lotes : (lotes?.items || []);
 
       this._renderTablaLotes();
     } catch (err) {
@@ -362,11 +563,14 @@ export class PlantacionesView {
         <tr>
           <td>
             <span class="font-bold text-xs" style="color: var(--accent-800); background: var(--accent-100); padding: 3px 8px; border-radius: var(--radius-sm);">
-              ${escapeHtml(l.filaIdentificacion || 'F-??')}
+              Fila ${escapeHtml(l.filaIdentificacion || l.identificacionFila || 'F-??')}
             </span>
           </td>
           <td>
-            <span class="font-semibold text-main">${escapeHtml(l.numeroLote || `LOT-${l.id}`)}</span>
+            <span class="font-semibold text-main">
+              ${escapeHtml(l.numeroLote || `LOT-${l.id}`)}
+              ${l.orden ? `<span class="badge badge-secondary ml-1" style="font-size: 0.7rem;">Orden ${escapeHtml(l.orden)}</span>` : ''}
+            </span>
           </td>
           <td>
             <div class="font-medium text-main">${escapeHtml(clienteNombre || 'Sin asignar')}</div>
@@ -400,25 +604,75 @@ export class PlantacionesView {
       toast.warning('Seleccione una temporada válida.');
       return;
     }
-
-    const filaIdentificacion = this.container.querySelector('#fila-id').value.trim();
-    const clienteId = this.container.querySelector('#select-cliente').value;
-
-    if (!filaIdentificacion) {
-      toast.warning('Ingrese el identificador de la fila (ej. F-01).');
+    if (!this.selectedSucursalId) {
+      toast.warning('Seleccione una sucursal válida.');
       return;
     }
+
+    const clienteId = this.container.querySelector('#select-cliente').value;
     if (!clienteId) {
       toast.warning('Seleccione el cliente titular del lote.');
       return;
     }
 
-    const cantidades = [];
+    let filaId = null;
+    let numeroFila = null;
+    let identificacionFila = '';
+    let capacidadFila = 0;
+
+    if (this.isNuevaFila) {
+      const numVal = this.container.querySelector('#input-nueva-fila-num').value.trim();
+      const capVal = this.container.querySelector('#input-nueva-fila-cap').value.trim();
+      numeroFila = parseInt(numVal, 10);
+      capacidadFila = parseInt(capVal, 10);
+
+      if (isNaN(numeroFila) || numeroFila <= 0) {
+        toast.warning('Ingrese un número entero positivo para la nueva fila.');
+        this.container.querySelector('#input-nueva-fila-num').focus();
+        return;
+      }
+      if (isNaN(capacidadFila) || capacidadFila <= 0) {
+        toast.warning('Ingrese una capacidad entera positiva para la nueva fila.');
+        this.container.querySelector('#input-nueva-fila-cap').focus();
+        return;
+      }
+      identificacionFila = String(numeroFila);
+    } else {
+      const selectedVal = this.container.querySelector('#select-fila').value;
+      if (!selectedVal || selectedVal === '__nueva__') {
+        toast.warning('Seleccione una fila existente o cree una nueva fila.');
+        return;
+      }
+      filaId = parseInt(selectedVal, 10);
+      const selectedFila = this.filas.find(f => f.id === filaId);
+      if (!selectedFila) {
+        toast.warning('Fila seleccionada inválida.');
+        return;
+      }
+      identificacionFila = String(selectedFila.identificacion);
+      const parsedNum = parseInt(identificacionFila, 10);
+      numeroFila = !isNaN(parsedNum) ? parsedNum : null;
+      capacidadFila = Number(selectedFila.capacidad) || 5000;
+    }
+
+    // Validar orden de lote
+    const loteVal = this.container.querySelector('#input-lote-orden').value.trim();
+    const numeroLote = parseInt(loteVal, 10);
+    if (isNaN(numeroLote) || numeroLote <= 0) {
+      toast.warning('Ingrese un número entero positivo para el orden del lote.');
+      this.container.querySelector('#input-lote-orden').focus();
+      return;
+    }
+
+    // Cantidades de bulbos
+    const detalles = [];
     let totalBulbos = 0;
     for (let c = 0; c <= 4; c++) {
       const q = Number(this.container.querySelector(`#cant-c${c}`).value) || 0;
-      cantidades.push({ claseBulbo: c, cantidad: q });
-      totalBulbos += q;
+      if (q > 0) {
+        detalles.push({ clase: c, claseBulbo: c, cantidad: q });
+        totalBulbos += q;
+      }
     }
 
     if (totalBulbos <= 0) {
@@ -431,40 +685,51 @@ export class PlantacionesView {
     submitBtn.disabled = true;
 
     try {
-      // Asegurar que exista una plantación creada para la temporada seleccionada
       let plantacion = this.currentPlantacion;
       if (!plantacion || !plantacion.id) {
-        plantacion = await plantacionesService.obtenerPorTemporada(this.selectedTemporadaId);
+        plantacion = await plantacionesService.obtenerPorTemporada(this.selectedTemporadaId).catch(() => null);
         if (!plantacion || !plantacion.id) {
           plantacion = await plantacionesService.crear({
-            temporadaId: this.selectedTemporadaId,
+            temporadaId: Number(this.selectedTemporadaId),
             observaciones: 'Plantación general del ciclo'
-          });
+          }).catch(() => null);
         }
       }
 
       const payload = {
+        plantacionId: plantacion?.id ? Number(plantacion.id) : null,
         temporadaId: Number(this.selectedTemporadaId),
-        sucursalId: Number(this.selectedSucursalId || 1),
-        filaIdentificacion,
-        capacidadFila: totalBulbos,
+        sucursalId: Number(this.selectedSucursalId),
+        filaId: filaId,
+        numeroFila: numeroFila,
+        identificacionFila: identificacionFila,
+        capacidadFila: capacidadFila,
+        numeroLote: numeroLote,
+        orden: numeroLote,
         clienteId: Number(clienteId),
-        cantidades
+        detalles: detalles,
+        cantidades: detalles
       };
 
-      await plantacionesService.registrarDistribucion(plantacion.id, payload);
+      await plantacionesService.registrarDistribucion(plantacion?.id, payload);
 
-      toast.success(`Lote en fila "${filaIdentificacion}" registrado exitosamente con ${totalBulbos.toLocaleString()} bulbos.`);
+      toast.success(`Lote #${numeroLote} en Fila ${identificacionFila} registrado exitosamente con ${totalBulbos.toLocaleString()} bulbos.`);
 
-      // Limpiar formulario
-      this.container.querySelector('#fila-id').value = '';
+      // Resetear formulario
+      this._setNuevaFilaMode(false);
+      this.container.querySelector('#select-fila').value = '';
+      this.container.querySelector('#input-lote-orden').value = '';
+      this.container.querySelector('#select-cliente').value = '';
       for (let c = 0; c <= 4; c++) {
         this.container.querySelector(`#cant-c${c}`).value = '0';
       }
       this._updateTotalPreview();
 
-      // Recargar tabla de lotes
-      await this._reloadLotes();
+      // Recargar filas y lotes en simultáneo
+      await Promise.all([
+        this._reloadFilas(),
+        this._reloadLotes()
+      ]);
     } catch (err) {
       toast.error(err.message || 'Error al registrar lote plantado');
     } finally {
