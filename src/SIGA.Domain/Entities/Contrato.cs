@@ -9,10 +9,6 @@ public class Contrato : BaseEntity
     public int MovimientoComercialId { get; set; }
     public virtual MovimientoComercial? MovimientoComercial { get; set; }
 
-    [Obsolete("Utilizar MovimientoComercialId en su lugar.")]
-    public int VentaId { get => MovimientoComercialId; set => MovimientoComercialId = value; }
-    [Obsolete("Utilizar MovimientoComercial en su lugar.")]
-    public virtual Venta? Venta { get; set; }
 
     public string NumeroContrato { get; set; } = string.Empty;
     public DateTime FechaGeneracion { get; set; } = DateTime.UtcNow;
@@ -21,6 +17,8 @@ public class Contrato : BaseEntity
 
     public int UsuarioGeneradorId { get; set; }
     public virtual Usuario? UsuarioGenerador { get; set; }
+
+    public virtual Cliente? Cliente { get; set; }
 
     public Contrato()
     {

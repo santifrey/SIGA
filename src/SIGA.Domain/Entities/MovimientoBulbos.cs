@@ -6,8 +6,16 @@ namespace SIGA.Domain.Entities;
 
 public class MovimientoBulbos : BaseEntity
 {
-    public int OperacionComercialId { get; set; }
-    public virtual OperacionComercial OperacionComercial { get; set; } = null!;
+    public int? MovimientoComercialId { get; set; }
+    public virtual MovimientoComercial? MovimientoComercial { get; set; }
+
+    public int? CosechaId { get; set; }
+    public virtual Cosecha? Cosecha { get; set; }
+
+    public int? PlantacionId { get; set; }
+    public virtual Plantacion? Plantacion { get; set; }
+
+    public TipoOperacionComercial TipoOperacion { get; set; } = TipoOperacionComercial.AjusteStock;
 
     public DateTime Fecha { get; set; } = DateTime.UtcNow;
 
@@ -30,19 +38,25 @@ public class MovimientoBulbos : BaseEntity
     }
 
     public MovimientoBulbos(
-        int operacionComercialId, 
         int origenId, 
         int destinoId, 
         int usuarioCreadorId, 
-        string? observaciones = null)
+        TipoOperacionComercial tipoOperacion = TipoOperacionComercial.AjusteStock,
+        string? observaciones = null,
+        int? movimientoComercialId = null,
+        int? cosechaId = null,
+        int? plantacionId = null)
     {
         ValidarOrigenYDestino(origenId, destinoId);
 
-        OperacionComercialId = operacionComercialId;
         OrigenId = origenId;
         DestinoId = destinoId;
         UsuarioCreadorId = usuarioCreadorId;
+        TipoOperacion = tipoOperacion;
         Observaciones = observaciones;
+        MovimientoComercialId = movimientoComercialId;
+        CosechaId = cosechaId;
+        PlantacionId = plantacionId;
         Estado = EstadoMovimiento.Pendiente;
         Fecha = DateTime.UtcNow;
     }
@@ -82,15 +96,6 @@ public class MovimientoBulbos : BaseEntity
             throw new OperacionInvalidaException("El movimiento debe contener al menos una cantidad de bulbos mayor a cero para ser confirmado.");
 
         Estado = EstadoMovimiento.Confirmado;
-
-        if (OperacionComercial != null)
-        {
-            // Si la operación comercial tiene todos sus movimientos confirmados, pasa a confirmada
-            if (OperacionComercial.Movimientos.All(m => m.Estado == EstadoMovimiento.Confirmado))
-            {
-                OperacionComercial.Estado = EstadoOperacion.Confirmada;
-            }
-        }
     }
 
     public void Anular(string motivo)
@@ -104,14 +109,6 @@ public class MovimientoBulbos : BaseEntity
         Observaciones = string.IsNullOrWhiteSpace(Observaciones) 
             ? prefix 
             : $"{Observaciones} | {prefix}";
-
-        if (OperacionComercial != null)
-        {
-            if (OperacionComercial.Movimientos.All(m => m.Estado == EstadoMovimiento.Anulado))
-            {
-                OperacionComercial.Estado = EstadoOperacion.Anulada;
-            }
-        }
     }
 
     public int CalcularTotal()

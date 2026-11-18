@@ -35,6 +35,8 @@ public class UserInfoResponseDto
     public string NombreCompleto { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Documento { get; set; } = string.Empty;
+    public string? Legajo { get; set; }
+    public string? Posicion { get; set; }
     public string? Telefono { get; set; }
     public int RolId { get; set; }
     public string Rol { get; set; } = string.Empty;
@@ -44,4 +46,13 @@ public class UserInfoResponseDto
     public DateTime? UltimoAcceso { get; set; }
     public EstadoUsuario Estado { get; set; }
     public List<string> Roles { get; set; } = new(); // Backward compatibility
+}
+
+public class ActualizarPerfilDto
+{
+    public string Nombre { get; set; } = string.Empty;
+    public string Apellido { get; set; } = string.Empty;
+    public string? Documento { get; set; }
+    public string? Telefono { get; set; }
+    public string? Email { get; set; }
 }

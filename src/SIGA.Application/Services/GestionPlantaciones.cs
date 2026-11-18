@@ -17,7 +17,6 @@ public class GestionPlantaciones : IGestionPlantaciones
     private readonly IClienteRepository _clienteRepository;
     private readonly ISucursalRepository _sucursalRepository;
     private readonly IGestionStock _gestionStock;
-    private readonly IOperacionComercialRepository _operacionRepository;
     private readonly IMovimientoBulbosRepository _movimientoRepository;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -29,7 +28,6 @@ public class GestionPlantaciones : IGestionPlantaciones
         IClienteRepository clienteRepository,
         ISucursalRepository sucursalRepository,
         IGestionStock gestionStock,
-        IOperacionComercialRepository operacionRepository,
         IMovimientoBulbosRepository movimientoRepository,
         IUnitOfWork unitOfWork)
     {
@@ -40,7 +38,6 @@ public class GestionPlantaciones : IGestionPlantaciones
         _clienteRepository = clienteRepository;
         _sucursalRepository = sucursalRepository;
         _gestionStock = gestionStock;
-        _operacionRepository = operacionRepository;
         _movimientoRepository = movimientoRepository;
         _unitOfWork = unitOfWork;
     }
@@ -257,28 +254,17 @@ public class GestionPlantaciones : IGestionPlantaciones
             await _filaRepository.UpdateAsync(fila, cancellationToken);
 
             // 11. Registrar movimiento de salida del cliente hacia Empresa (Id: 1) para balance de stock
-            var operacion = new OperacionComercial
-            {
-                Fecha = DateTime.UtcNow,
-                Tipo = TipoOperacionComercial.AjusteStock,
-                Estado = EstadoOperacion.Confirmada,
-                UsuarioCreadorId = usuarioId,
-                Observaciones = $"Plantación - Temporada {temporada.Nombre} - Fila {fila.Identificacion} - Lote #{lote.Id} (Orden {orden})"
-            };
-
-            await _operacionRepository.AddAsync(operacion, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
             int destinoId = dto.ClienteId == Empresa.SingletonId
                 ? (dto.SucursalId != Empresa.SingletonId && dto.SucursalId > 0 ? dto.SucursalId : 99998)
                 : Empresa.SingletonId;
 
             var movimiento = new MovimientoBulbos(
-                operacion.Id, 
                 dto.ClienteId, 
                 destinoId, 
                 usuarioId, 
-                $"Salida por plantación en Fila {fila.Identificacion}, Lote #{lote.Id} (Orden {orden})");
+                TipoOperacionComercial.AjusteStock,
+                $"Salida por plantación en Fila {fila.Identificacion}, Lote #{lote.Id} (Orden {orden})",
+                plantacionId: plantacion.Id);
 
             foreach (var det in dto.Detalles)
             {

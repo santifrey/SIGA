@@ -11,6 +11,8 @@ public class EmpleadoDto
     public string Apellido { get; set; } = string.Empty;
     public string NombreCompleto { get; set; } = string.Empty;
     public string Documento { get; set; } = string.Empty;
+    public string? Legajo { get; set; }
+    public string? Posicion { get; set; }
     public string? Telefono { get; set; }
     public string? Email { get; set; }
     public int RolId { get; set; }
@@ -27,6 +29,8 @@ public class CrearEmpleadoDto
     public string Nombre { get; set; } = string.Empty;
     public string Apellido { get; set; } = string.Empty;
     public string Documento { get; set; } = string.Empty;
+    public string? Legajo { get; set; }
+    public string? Posicion { get; set; }
     public string? Telefono { get; set; }
     public string? Email { get; set; }
 
@@ -42,6 +46,8 @@ public class ActualizarEmpleadoDto
     public string Nombre { get; set; } = string.Empty;
     public string Apellido { get; set; } = string.Empty;
     public string Documento { get; set; } = string.Empty;
+    public string? Legajo { get; set; }
+    public string? Posicion { get; set; }
     public string? Telefono { get; set; }
     public string? Email { get; set; }
 

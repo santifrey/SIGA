@@ -36,8 +36,7 @@ public class MovimientoComercial : BaseEntity
 
     public string? Observaciones { get; set; }
 
-    public int? OperacionComercialId { get; set; }
-    public virtual OperacionComercial? OperacionComercial { get; set; }
+    public virtual ICollection<MovimientoBulbos> MovimientosBulbos { get; set; } = new List<MovimientoBulbos>();
 
     public virtual ICollection<DetalleMovimientoComercial> Detalles { get; set; } = new List<DetalleMovimientoComercial>();
     public virtual Contrato? Contrato { get; set; }
@@ -158,13 +157,26 @@ public class MovimientoComercial : BaseEntity
             Contrato.NumeroContrato = numeroContrato.Trim();
             Contrato.ArchivoUrl = archivoUrl;
             Contrato.FechaGeneracion = DateTime.UtcNow;
-            return Contrato;
+            Contrato.Estado = EstadoContrato.Generado;
+        }
+        else
+        {
+            Contrato = new Contrato(Id, numeroContrato.Trim(), usuarioGeneradorId, archivoUrl)
+            {
+                MovimientoComercial = this
+            };
         }
 
-        Contrato = new Contrato(Id, numeroContrato.Trim(), usuarioGeneradorId, archivoUrl)
+        if (Estado == EstadoMovimientoComercial.Rechazado)
         {
-            MovimientoComercial = this
-        };
+            Estado = EstadoMovimientoComercial.PendienteRevision;
+            HistorialAprobaciones.Add(new RegistroAprobacion(
+                Id,
+                usuarioGeneradorId,
+                AccionAprobacion.Registrado,
+                $"Contrato {numeroContrato.Trim()} corregido/regenerado tras rechazo (Reenviado a revisión)"));
+        }
+
         return Contrato;
     }
 
@@ -191,8 +203,8 @@ public class MovimientoComercial : BaseEntity
 
     public Factura EmitirFactura(string numeroFactura, int usuarioEmisionId, string? archivoUrl = null, string? observaciones = null)
     {
-        if (Estado != EstadoMovimientoComercial.AprobadoAdmin)
-            throw new OperacionInvalidaException($"El movimiento comercial debe estar en estado AprobadoAdmin para emitir factura (estado actual: '{Estado}').");
+        if (Estado != EstadoMovimientoComercial.AprobadoAdmin && Estado != EstadoMovimientoComercial.Rechazado)
+            throw new OperacionInvalidaException($"El movimiento comercial debe estar en estado AprobadoAdmin o Rechazado para emitir factura (estado actual: '{Estado}').");
 
         if (Tipo == TipoMovimientoComercial.TraspasoEntreClientes)
             throw new OperacionInvalidaException("Los traspasos entre clientes no generan facturas comerciales.");
@@ -230,7 +242,7 @@ public class MovimientoComercial : BaseEntity
         return Factura;
     }
 
-    public void Finalizar(int usuarioFinalizadorId, int operacionComercialId, string? observaciones = null)
+    public void Finalizar(int usuarioFinalizadorId, string? observaciones = null)
     {
         if (Tipo == TipoMovimientoComercial.TraspasoEntreClientes)
         {
@@ -242,11 +254,6 @@ public class MovimientoComercial : BaseEntity
             if (Estado != EstadoMovimientoComercial.Facturado)
                 throw new OperacionInvalidaException($"Las ventas y compras deben estar en estado Facturado para ser finalizadas (estado actual: '{Estado}').");
         }
-
-        if (operacionComercialId <= 0)
-            throw new OperacionInvalidaException("Se requiere la operación comercial vinculada para finalizar el movimiento.");
-
-        OperacionComercialId = operacionComercialId;
 
         if (Factura != null && !Factura.IsDeleted)
         {
@@ -269,9 +276,11 @@ public class MovimientoComercial : BaseEntity
         if (string.IsNullOrWhiteSpace(motivo))
             throw new OperacionInvalidaException("Debe indicar el motivo del rechazo u observación.");
 
-        if (Estado == EstadoMovimientoComercial.Facturado && Factura != null)
+        string notaAuditoria = motivo.Trim();
+        if (Factura != null)
         {
             Factura.Anular();
+            notaAuditoria = $"{motivo.Trim()} (Factura #{Factura.NumeroFactura} anulada)";
         }
 
         Estado = EstadoMovimientoComercial.Rechazado;
@@ -279,7 +288,7 @@ public class MovimientoComercial : BaseEntity
             Id,
             usuarioId,
             AccionAprobacion.Rechazado,
-            motivo.Trim()));
+            notaAuditoria));
     }
 
     public void EditarYReenviar(int usuarioId, string? observaciones = null)

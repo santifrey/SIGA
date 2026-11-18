@@ -37,4 +37,15 @@ public class AuthController : BaseApiController
         var result = await _gestionUsuarios.GetMeAsync(CurrentUserId, cancellationToken);
         return CustomResult(result);
     }
+
+    [HttpPut("me")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<UserInfoResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<UserInfoResponseDto>>> UpdateMe([FromBody] ActualizarPerfilDto dto, CancellationToken cancellationToken)
+    {
+        var result = await _gestionUsuarios.UpdateMeAsync(CurrentUserId, dto, cancellationToken);
+        return CustomResult(result);
+    }
 }

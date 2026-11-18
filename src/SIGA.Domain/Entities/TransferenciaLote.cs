@@ -23,9 +23,6 @@ public class TransferenciaLote : BaseEntity
     public EstadoTransferencia Estado { get; set; } = EstadoTransferencia.Pendiente;
     public string? Observaciones { get; set; }
 
-    public int? OperacionComercialId { get; set; }
-    public virtual OperacionComercial? OperacionComercial { get; set; }
-
     public TransferenciaLote()
     {
     }
@@ -35,8 +32,7 @@ public class TransferenciaLote : BaseEntity
         int titularAnteriorId, 
         int nuevoTitularId, 
         int usuarioCreadorId, 
-        string? observaciones = null,
-        int? operacionComercialId = null)
+        string? observaciones = null)
     {
         if (loteId <= 0)
             throw new OperacionInvalidaException("El lote a transferir es inválido.");
@@ -52,7 +48,6 @@ public class TransferenciaLote : BaseEntity
         NuevoTitularId = nuevoTitularId;
         UsuarioCreadorId = usuarioCreadorId;
         Observaciones = observaciones;
-        OperacionComercialId = operacionComercialId;
         Estado = EstadoTransferencia.Pendiente;
         Fecha = DateTime.UtcNow;
     }

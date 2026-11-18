@@ -13,6 +13,7 @@ public class SigaDbContext : DbContext
     }
 
     public DbSet<Persona> Personas => Set<Persona>();
+    public DbSet<Empleado> Empleados => Set<Empleado>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Rol> Roles => Set<Rol>();
     public DbSet<Permiso> Permisos => Set<Permiso>();
@@ -21,7 +22,6 @@ public class SigaDbContext : DbContext
     public DbSet<Cliente> Clientes => Set<Cliente>();
     public DbSet<Empresa> Empresas => Set<Empresa>();
     public DbSet<Sucursal> Sucursales => Set<Sucursal>();
-    public DbSet<OperacionComercial> OperacionesComerciales => Set<OperacionComercial>();
     public DbSet<MovimientoBulbos> MovimientosBulbos => Set<MovimientoBulbos>();
     public DbSet<CantidadBulbos> CantidadesBulbos => Set<CantidadBulbos>();
     public DbSet<Temporada> Temporadas => Set<Temporada>();
@@ -36,8 +36,6 @@ public class SigaDbContext : DbContext
     public DbSet<PrecioClase> PreciosClases => PreciosClase;
     public DbSet<MovimientoComercial> MovimientosComerciales => Set<MovimientoComercial>();
     public DbSet<DetalleMovimientoComercial> DetallesMovimientosComerciales => Set<DetalleMovimientoComercial>();
-    public DbSet<Venta> Ventas => Set<Venta>();
-    public DbSet<DetalleVenta> DetalleVentas => Set<DetalleVenta>();
     public DbSet<Contrato> Contratos => Set<Contrato>();
     public DbSet<Factura> Facturas => Set<Factura>();
     public DbSet<RegistroAprobacion> RegistrosAprobacion => Set<RegistroAprobacion>();
@@ -48,6 +46,7 @@ public class SigaDbContext : DbContext
 
         // Aplicar configuraciones de entidades
         modelBuilder.ApplyConfiguration(new PersonaConfiguration());
+        modelBuilder.ApplyConfiguration(new EmpleadoConfiguration());
         modelBuilder.ApplyConfiguration(new UsuarioConfiguration());
         modelBuilder.ApplyConfiguration(new RolConfiguration());
         modelBuilder.ApplyConfiguration(new PermisoConfiguration());
@@ -56,7 +55,6 @@ public class SigaDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ClienteConfiguration());
         modelBuilder.ApplyConfiguration(new EmpresaConfiguration());
         modelBuilder.ApplyConfiguration(new SucursalConfiguration());
-        modelBuilder.ApplyConfiguration(new OperacionComercialConfiguration());
         modelBuilder.ApplyConfiguration(new MovimientoBulbosConfiguration());
         modelBuilder.ApplyConfiguration(new CantidadBulbosConfiguration());
         modelBuilder.ApplyConfiguration(new TemporadaConfiguration());
@@ -70,8 +68,6 @@ public class SigaDbContext : DbContext
         modelBuilder.ApplyConfiguration(new PrecioClaseConfiguration());
         modelBuilder.ApplyConfiguration(new MovimientoComercialConfiguration());
         modelBuilder.ApplyConfiguration(new DetalleMovimientoComercialConfiguration());
-        modelBuilder.ApplyConfiguration(new VentaConfiguration());
-        modelBuilder.ApplyConfiguration(new DetalleVentaConfiguration());
         modelBuilder.ApplyConfiguration(new ContratoConfiguration());
         modelBuilder.ApplyConfiguration(new FacturaConfiguration());
         modelBuilder.ApplyConfiguration(new RegistroAprobacionConfiguration());
@@ -81,7 +77,6 @@ public class SigaDbContext : DbContext
         modelBuilder.Entity<Usuario>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<ParticipanteComercial>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Sucursal>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<OperacionComercial>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<MovimientoBulbos>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Temporada>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Fila>().HasQueryFilter(e => !e.IsDeleted);
@@ -94,8 +89,6 @@ public class SigaDbContext : DbContext
         modelBuilder.Entity<PrecioClase>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<MovimientoComercial>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<DetalleMovimientoComercial>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Venta>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<DetalleVenta>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Contrato>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Factura>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<RegistroAprobacion>().HasQueryFilter(e => !e.IsDeleted);

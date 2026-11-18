@@ -1,7 +1,7 @@
 /**
  * SIGA - views/perfil-view.js
- * Vista de Perfil de Usuario (#perfil) (Feature 29)
- * Muestra información personal, rol, estado, último acceso y catálogo de permisos agrupados por módulo.
+ * Vista de Perfil de Usuario (#perfil)
+ * Muestra información personal, rol, estado y permite modificar datos personales y de contacto.
  */
 
 import { authService } from '../services/auth-service.js';
@@ -22,7 +22,7 @@ export class PerfilView {
         <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
           <div>
             <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Mi Perfil</h1>
-            <p class="text-muted text-sm">Información de usuario, credenciales y permisos asignados en el sistema</p>
+            <p class="text-muted text-sm">Información personal y de contacto del usuario en el sistema</p>
           </div>
           <button class="btn btn-secondary" id="btn-refresh-perfil" title="Actualizar datos">
             <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -40,10 +40,60 @@ export class PerfilView {
         </div>
 
         <div id="perfil-content" class="hidden"></div>
+
+        <!-- Modal para Modificar Información Personal y de Contacto -->
+        <div id="modal-editar-perfil" class="modal-backdrop" role="dialog" aria-modal="true">
+          <div class="modal-dialog" style="max-width: 520px;">
+            <div class="modal-header">
+              <h3 class="modal-title font-bold" style="color: var(--primary);">Modificar Información Personal</h3>
+              <button type="button" class="modal-close-btn" id="btn-close-modal-perfil" aria-label="Cerrar modal">&times;</button>
+            </div>
+            <form id="form-editar-perfil" novalidate>
+              <div class="modal-body" style="padding: 1.5rem;">
+                <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                  <div class="form-group">
+                    <label class="form-label font-medium" for="perfil-nombre">Nombre <span class="text-danger">*</span></label>
+                    <input type="text" id="perfil-nombre" class="form-control" required />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label font-medium" for="perfil-apellido">Apellido <span class="text-danger">*</span></label>
+                    <input type="text" id="perfil-apellido" class="form-control" required />
+                  </div>
+                </div>
+
+                <div class="form-group mb-3">
+                  <label class="form-label font-medium" for="perfil-documento">Documento de Identidad (DNI) <span class="text-danger">*</span></label>
+                  <input type="text" id="perfil-documento" class="form-control" required />
+                </div>
+
+                <div class="form-group mb-3">
+                  <label class="form-label font-medium" for="perfil-email">Correo Electrónico <span class="text-danger">*</span></label>
+                  <input type="email" id="perfil-email" class="form-control" required />
+                </div>
+
+                <div class="form-group mb-3">
+                  <label class="form-label font-medium" for="perfil-telefono">Teléfono de Contacto</label>
+                  <input type="text" id="perfil-telefono" class="form-control" placeholder="ej. 351445566" />
+                </div>
+
+                <div id="perfil-form-error" class="alert alert-danger hidden mb-3" style="font-size: 0.8125rem;"></div>
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="btn-cancelar-perfil">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="btn-guardar-perfil">
+                  <span class="btn-text">Guardar Cambios</span>
+                  <span class="btn-spinner"></span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     `;
 
     this.container.querySelector('#btn-refresh-perfil').addEventListener('click', () => this._loadPerfil());
+    this._setupModalEvents();
     await this._loadPerfil();
   }
 
@@ -77,7 +127,7 @@ export class PerfilView {
     const contentEl = this.container.querySelector('#perfil-content');
     const initials = p.nombreCompleto
       ? p.nombreCompleto.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-      : (p.username ? p.username.substring(0, 2).toUpperCase() : 'US');
+      : 'US';
 
     const fechaAcceso = p.ultimoAcceso
       ? new Date(p.ultimoAcceso).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })
@@ -86,9 +136,6 @@ export class PerfilView {
     const estadoStr = typeof p.estado === 'string'
       ? p.estado
       : (p.estado === 1 ? 'Activo' : (p.estado === 2 ? 'Bloqueado' : 'Inactivo'));
-
-    // Agrupación de permisos por módulo
-    const grupos = this._agruparPermisos(p.permisos || []);
 
     contentEl.innerHTML = `
       <div class="d-flex flex-column gap-lg">
@@ -100,18 +147,13 @@ export class PerfilView {
             </div>
             <div style="flex: 1; min-width: 200px;">
               <div class="d-flex align-center gap-sm flex-wrap">
-                <h2 style="font-size: 1.4rem; margin: 0; font-weight: 700; color: var(--text-main);">${escapeHtml(p.nombreCompleto || p.username)}</h2>
+                <h2 style="font-size: 1.4rem; margin: 0; font-weight: 700; color: var(--text-main);">${escapeHtml(p.nombreCompleto || `${p.nombre || ''} ${p.apellido || ''}`.trim() || 'Usuario')}</h2>
                 <span class="badge badge-primary font-bold">${escapeHtml(p.rol || 'Sin Rol')}</span>
                 <span class="badge ${estadoStr === 'Activo' ? 'badge-success' : 'badge-danger'}">
                   <span class="badge-dot"></span>${escapeHtml(estadoStr)}
                 </span>
               </div>
-              <div class="text-sm text-muted mt-1">
-                <span>@${escapeHtml(p.username)}</span> &bull; 
-                <span>ID Usuario: #${escapeHtml(p.usuarioId)}</span> &bull; 
-                <span>ID Persona: #${escapeHtml(p.personaId)}</span>
-              </div>
-              <div class="text-xs text-muted mt-1">
+              <div class="text-xs text-muted mt-2">
                 Último acceso: <strong>${escapeHtml(fechaAcceso)}</strong>
               </div>
             </div>
@@ -120,7 +162,7 @@ export class PerfilView {
 
         <!-- 2. Tarjeta Datos Personales y de Contacto -->
         <div class="card">
-          <div class="card-header">
+          <div class="card-header d-flex justify-between align-center">
             <h3 class="card-title d-flex align-center gap-xs">
               <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -128,6 +170,13 @@ export class PerfilView {
               </svg>
               <span>Información Personal y Contacto</span>
             </h3>
+            <button class="btn btn-sm btn-primary d-flex align-center gap-xs" id="btn-abrir-editar-perfil">
+              <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              <span>Modificar Datos</span>
+            </button>
           </div>
           <div class="card-body" style="padding: 1.5rem;">
             <div class="grid-two-cols" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem;">
@@ -140,7 +189,7 @@ export class PerfilView {
                 <div class="font-medium text-main" style="font-size: 1rem;">${escapeHtml(p.apellido || '-')}</div>
               </div>
               <div>
-                <label class="text-xs text-muted font-bold text-uppercase">Documento de Identidad</label>
+                <label class="text-xs text-muted font-bold text-uppercase">Documento de Identidad (DNI)</label>
                 <div class="font-medium text-main" style="font-size: 1rem;">${escapeHtml(p.documento || '-')}</div>
               </div>
               <div>
@@ -157,86 +206,114 @@ export class PerfilView {
                 <label class="text-xs text-muted font-bold text-uppercase">Rol Asignado</label>
                 <div class="font-medium text-main" style="font-size: 1rem;">${escapeHtml(p.rol || '-')}</div>
               </div>
+              ${p.legajo ? `
+                <div>
+                  <label class="text-xs text-muted font-bold text-uppercase">Legajo</label>
+                  <div class="font-medium text-main" style="font-size: 1rem;"><span class="badge badge-secondary font-mono">${escapeHtml(p.legajo)}</span></div>
+                </div>
+              ` : ''}
+              ${p.posicion ? `
+                <div>
+                  <label class="text-xs text-muted font-bold text-uppercase">Posición / Cargo</label>
+                  <div class="font-medium text-main" style="font-size: 1rem;">${escapeHtml(p.posicion)}</div>
+                </div>
+              ` : ''}
             </div>
-          </div>
-        </div>
-
-        <!-- 3. Tarjeta Permisos Asignados Categorizados -->
-        <div class="card">
-          <div class="card-header d-flex justify-between align-center">
-            <h3 class="card-title d-flex align-center gap-xs">
-              <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-              </svg>
-              <span>Permisos del Sistema Asignados</span>
-            </h3>
-            <span class="badge badge-accent font-bold">${(p.permisos || []).length} permisos activos</span>
-          </div>
-          <div class="card-body" style="padding: 1.5rem;">
-            ${(p.permisos && p.permisos.length > 0) ? `
-              <div class="d-flex flex-column gap-md">
-                ${Object.entries(grupos).map(([modulo, perms]) => `
-                  <div style="background: var(--surface-alt); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
-                    <div class="d-flex justify-between align-center mb-2">
-                      <h4 style="font-size: 0.875rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; margin: 0;">
-                        ${escapeHtml(modulo)}
-                      </h4>
-                      <span class="text-xs text-muted font-bold">${perms.length}</span>
-                    </div>
-                    <div class="d-flex flex-wrap gap-xs">
-                      ${perms.map(codigo => `
-                        <span class="badge badge-secondary" style="font-family: monospace; font-size: 0.75rem;">
-                          <span class="badge-dot" style="background-color: var(--primary);"></span>
-                          ${escapeHtml(codigo)}
-                        </span>
-                      `).join('')}
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            ` : `
-              <p class="text-muted text-center" style="padding: 1.5rem;">No cuenta con permisos asignados.</p>
-            `}
           </div>
         </div>
       </div>
     `;
+
+    const btnEditar = contentEl.querySelector('#btn-abrir-editar-perfil');
+    if (btnEditar) {
+      btnEditar.addEventListener('click', () => this._abrirModalEdicion());
+    }
   }
 
-  _agruparPermisos(permisos) {
-    const mapa = {
-      'Seguridad': [],
-      'Personal': [],
-      'Clientes': [],
-      'Sucursales': [],
-      'Stock y Bulbos': [],
-      'Comercial': [],
-      'Producción y Campo': [],
-      'Reportes': [],
-      'Mi Cuenta': [],
-      'Otros': []
+  _setupModalEvents() {
+    const modal = this.container.querySelector('#modal-editar-perfil');
+    const btnClose = this.container.querySelector('#btn-close-modal-perfil');
+    const btnCancel = this.container.querySelector('#btn-cancelar-perfil');
+    const form = this.container.querySelector('#form-editar-perfil');
+
+    const cerrarModal = () => {
+      modal.classList.remove('is-active');
     };
 
-    permisos.forEach(p => {
-      const pUpper = String(p).toUpperCase();
-      if (pUpper.startsWith('ROLES_') || pUpper.startsWith('PERMISOS_') || pUpper.startsWith('USUARIOS_')) mapa['Seguridad'].push(p);
-      else if (pUpper.startsWith('EMPLEADOS_')) mapa['Personal'].push(p);
-      else if (pUpper.startsWith('CLIENTES_')) mapa['Clientes'].push(p);
-      else if (pUpper.startsWith('SUCURSALES_')) mapa['Sucursales'].push(p);
-      else if (pUpper.startsWith('STOCK_') || pUpper.startsWith('MOVIMIENTOS_')) mapa['Stock y Bulbos'].push(p);
-      else if (pUpper.startsWith('MOVCOM_') || pUpper.startsWith('PRECIOS_REF_')) mapa['Comercial'].push(p);
-      else if (pUpper.startsWith('TEMPORADAS_') || pUpper.startsWith('PLANTACIONES_') || pUpper.startsWith('TRANSFERENCIAS_') || pUpper.startsWith('COSECHAS_')) mapa['Producción y Campo'].push(p);
-      else if (pUpper.startsWith('REPORTES_')) mapa['Reportes'].push(p);
-      else if (pUpper.startsWith('PERFIL_')) mapa['Mi Cuenta'].push(p);
-      else mapa['Otros'].push(p);
-    });
+    if (btnClose) btnClose.addEventListener('click', cerrarModal);
+    if (btnCancel) btnCancel.addEventListener('click', cerrarModal);
 
-    // Eliminar grupos vacíos
-    const resultado = {};
-    for (const [key, val] of Object.entries(mapa)) {
-      if (val.length > 0) resultado[key] = val;
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errBox = this.container.querySelector('#perfil-form-error');
+        const submitBtn = this.container.querySelector('#btn-guardar-perfil');
+        errBox.classList.add('hidden');
+        errBox.textContent = '';
+
+        const nombre = this.container.querySelector('#perfil-nombre').value.trim();
+        const apellido = this.container.querySelector('#perfil-apellido').value.trim();
+        const documento = this.container.querySelector('#perfil-documento').value.trim();
+        const email = this.container.querySelector('#perfil-email').value.trim();
+        const telefono = this.container.querySelector('#perfil-telefono').value.trim();
+
+        if (!nombre || !apellido || !documento || !email) {
+          errBox.textContent = 'Por favor complete todos los campos obligatorios (Nombre, Apellido, DNI y Correo Electrónico).';
+          errBox.classList.remove('hidden');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.classList.add('is-loading');
+
+        try {
+          await authService.actualizarPerfil({
+            nombre,
+            apellido,
+            documento,
+            email,
+            telefono: telefono || null
+          });
+
+          toast.success('Información personal y de contacto actualizada exitosamente.');
+          cerrarModal();
+
+          // Actualizar topbar nombre y avatar si cambiaron
+          const topbarName = document.getElementById('topbar-user-name');
+          const topbarAvatar = document.getElementById('topbar-user-avatar');
+          const nombreCompleto = `${nombre} ${apellido}`.trim();
+          if (topbarName) topbarName.textContent = nombreCompleto;
+          if (topbarAvatar) {
+            topbarAvatar.textContent = nombreCompleto.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+          }
+
+          await this._loadPerfil();
+        } catch (err) {
+          const msg = err.message || 'Error al actualizar información de perfil.';
+          errBox.textContent = msg;
+          errBox.classList.remove('hidden');
+          toast.error(msg);
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('is-loading');
+        }
+      });
     }
-    return resultado;
+  }
+
+  _abrirModalEdicion() {
+    const p = this.perfil || {};
+    const modal = this.container.querySelector('#modal-editar-perfil');
+    const errBox = this.container.querySelector('#perfil-form-error');
+    errBox.classList.add('hidden');
+    errBox.textContent = '';
+
+    this.container.querySelector('#perfil-nombre').value = p.nombre || '';
+    this.container.querySelector('#perfil-apellido').value = p.apellido || '';
+    this.container.querySelector('#perfil-documento').value = p.documento || '';
+    this.container.querySelector('#perfil-email').value = p.email || '';
+    this.container.querySelector('#perfil-telefono').value = p.telefono || '';
+
+    modal.classList.add('is-active');
   }
 }

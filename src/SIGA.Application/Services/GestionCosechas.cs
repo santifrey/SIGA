@@ -16,7 +16,6 @@ public class GestionCosechas : IGestionCosechas
     private readonly IFilaRepository _filaRepository;
     private readonly IClienteRepository _clienteRepository;
     private readonly IRepository<ParticipanteComercial> _participanteRepository;
-    private readonly IOperacionComercialRepository _operacionRepository;
     private readonly IMovimientoBulbosRepository _movimientoRepository;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -28,7 +27,6 @@ public class GestionCosechas : IGestionCosechas
         IFilaRepository filaRepository,
         IClienteRepository clienteRepository,
         IRepository<ParticipanteComercial> participanteRepository,
-        IOperacionComercialRepository operacionRepository,
         IMovimientoBulbosRepository movimientoRepository,
         IUnitOfWork unitOfWork)
     {
@@ -39,7 +37,6 @@ public class GestionCosechas : IGestionCosechas
         _filaRepository = filaRepository;
         _clienteRepository = clienteRepository;
         _participanteRepository = participanteRepository;
-        _operacionRepository = operacionRepository;
         _movimientoRepository = movimientoRepository;
         _unitOfWork = unitOfWork;
     }
@@ -192,27 +189,16 @@ public class GestionCosechas : IGestionCosechas
             {
                 var titularVigenteId = grupoTitular.Key;
 
-                // Si el titular vigente es un Cliente (Id != Empresa.SingletonId), generamos operación de IngresoCosecha y movimiento confirmado (Empresa -> TitularVigente)
+                // Si el titular vigente es un Cliente (Id != Empresa.SingletonId), generamos movimiento confirmado de IngresoCosecha (Empresa -> TitularVigente)
                 if (titularVigenteId != Empresa.SingletonId)
                 {
-                    var operacion = new OperacionComercial
-                    {
-                        Fecha = DateTime.UtcNow,
-                        Tipo = TipoOperacionComercial.IngresoCosecha,
-                        Estado = EstadoOperacion.Confirmada,
-                        UsuarioCreadorId = usuarioId,
-                        Observaciones = $"Ingreso por Cosecha #{cosecha.Id} - Temporada {temporada.Nombre} - Sucursal #{cosecha.SucursalId}"
-                    };
-
-                    await _operacionRepository.AddAsync(operacion, cancellationToken);
-                    await _unitOfWork.SaveChangesAsync(cancellationToken);
-
                     var movimiento = new MovimientoBulbos(
-                        operacion.Id,
                         Empresa.SingletonId, // Origen: Producción / Empresa Singleton
                         titularVigenteId, // Destino: Titular Vigente del Lote
                         usuarioId,
-                        $"Acreditación de cosecha #{cosecha.Id} (Temporada {temporada.Nombre})");
+                        TipoOperacionComercial.IngresoCosecha,
+                        $"Acreditación de cosecha #{cosecha.Id} (Temporada {temporada.Nombre})",
+                        cosechaId: cosecha.Id);
 
                     var cantidadesPorClase = grupoTitular
                         .GroupBy(d => d.ClaseBulbo)

@@ -9,6 +9,8 @@
 import { ventasService } from '../services/ventas-service.js';
 import { temporadasService } from '../services/temporadas-service.js';
 import { clientesService } from '../services/clientes-service.js';
+import { sucursalesService } from '../services/sucursales-service.js';
+import { contratoGeneratorService } from '../services/contrato-generator-service.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/html.js';
 
@@ -1163,27 +1165,166 @@ export class VentasView {
         </form>
       `;
     } else if (tipo === 'contrato') {
+      const dialog = modal.querySelector('.modal-dialog');
+      dialog?.classList.add('modal-lg');
       title.textContent = `Generar Contrato de Compraventa - Venta #${venta.id}`;
-      const numSugerido = `CTR-${new Date().getFullYear()}-${String(venta.id).padStart(3, '0')}`;
+      const anioActual = new Date().getFullYear();
+      const numSugerido = `CTR-${anioActual}-${String(venta.id).padStart(3, '0')}`;
+      
+      const cli = this.clientes.find(c => String(c.id) === String(venta.clienteId)) || {};
+      const cliNombre = cli.nombreCompleto || `${cli.nombre || ''} ${cli.apellido || ''}`.trim() || venta.nombreCliente || '';
+      const cliDoc = cli.documento || cli.dni || cli.cuit || '';
+      const cliTel = cli.telefono || '';
+      const cliEmail = cli.email || '';
+      const cliDir = cli.direccion || '';
+      
       body.innerHTML = `
-        <p class="text-sm text-muted mb-3">
-          Registre el número formal de contrato generado para el comprador <strong>${escapeHtml(venta.nombreCliente)}</strong>.
-        </p>
+        <div class="alert alert-info d-flex align-center gap-sm p-3 mb-3 text-xs" style="background: rgba(74, 21, 75, 0.08); border-left: 4px solid var(--primary); border-radius: var(--radius-sm);">
+          <span>📄</span>
+          <div>
+            <strong>Generador Oficial de Contratos:</strong> Completará el documento legal en PDF basado en <em>MODELO DE CONTRATO PARA CLIENTES.pdf</em> con los datos del comitente, sucursal, cantidades pactadas y anexo.
+          </div>
+        </div>
+
         <form id="form-modal-accion">
-          <div class="form-group mb-3">
-            <label for="modal-input-contrato" class="form-label text-xs font-bold uppercase">Número de Contrato <span class="required-mark">*</span></label>
-            <input type="text" id="modal-input-contrato" class="form-control" value="${escapeHtml(numSugerido)}" required />
+          <div class="card p-3 mb-3" style="background: var(--bg-surface, #f9fafb); border: 1px solid var(--border-color, #e5e7eb);">
+            <h6 class="text-xs font-bold uppercase text-primary mb-2">1. Datos del Contrato y Período</h6>
+            <div class="form-row two-cols mb-2">
+              <div class="form-group">
+                <label for="modal-input-contrato" class="form-label text-xs font-bold uppercase">Número de Contrato *</label>
+                <input type="text" id="modal-input-contrato" class="form-control" value="${escapeHtml(numSugerido)}" required />
+              </div>
+              <div class="form-group">
+                <label for="modal-input-anio" class="form-label text-xs font-bold uppercase">Año de Inicio *</label>
+                <input type="number" id="modal-input-anio" class="form-control" value="${anioActual}" min="2020" max="2050" required />
+              </div>
+            </div>
+            <div class="form-row two-cols">
+              <div class="form-group">
+                <label for="modal-input-sucursal" class="form-label text-xs font-bold uppercase">Sucursal / Predio</label>
+                <input type="text" id="modal-input-sucursal" class="form-control" value="Central - Villa General Belgrano" />
+              </div>
+              <div class="form-group">
+                <label for="modal-input-referente" class="form-label text-xs font-bold uppercase">Referente Prestador</label>
+                <input type="text" id="modal-input-referente" class="form-control" value="Federico Carlos Paak" />
+              </div>
+            </div>
           </div>
-          <div class="form-group mb-3">
-            <label for="modal-input-url" class="form-label text-xs font-bold uppercase">Enlace al Documento Firmado (URL Opcional)</label>
-            <input type="url" id="modal-input-url" class="form-control" placeholder="https://almacenamiento.ejemplo.com/contratos/ctr-01.pdf" />
+
+          <div class="card p-3 mb-3" style="background: var(--bg-surface, #f9fafb); border: 1px solid var(--border-color, #e5e7eb);">
+            <h6 class="text-xs font-bold uppercase text-primary mb-2">2. Datos del Cliente (COMITENTE)</h6>
+            <div class="form-row two-cols mb-2">
+              <div class="form-group">
+                <label for="modal-input-cli-nombre" class="form-label text-xs font-bold uppercase">Nombre y Apellido *</label>
+                <input type="text" id="modal-input-cli-nombre" class="form-control" value="${escapeHtml(cliNombre)}" required />
+              </div>
+              <div class="form-group">
+                <label for="modal-input-cli-doc" class="form-label text-xs font-bold uppercase">DNI / CUIT *</label>
+                <input type="text" id="modal-input-cli-doc" class="form-control" value="${escapeHtml(cliDoc)}" required />
+              </div>
+            </div>
+            <div class="form-row two-cols mb-2">
+              <div class="form-group">
+                <label for="modal-input-cli-tel" class="form-label text-xs font-bold uppercase">Teléfono</label>
+                <input type="text" id="modal-input-cli-tel" class="form-control" value="${escapeHtml(cliTel)}" />
+              </div>
+              <div class="form-group">
+                <label for="modal-input-cli-email" class="form-label text-xs font-bold uppercase">Domicilio Electrónico</label>
+                <input type="email" id="modal-input-cli-email" class="form-control" value="${escapeHtml(cliEmail)}" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="modal-input-cli-dir" class="form-label text-xs font-bold uppercase">Dirección</label>
+              <input type="text" id="modal-input-cli-dir" class="form-control" value="${escapeHtml(cliDir)}" placeholder="ej. Ruta Prov. S-210" />
+            </div>
           </div>
-          <div class="d-flex justify-end gap-sm">
+
+          <!-- CHECKBOX ANEXO DE COPROPIETARIOS -->
+          <div class="card p-3 mb-3" style="background: var(--bg-surface, #f9fafb); border: 2px solid var(--border-color, #e5e7eb); border-radius: var(--radius-sm);">
+            <label class="form-check-label d-flex align-center gap-sm mb-1" style="font-weight: 600; cursor: pointer; font-size: 0.95rem;">
+              <input type="checkbox" id="modal-chk-anexo" class="form-check-input" style="width: 18px; height: 18px; cursor: pointer;" />
+              <span>¿Necesita el anexo de copropietarios? (Última página)</span>
+            </label>
+            <div class="text-xs text-muted" style="margin-left: 26px;">
+              Si no se marca, el contrato se emitirá únicamente con sus 3 páginas principales. Si se marca, se anexará la 4ª página oficial para registro y firma de copropietarios.
+            </div>
+
+            <div id="modal-section-coprop" class="mt-3 pt-3" style="display: none; border-top: 1px dashed var(--border-color, #d1d5db);">
+              <h6 class="text-xs font-bold uppercase text-primary mb-2">Datos de Copropietarios (Página 4 - Opcionales)</h6>
+              <div class="form-row two-cols mb-2">
+                <input type="text" id="modal-coprop-1-nombre" class="form-control" placeholder="Copropietario 1 - Nombre y Apellido" />
+                <input type="text" id="modal-coprop-1-dni" class="form-control" placeholder="Copropietario 1 - DNI / CUIT" />
+              </div>
+              <div class="form-row two-cols mb-2">
+                <input type="text" id="modal-coprop-2-nombre" class="form-control" placeholder="Copropietario 2 - Nombre y Apellido" />
+                <input type="text" id="modal-coprop-2-dni" class="form-control" placeholder="Copropietario 2 - DNI / CUIT" />
+              </div>
+              <div class="form-row two-cols">
+                <input type="text" id="modal-coprop-3-nombre" class="form-control" placeholder="Copropietario 3 - Nombre y Apellido" />
+                <input type="text" id="modal-coprop-3-dni" class="form-control" placeholder="Copropietario 3 - DNI / CUIT" />
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-between align-center gap-sm pt-2">
             <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-modal-accion">Cancelar</button>
-            <button type="submit" class="btn btn-primary btn-sm">Generar y Asociar Contrato</button>
+            <div class="d-flex gap-sm">
+              <button type="button" class="btn btn-accent btn-sm" id="btn-modal-descargar-pdf" title="Genera el PDF y lo descarga de inmediato">
+                <span>📥 Descargar PDF</span>
+              </button>
+              <button type="submit" class="btn btn-primary btn-sm">Generar Contrato</button>
+            </div>
           </div>
         </form>
       `;
+
+      const chkAnexo = body.querySelector('#modal-chk-anexo');
+      const secCoprop = body.querySelector('#modal-section-coprop');
+      if (chkAnexo && secCoprop) {
+        chkAnexo.addEventListener('change', () => {
+          secCoprop.style.display = chkAnexo.checked ? 'block' : 'none';
+        });
+      }
+
+      body.querySelector('#btn-modal-descargar-pdf')?.addEventListener('click', async () => {
+        try {
+          const num = document.getElementById('modal-input-contrato')?.value.trim();
+          if (!num) return toast.warning('Ingrese el número de contrato.');
+          toast.info('Generando documento PDF desde la plantilla...');
+          const payload = {
+            numeroContrato: num,
+            anioInicio: document.getElementById('modal-input-anio')?.value || String(anioActual),
+            sucursal: document.getElementById('modal-input-sucursal')?.value || 'Central - Villa General Belgrano',
+            referente: document.getElementById('modal-input-referente')?.value || 'Federico Carlos Paak',
+            cliente: {
+              nombreCompleto: document.getElementById('modal-input-cli-nombre')?.value.trim() || '',
+              documento: document.getElementById('modal-input-cli-doc')?.value.trim() || '',
+              telefono: document.getElementById('modal-input-cli-tel')?.value.trim() || '',
+              email: document.getElementById('modal-input-cli-email')?.value.trim() || '',
+              direccion: document.getElementById('modal-input-cli-dir')?.value.trim() || '',
+            },
+            cormos: {
+              cormillos: '0',
+              n1: String(venta.detalles?.find(d => d.clase === 1)?.cantidad || 0),
+              n2: String(venta.detalles?.find(d => d.clase === 2)?.cantidad || 0),
+              n3: String(venta.detalles?.find(d => d.clase === 3)?.cantidad || 0),
+              n4: String(venta.detalles?.find(d => d.clase === 4)?.cantidad || 0),
+            },
+            incluirAnexoCopropietarios: chkAnexo.checked,
+            copropietarios: [
+              { nombre: document.getElementById('modal-coprop-1-nombre')?.value.trim() || '', dni: document.getElementById('modal-coprop-1-dni')?.value.trim() || '' },
+              { nombre: document.getElementById('modal-coprop-2-nombre')?.value.trim() || '', dni: document.getElementById('modal-coprop-2-dni')?.value.trim() || '' },
+              { nombre: document.getElementById('modal-coprop-3-nombre')?.value.trim() || '', dni: document.getElementById('modal-coprop-3-dni')?.value.trim() || '' },
+            ]
+          };
+          const res = await contratoGeneratorService.generarContrato(payload);
+          contratoGeneratorService.guardarContratoCache(venta.id, res.dataUrl, res.filename);
+          contratoGeneratorService.descargarPdf(res.blob, res.filename);
+          toast.success(`PDF generado exitosamente (${res.pageCount} páginas). Descarga iniciada.`);
+        } catch (err) {
+          toast.error('Error al generar PDF: ' + (err.message || 'Error'));
+        }
+      });
     } else if (tipo === 'aprobar-admin') {
       title.textContent = `Aprobar Administración y Contrato - Venta #${venta.id}`;
       body.innerHTML = `
@@ -1290,12 +1431,45 @@ export class VentasView {
         toast.success(`Venta #${ventaId} enviada a revisión exitosamente.`);
       } else if (tipo === 'contrato') {
         const num = document.getElementById('modal-input-contrato')?.value.trim();
-        const url = document.getElementById('modal-input-url')?.value.trim();
         if (!num) {
           toast.warning('El número de contrato es obligatorio.');
           return;
         }
-        await ventasService.generarContrato(ventaId, { numeroContrato: num, archivoUrl: url || null });
+        const venta = this.ventas.find(v => String(v.id) === String(ventaId));
+        const chkAnexo = document.getElementById('modal-chk-anexo');
+        const payload = {
+          numeroContrato: num,
+          anioInicio: document.getElementById('modal-input-anio')?.value || String(new Date().getFullYear()),
+          sucursal: document.getElementById('modal-input-sucursal')?.value || 'Central - Villa General Belgrano',
+          referente: document.getElementById('modal-input-referente')?.value || 'Federico Carlos Paak',
+          cliente: {
+            nombreCompleto: document.getElementById('modal-input-cli-nombre')?.value.trim() || venta?.nombreCliente || '',
+            documento: document.getElementById('modal-input-cli-doc')?.value.trim() || '',
+            telefono: document.getElementById('modal-input-cli-tel')?.value.trim() || '',
+            email: document.getElementById('modal-input-cli-email')?.value.trim() || '',
+            direccion: document.getElementById('modal-input-cli-dir')?.value.trim() || '',
+          },
+          cormos: {
+            cormillos: '0',
+            n1: String(venta?.detalles?.find(d => d.clase === 1)?.cantidad || 0),
+            n2: String(venta?.detalles?.find(d => d.clase === 2)?.cantidad || 0),
+            n3: String(venta?.detalles?.find(d => d.clase === 3)?.cantidad || 0),
+            n4: String(venta?.detalles?.find(d => d.clase === 4)?.cantidad || 0),
+          },
+          incluirAnexoCopropietarios: Boolean(chkAnexo?.checked),
+          copropietarios: [
+            { nombre: document.getElementById('modal-coprop-1-nombre')?.value.trim() || '', dni: document.getElementById('modal-coprop-1-dni')?.value.trim() || '' },
+            { nombre: document.getElementById('modal-coprop-2-nombre')?.value.trim() || '', dni: document.getElementById('modal-coprop-2-dni')?.value.trim() || '' },
+            { nombre: document.getElementById('modal-coprop-3-nombre')?.value.trim() || '', dni: document.getElementById('modal-coprop-3-dni')?.value.trim() || '' },
+          ]
+        };
+
+        toast.info('Generando contrato en base al modelo oficial...');
+        const res = await contratoGeneratorService.generarContrato(payload);
+        contratoGeneratorService.descargarPdf(res.blob, res.filename);
+        contratoGeneratorService.guardarContratoCache(ventaId, res.dataUrl, res.filename);
+
+        await ventasService.generarContrato(ventaId, { numeroContrato: num, archivoUrl: res.filename });
         toast.success(`Contrato ${num} generado para la venta #${ventaId}.`);
       } else if (tipo === 'aprobar-admin') {
         const obs = document.getElementById('modal-input-obs')?.value || '';

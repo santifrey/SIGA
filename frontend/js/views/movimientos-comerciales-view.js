@@ -10,14 +10,18 @@
 import { authService } from '../services/auth-service.js';
 import { temporadasService } from '../services/temporadas-service.js';
 import { clientesService } from '../services/clientes-service.js';
+import { sucursalesService } from '../services/sucursales-service.js';
 import { stockService, EMPRESA_SINGLETON_ID } from '../services/stock-service.js';
 import { preciosReferenciaService } from '../services/precios-referencia-service.js';
+import { contratoGeneratorService } from '../services/contrato-generator-service.js';
 import {
   movimientosComercialesService,
   TIPOS_MOVIMIENTO,
   ESTADOS_MOVIMIENTO,
   CLASES_BULBO,
   ACCIONES_APROBACION,
+  _parseTipoIndex,
+  _parseEstadoIndex,
   _parseClaseIndex as parseClaseIndexService
 } from '../services/movimientos-comerciales-service.js';
 import { getProhibitionIcon } from '../utils/icons.js';
@@ -103,36 +107,36 @@ export class MovimientosComercialesView {
         <!-- ===================================================================
              KPI COUNTERS CON FILTRADO RÁPIDO
              =================================================================== -->
-        <div class="grid grid-cols-2 md:grid-cols-6 gap-sm mb-4" id="kpi-counters-container">
-          <div class="card metric-card p-3 cursor-pointer" data-kpi-estado="todos" style="cursor: pointer; transition: transform var(--transition-fast);">
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-sm mb-4" id="kpi-counters-container" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--spacing-sm);">
+          <div class="card metric-card p-3 cursor-pointer" data-kpi-estado="todos" style="cursor: pointer; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.875rem 1rem; transition: transform var(--transition-fast);">
             <div class="metric-label">Total Registrados</div>
             <div class="metric-value" id="kpi-total" style="font-size: 1.6rem;">0</div>
             <div class="text-xs text-muted">Todos los estados</div>
           </div>
-          <div class="card metric-card warning p-3 cursor-pointer" data-kpi-estado="0" style="cursor: pointer; border-left: 4px solid var(--warning);">
-            <div class="metric-label" style="color: var(--warning);">Pendientes</div>
+          <div class="card metric-card warning p-3 cursor-pointer" data-kpi-estado="0" style="cursor: pointer; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.875rem 1rem; border-left: 4px solid var(--warning);">
+            <div class="metric-label" style="color: var(--warning);">Pend. Contrato / Aprob.</div>
             <div class="metric-value" id="kpi-pendientes" style="font-size: 1.6rem; color: var(--warning);">0</div>
-            <div class="text-xs text-muted">En revisión</div>
+            <div class="text-xs text-muted">Contrato / Revisión</div>
           </div>
-          <div class="card metric-card info p-3 cursor-pointer" data-kpi-estado="1" style="cursor: pointer; border-left: 4px solid var(--info);">
-            <div class="metric-label" style="color: var(--info);">Aprobados</div>
+          <div class="card metric-card info p-3 cursor-pointer" data-kpi-estado="1" style="cursor: pointer; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.875rem 1rem; border-left: 4px solid var(--info);">
+            <div class="metric-label" style="color: var(--info);">Pend. Factura</div>
             <div class="metric-value" id="kpi-aprobados" style="font-size: 1.6rem; color: var(--info);">0</div>
-            <div class="text-xs text-muted">Aprobación Admin</div>
+            <div class="text-xs text-muted">Aprobado comercial</div>
           </div>
-          <div class="card metric-card primary p-3 cursor-pointer" data-kpi-estado="2" style="cursor: pointer; border-left: 4px solid var(--primary);">
-            <div class="metric-label" style="color: var(--primary);">Facturados</div>
+          <div class="card metric-card primary p-3 cursor-pointer" data-kpi-estado="2" style="cursor: pointer; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.875rem 1rem; border-left: 4px solid var(--primary);">
+            <div class="metric-label" style="color: var(--primary);">Pend. Aprob. Factura</div>
             <div class="metric-value" id="kpi-facturados" style="font-size: 1.6rem; color: var(--primary);">0</div>
-            <div class="text-xs text-muted">Con comprobante</div>
+            <div class="text-xs text-muted">Revisión contable</div>
           </div>
-          <div class="card metric-card success p-3 cursor-pointer" data-kpi-estado="3" style="cursor: pointer; border-left: 4px solid var(--success);">
-            <div class="metric-label" style="color: var(--success);">Finalizados</div>
+          <div class="card metric-card success p-3 cursor-pointer" data-kpi-estado="3" style="cursor: pointer; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.875rem 1rem; border-left: 4px solid var(--success);">
+            <div class="metric-label" style="color: var(--success);">Completados</div>
             <div class="metric-value" id="kpi-finalizados" style="font-size: 1.6rem; color: var(--success);">0</div>
             <div class="text-xs text-muted">Stock impactado</div>
           </div>
-          <div class="card metric-card danger p-3 cursor-pointer" data-kpi-estado="4" style="cursor: pointer; border-left: 4px solid var(--danger);">
+          <div class="card metric-card danger p-3 cursor-pointer" data-kpi-estado="4" style="cursor: pointer; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.875rem 1rem; border-left: 4px solid var(--danger);">
             <div class="metric-label" style="color: var(--danger);">Rechazados</div>
             <div class="metric-value" id="kpi-rechazados" style="font-size: 1.6rem; color: var(--danger);">0</div>
-            <div class="text-xs text-muted">Observados</div>
+            <div class="text-xs text-muted">Observados / Anulados</div>
           </div>
         </div>
 
@@ -140,7 +144,7 @@ export class MovimientosComercialesView {
              BARRA DE FILTROS AVANZADOS
              =================================================================== -->
         <div class="card mb-4" style="padding: 1.25rem;">
-          <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-sm align-center">
+          <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-sm align-center" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--spacing-sm);">
             <div>
               <label for="filtro-tipo" class="form-label text-xs font-bold uppercase text-muted mb-1">Tipo:</label>
               <select id="filtro-tipo" class="form-control form-control-sm">
@@ -154,10 +158,10 @@ export class MovimientosComercialesView {
               <label for="filtro-estado" class="form-label text-xs font-bold uppercase text-muted mb-1">Estado:</label>
               <select id="filtro-estado" class="form-control form-control-sm">
                 <option value="todos">Todos los Estados</option>
-                <option value="0">Pendiente Revisión</option>
-                <option value="1">Aprobado Admin</option>
-                <option value="2">Facturado</option>
-                <option value="3">Finalizado</option>
+                <option value="0">Pendiente Contrato / Aprobación</option>
+                <option value="1">Pendiente Factura</option>
+                <option value="2">Pendiente Aprobación Factura</option>
+                <option value="3">Completado</option>
                 <option value="4">Rechazado</option>
               </select>
             </div>
@@ -268,7 +272,7 @@ export class MovimientosComercialesView {
                 </div>
 
                 <!-- Participantes Dinámicos -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-md mb-3" id="participantes-container">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-md mb-3" id="participantes-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--spacing-md);">
                   <!-- Inyectado dinámicamente según selectedTipo -->
                 </div>
 
@@ -384,6 +388,132 @@ export class MovimientosComercialesView {
             </div>
           </div>
         </div>
+
+        <!-- ===================================================================
+             MODAL DE CREACIÓN DE CLIENTE (REUTILIZADO DE LA VISTA CLIENTES)
+             =================================================================== -->
+        <div id="modal-cliente" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-cliente-title" style="z-index: 100010 !important;">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-header">
+              <h3 class="modal-title" id="modal-cliente-title">Nuevo Cliente</h3>
+              <button type="button" class="modal-close-btn" id="btn-close-modal-cliente" aria-label="Cerrar modal">
+                <svg class="icon-svg sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            <form id="form-cliente" novalidate>
+              <div class="modal-body" style="max-height: calc(85vh - 130px); overflow-y: auto;">
+                <input type="hidden" id="cliente-id" />
+
+                <!-- Sección 1: Datos de Persona -->
+                <div class="form-section">
+                  <div class="form-section-title">
+                    <svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span>1. Datos de la Persona</span>
+                  </div>
+
+                  <div class="form-row two-cols">
+                    <div class="form-group">
+                      <label for="cliente-nombre" class="form-label">
+                        Nombre <span class="required-mark">*</span>
+                      </label>
+                      <input type="text" id="cliente-nombre" class="form-control" placeholder="ej. Martín" required />
+                      <div class="invalid-feedback" id="val-nombre">El nombre es obligatorio.</div>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="cliente-apellido" class="form-label">
+                        Apellido <span class="required-mark">*</span>
+                      </label>
+                      <input type="text" id="cliente-apellido" class="form-control" placeholder="ej. Gómez" required />
+                      <div class="invalid-feedback" id="val-apellido">El apellido es obligatorio.</div>
+                    </div>
+                  </div>
+
+                  <div class="form-row two-cols">
+                    <div class="form-group">
+                      <label for="cliente-tipo-doc" class="form-label">Tipo Documento</label>
+                      <select id="cliente-tipo-doc" class="form-control">
+                        <option value="DNI">DNI - Documento Nacional</option>
+                        <option value="CUIT">CUIT / CUIL</option>
+                        <option value="PASAPORTE">Pasaporte</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="cliente-doc" class="form-label">
+                        Número de Documento <span class="required-mark">*</span>
+                      </label>
+                      <input type="text" id="cliente-doc" class="form-control" placeholder="ej. 32456789" required />
+                      <div class="invalid-feedback" id="val-doc">El número de documento es obligatorio.</div>
+                    </div>
+                  </div>
+
+                  <div class="form-row two-cols">
+                    <div class="form-group">
+                      <label for="cliente-email" class="form-label">
+                        Correo Electrónico <span class="required-mark">*</span>
+                      </label>
+                      <input type="email" id="cliente-email" class="form-control" placeholder="ej. cliente@correo.com" required />
+                      <div class="invalid-feedback" id="val-email">Ingrese un correo electrónico válido.</div>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="cliente-telefono" class="form-label">Teléfono / WhatsApp</label>
+                      <input type="text" id="cliente-telefono" class="form-control" placeholder="ej. +54 351 456-7890" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Sección 2: Datos Comerciales de Cliente -->
+                <div>
+                  <div class="form-section-title">
+                    <svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    <span>2. Información Comercial</span>
+                  </div>
+
+                  <div class="form-row two-cols">
+                    <div class="form-group">
+                      <label for="cliente-codigo" class="form-label">
+                        Código de Cliente
+                        <span class="label-hint">(Autogenerado si está vacío)</span>
+                      </label>
+                      <input type="text" id="cliente-codigo" class="form-control" placeholder="ej. CLI-00101" />
+                    </div>
+
+                    <div class="form-group d-flex justify-center" style="margin-top: 1.5rem;">
+                      <label class="form-switch">
+                        <input type="checkbox" id="cliente-activo" class="switch-input" checked />
+                        <span class="switch-slider"></span>
+                        <span class="form-check-label font-semibold">Cliente Habilitado / Activo</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="form-group mb-3">
+                    <label for="cliente-contrato-id" class="form-label">
+                      ID de Contrato Vinculado
+                      <span class="label-hint">(Opcional / Clave foránea al contrato asociado)</span>
+                    </label>
+                    <input type="number" id="cliente-contrato-id" class="form-control" placeholder="ej. 1, 2, ..." min="1" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="cliente-observaciones" class="form-label">Observaciones y Notas</label>
+                    <textarea id="cliente-observaciones" class="form-control" rows="3" placeholder="Información crediticia, preferencias o datos de facturación..."></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-modal-cliente">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="btn-save-cliente">
+                  <span class="btn-text">Guardar Cliente</span>
+                  <span class="btn-spinner"></span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     `;
 
@@ -476,6 +606,11 @@ export class MovimientosComercialesView {
     this.container.querySelector('#btn-close-modal-detalle')?.addEventListener('click', () => this._closeModalDetalle());
     this.container.querySelector('#btn-close-modal-accion')?.addEventListener('click', () => this._closeModalAccion());
 
+    // Modal nuevo cliente (reutilizado de Clientes)
+    this.container.querySelector('#btn-close-modal-cliente')?.addEventListener('click', () => this._closeModalNuevoCliente());
+    this.container.querySelector('#btn-cancel-modal-cliente')?.addEventListener('click', () => this._closeModalNuevoCliente());
+    this.container.querySelector('#form-cliente')?.addEventListener('submit', (e) => this._handleSubmitNuevoCliente(e));
+
     // Radios tipo movimiento
     this.container.querySelectorAll('input[name="radio-tipo-movimiento"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
@@ -552,7 +687,7 @@ export class MovimientosComercialesView {
 
   _updateKpis() {
     const total = this.movimientos.length;
-    const count = (st) => this.movimientos.filter(m => Number(m.estado) === st).length;
+    const count = (st) => this.movimientos.filter(m => _parseEstadoIndex(m.estado ?? m.nombreEstado) === st).length;
 
     const setKpi = (id, val) => {
       const el = this.container.querySelector(`#${id}`);
@@ -567,6 +702,31 @@ export class MovimientosComercialesView {
     setKpi('kpi-rechazados', count(4));
   }
 
+  _resolverNombreParticipante(participanteId, rawNombre, mov = null) {
+    const idNum = Number(participanteId);
+    if (idNum === 1) {
+      if (rawNombre && !rawNombre.startsWith('Participante #') && !rawNombre.startsWith('Cliente #')) {
+        return rawNombre;
+      }
+      return 'Empresa Central';
+    }
+    const cli = this.clientes.find(c => Number(c.id) === idNum || (rawNombre && (c.codigo === rawNombre || c.codigoCliente === rawNombre)));
+    if (cli) {
+      const fullName = cli.nombreCompleto || `${cli.nombre || ''} ${cli.apellido || ''}`.trim();
+      const cod = cli.codigo || cli.codigoCliente;
+      if (fullName) {
+        return cod ? `${fullName} (${cod})` : fullName;
+      }
+    }
+    if (mov && Number(mov.clienteId) === idNum && mov.nombreCliente && !mov.nombreCliente.startsWith('CLI-') && !mov.nombreCliente.startsWith('Participante #')) {
+      return mov.codigoCliente ? `${mov.nombreCliente} (${mov.codigoCliente})` : mov.nombreCliente;
+    }
+    if (rawNombre && !rawNombre.startsWith('Participante #') && !rawNombre.startsWith('CLI-')) {
+      return rawNombre;
+    }
+    return rawNombre || `Cliente #${participanteId}`;
+  }
+
   _renderTable() {
     const tbody = this.container.querySelector('#tbody-movimientos');
     if (!tbody) return;
@@ -577,9 +737,11 @@ export class MovimientosComercialesView {
     if (this.filtro.search && this.filtro.search.trim() !== '') {
       const q = this.filtro.search.trim().toLowerCase();
       list = list.filter(m => {
+        const origenLabel = this._resolverNombreParticipante(m.origenParticipanteId, m.nombreOrigen, m);
+        const destinoLabel = this._resolverNombreParticipante(m.destinoParticipanteId, m.nombreDestino, m);
         const idMatch = String(m.id).includes(q);
-        const origMatch = String(m.nombreOrigen || '').toLowerCase().includes(q);
-        const destMatch = String(m.nombreDestino || '').toLowerCase().includes(q);
+        const origMatch = String(origenLabel || '').toLowerCase().includes(q) || String(m.nombreOrigen || '').toLowerCase().includes(q);
+        const destMatch = String(destinoLabel || '').toLowerCase().includes(q) || String(m.nombreDestino || '').toLowerCase().includes(q);
         const cliMatch = String(m.nombreCliente || '').toLowerCase().includes(q);
         const obsMatch = String(m.observaciones || '').toLowerCase().includes(q);
         const factMatch = String(m.factura?.numeroFactura || '').toLowerCase().includes(q);
@@ -600,27 +762,59 @@ export class MovimientosComercialesView {
     }
 
     tbody.innerHTML = list.map(m => {
-      const tipoMeta = TIPOS_MOVIMIENTO[m.tipo] || { label: `Tipo ${m.tipo}`, badgeClass: 'badge-secondary' };
-      const estadoMeta = ESTADOS_MOVIMIENTO[m.estado] || { label: `Estado ${m.estado}`, badgeClass: 'badge-secondary' };
+      const tipoNum = _parseTipoIndex(m.tipo ?? m.nombreTipo);
+      const estadoNum = _parseEstadoIndex(m.estado ?? m.nombreEstado);
+      const tipoMeta = TIPOS_MOVIMIENTO[tipoNum] || TIPOS_MOVIMIENTO[m.tipo] || { label: `Tipo ${m.tipo}`, badgeClass: 'badge-secondary' };
+      const estadoMeta = ESTADOS_MOVIMIENTO[estadoNum] || ESTADOS_MOVIMIENTO[m.estado] || { label: `Estado ${m.estado}`, badgeClass: 'badge-secondary' };
       const fReg = m.fechaRegistro ? new Date(m.fechaRegistro).toLocaleDateString('es-AR') : '-';
 
       const totalBulbos = (Number(m.totalBulbos) || 0).toLocaleString('es-AR');
       const montoTotal = Number(m.montoTotal) || 0;
-      const montoFmt = m.tipo === 3
+      const montoFmt = tipoNum === 3
         ? '<span class="text-muted">$ 0,00</span>'
         : `$ ${montoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+      // Friendly state resolution según el ciclo de vida de 5 etapas
+      let friendlyEstadoLabel = estadoMeta.label;
+      let friendlyBadgeClass = estadoMeta.badgeClass;
+
+      if (estadoNum === 0) {
+        if (tipoNum === 1 && m.requiereContrato && (!m.contrato || m.contrato.isDeleted)) {
+          friendlyEstadoLabel = 'Pendiente Contrato';
+          friendlyBadgeClass = 'badge-warning';
+        } else {
+          friendlyEstadoLabel = 'Pendiente Aprobación Contrato';
+          friendlyBadgeClass = 'badge-info';
+        }
+      } else if (estadoNum === 1) {
+        friendlyEstadoLabel = tipoNum !== 3 ? 'Pendiente Factura' : 'Pendiente Finalización';
+        friendlyBadgeClass = 'badge-primary';
+      } else if (estadoNum === 2) {
+        friendlyEstadoLabel = 'Pendiente Aprobación Factura';
+        friendlyBadgeClass = 'badge-purple';
+      } else if (estadoNum === 3) {
+        friendlyEstadoLabel = 'Completado';
+        friendlyBadgeClass = 'badge-success';
+      } else if (estadoNum === 4) {
+        const isFacturaAnulada = m.factura && (m.factura.estado === 2 || m.factura.estado === 'Anulada' || m.factura.nombreEstado === 'Anulada');
+        friendlyEstadoLabel = isFacturaAnulada ? 'Rechazado (Factura Anulada)' : 'Rechazado';
+        friendlyBadgeClass = 'badge-danger';
+      }
+
       // Comprobantes indicators
       const contratoBadge = m.contrato
-        ? `<span class="badge badge-success text-xs" title="Contrato #${escapeHtml(m.contrato.numeroContrato)}">Contrato</span>`
-        : (m.tipo === 1 && m.requiereContrato ? `<span class="badge badge-warning text-xs" title="Requiere contrato previo">Req. Contrato</span>` : '<span class="text-muted text-xs">-</span>');
+        ? `<span class="badge badge-success text-xs cursor-pointer btn-badge-contrato" data-id="${m.id}" style="cursor: pointer;" title="Descargar Contrato #${escapeHtml(m.contrato.numeroContrato)}">Contrato: #${escapeHtml(m.contrato.numeroContrato)}</span>`
+        : (tipoNum === 1 && m.requiereContrato ? `<span class="badge badge-warning text-xs" title="Requiere contrato previo">Req. Contrato</span>` : '<span class="text-muted text-xs">-</span>');
 
-      const facturaBadge = m.factura
-        ? `<span class="badge badge-primary text-xs" title="Factura #${escapeHtml(m.factura.numeroFactura)}">Factura</span>`
-        : '<span class="text-muted text-xs">-</span>';
+      const isFacturaAnulada = m.factura && (m.factura.estado === 2 || m.factura.estado === 'Anulada' || m.factura.nombreEstado === 'Anulada');
+      const facturaBadge = !m.factura
+        ? '<span class="text-muted text-xs">-</span>'
+        : (isFacturaAnulada
+            ? `<span class="badge badge-danger text-xs" title="Factura #${escapeHtml(m.factura.numeroFactura)} (Anulada)">Factura Anulada: #${escapeHtml(m.factura.numeroFactura)}</span>`
+            : `<span class="badge badge-primary text-xs" title="Factura #${escapeHtml(m.factura.numeroFactura)}">Factura: #${escapeHtml(m.factura.numeroFactura)}</span>`);
 
-      const origenLabel = m.nombreOrigen || (m.origenParticipanteId === 1 ? 'Empresa Central' : `Cliente #${m.origenParticipanteId}`);
-      const destinoLabel = m.nombreDestino || (m.destinoParticipanteId === 1 ? 'Empresa Central' : `Cliente #${m.destinoParticipanteId}`);
+      const origenLabel = this._resolverNombreParticipante(m.origenParticipanteId, m.nombreOrigen, m);
+      const destinoLabel = this._resolverNombreParticipante(m.destinoParticipanteId, m.nombreDestino, m);
 
       return `
         <tr data-mov-id="${m.id}">
@@ -640,9 +834,9 @@ export class MovimientosComercialesView {
           <td style="text-align: right; font-weight: 600;">${totalBulbos}</td>
           <td style="text-align: right; font-weight: 700; color: var(--primary);">${montoFmt}</td>
           <td>
-            <span class="badge ${estadoMeta.badgeClass} text-xs">
+            <span class="badge ${friendlyBadgeClass} text-xs">
               <span class="badge-dot"></span>
-              ${escapeHtml(estadoMeta.label)}
+              ${escapeHtml(friendlyEstadoLabel)}
             </span>
           </td>
           <td style="text-align: center;">
@@ -671,35 +865,60 @@ export class MovimientosComercialesView {
 
   _renderRowActionButtons(m) {
     const btns = [];
-    const st = Number(m.estado);
-    const tipo = Number(m.tipo);
+    const st = _parseEstadoIndex(m.estado ?? m.nombreEstado);
+    const tipo = _parseTipoIndex(m.tipo ?? m.nombreTipo);
     const currentUser = authService.getUsuarioActual();
     const isCreator = currentUser && Number(currentUser.id) === Number(m.usuarioRegistroId);
 
-    // 1. Pendiente de Revisión (0)
+    // 1. Estado 0: Pendiente Contrato / Pendiente Aprobación Contrato
     if (st === 0) {
       if (authService.tienePermiso('MOVCOM_APROBAR')) {
-        btns.push(`
-          <button type="button" class="btn btn-primary btn-sm btn-action-aprobar" data-id="${m.id}" title="Aprobar operación">
-            <span>Aprobar</span>
-          </button>
-        `);
+        const reqContrato = tipo === 1 && m.requiereContrato;
+        const tieneContrato = Boolean(m.contrato && !m.contrato.isDeleted);
+
+        if (reqContrato && !tieneContrato) {
+          btns.push(`
+            <button type="button" class="btn btn-warning btn-sm btn-action-contrato" data-id="${m.id}" title="Generar Contrato Comercial PDF">
+              <span>Generar Contrato</span>
+            </button>
+          `);
+        } else {
+          if (tipo === 1 && tieneContrato) {
+            btns.push(`
+              <button type="button" class="btn btn-outline btn-sm btn-action-ver-contrato" data-id="${m.id}" title="Descargar / Ver Contrato PDF">
+                <span>Ver Contrato</span>
+              </button>
+            `);
+          }
+          btns.push(`
+            <button type="button" class="btn btn-primary btn-sm btn-action-aprobar" data-id="${m.id}" title="Aprobar contrato / operación y avanzar a Pendiente Factura">
+              <span>Aprobar Contrato</span>
+            </button>
+          `);
+        }
       }
       if (authService.tienePermiso('MOVCOM_RECHAZAR')) {
         btns.push(`
-          <button type="button" class="btn btn-outline btn-sm btn-action-rechazar" data-id="${m.id}" title="Rechazar u Observar">
+          <button type="button" class="btn btn-outline btn-sm btn-action-rechazar" data-id="${m.id}" title="Rechazar u Observar Operación">
             ${getProhibitionIcon({ size: 'sm', title: 'Rechazar' })}
           </button>
         `);
       }
     }
 
-    // 2. Aprobado Administración (1)
+    // 2. Estado 1: Pendiente Factura (o Pendiente Finalización en Traspaso)
     if (st === 1) {
+      if (tipo === 1 && m.contrato) {
+        btns.push(`
+          <button type="button" class="btn btn-outline btn-sm btn-action-ver-contrato" data-id="${m.id}" title="Descargar / Ver Contrato PDF">
+            <span>Ver Contrato</span>
+          </button>
+        `);
+      }
       if (tipo !== 3) {
         if (authService.tienePermiso('MOVCOM_FACTURAR')) {
           btns.push(`
-            <button type="button" class="btn btn-primary btn-sm btn-action-facturar" data-id="${m.id}" title="Emitir Factura">
+            <button type="button" class="btn btn-primary btn-sm btn-action-facturar" data-id="${m.id}" title="Emitir Factura Comercial">
               <span>Facturar</span>
             </button>
           `);
@@ -716,40 +935,70 @@ export class MovimientosComercialesView {
       }
       if (authService.tienePermiso('MOVCOM_RECHAZAR')) {
         btns.push(`
-          <button type="button" class="btn btn-outline btn-sm btn-action-rechazar" data-id="${m.id}" title="Rechazar u Observar">
+          <button type="button" class="btn btn-outline btn-sm btn-action-rechazar" data-id="${m.id}" title="Rechazar u Observar Operación">
             ${getProhibitionIcon({ size: 'sm', title: 'Rechazar' })}
           </button>
         `);
       }
     }
 
-    // 3. Facturado (2)
+    // 3. Estado 2: Pendiente Aprobación Factura
     if (st === 2 && tipo !== 3) {
+      if (tipo === 1 && m.contrato) {
+        btns.push(`
+          <button type="button" class="btn btn-outline btn-sm btn-action-ver-contrato" data-id="${m.id}" title="Descargar / Ver Contrato PDF">
+            <span>Ver Contrato</span>
+          </button>
+        `);
+      }
       if (authService.tienePermiso('MOVCOM_FINALIZAR')) {
         btns.push(`
-          <button type="button" class="btn btn-success btn-sm btn-action-finalizar" data-id="${m.id}" title="Finalizar e impactar stock">
-            <span>Finalizar</span>
+          <button type="button" class="btn btn-success btn-sm btn-action-finalizar" data-id="${m.id}" title="Aprobar Factura y Finalizar Operación (Impacta stock físico)">
+            <span>Aprobar Factura</span>
           </button>
         `);
       }
       if (authService.tienePermiso('MOVCOM_RECHAZAR')) {
         btns.push(`
-          <button type="button" class="btn btn-outline btn-sm btn-action-rechazar" data-id="${m.id}" title="Rechazar y anular factura">
-            ${getProhibitionIcon({ size: 'sm', title: 'Rechazar' })}
+          <button type="button" class="btn btn-outline-danger btn-sm btn-action-rechazar" data-id="${m.id}" title="Rechazar Factura (Anula la factura actual y permite generar una nueva)">
+            <span>Rechazar Factura</span>
           </button>
         `);
       }
     }
 
-    // 4. Rechazado (4) -> Corregir y Reenviar
+    // 4. Estado 4: Rechazado -> Nuevo Contrato, Nueva Factura o Corregir Operación
     if (st === 4) {
-      if (isCreator || authService.tienePermiso('MOVCOM_CORREGIR')) {
+      if (tipo === 1 && authService.tienePermiso('MOVCOM_APROBAR')) {
         btns.push(`
-          <button type="button" class="btn btn-secondary btn-sm btn-action-corregir" data-id="${m.id}" title="Corregir y reenviar">
-            <span>Corregir</span>
+          <button type="button" class="btn btn-warning btn-sm btn-action-contrato" data-id="${m.id}" title="Regenerar o editar contrato oficial tras rechazo">
+            <span>${m.contrato ? 'Editar Contrato' : 'Generar Contrato'}</span>
           </button>
         `);
       }
+      if (authService.tienePermiso('MOVCOM_FACTURAR') && tipo !== 3) {
+        btns.push(`
+          <button type="button" class="btn btn-primary btn-sm btn-action-facturar" data-id="${m.id}" title="Emitir nueva factura comercial corregida">
+            <span>Nueva Factura</span>
+          </button>
+        `);
+      }
+      if (isCreator || authService.tienePermiso('MOVCOM_CORREGIR')) {
+        btns.push(`
+          <button type="button" class="btn btn-secondary btn-sm btn-action-corregir" data-id="${m.id}" title="Corregir datos de la operación y reenviar a revisión">
+            <span>Corregir Operación</span>
+          </button>
+        `);
+      }
+    }
+
+    // 5. Finalizado (3)
+    if (st === 3 && tipo === 1 && m.contrato) {
+      btns.push(`
+        <button type="button" class="btn btn-outline btn-sm btn-action-ver-contrato" data-id="${m.id}" title="Descargar / Ver Contrato PDF">
+          <span>Ver Contrato</span>
+        </button>
+      `);
     }
 
     return btns.join('');
@@ -757,14 +1006,28 @@ export class MovimientosComercialesView {
 
   _renderDetailActionButtons(mov) {
     const btns = [];
-    const st = Number(mov.estado);
-    const tipo = Number(mov.tipo);
+    const st = _parseEstadoIndex(mov.estado ?? mov.nombreEstado);
+    const tipo = _parseTipoIndex(mov.tipo ?? mov.nombreTipo);
     const currentUser = authService.getUsuarioActual();
     const isCreator = currentUser && Number(currentUser.id) === Number(mov.usuarioRegistroId);
 
-    // State 0 (PendienteRevision): Aprobar (MOVCOM_APROBAR), Rechazar (MOVCOM_RECHAZAR)
+    // State 0 (PendienteRevision): Contrato, Aprobar (MOVCOM_APROBAR), Rechazar (MOVCOM_RECHAZAR)
     if (st === 0) {
       if (authService.tienePermiso('MOVCOM_APROBAR')) {
+        if (tipo === 1 && !mov.contrato) {
+          btns.push(`
+            <button type="button" class="btn btn-accent btn-sm btn-detalle-action" id="btn-detalle-contrato" title="Generar Contrato de Compraventa basado en Plantilla">
+              <span>Generar Contrato</span>
+            </button>
+          `);
+        }
+        if (tipo === 1 && mov.contrato) {
+          btns.push(`
+            <button type="button" class="btn btn-outline btn-sm btn-detalle-action" id="btn-detalle-ver-contrato" title="Descargar / Ver Contrato PDF">
+              <span>Ver Contrato PDF</span>
+            </button>
+          `);
+        }
         btns.push(`
           <button type="button" class="btn btn-primary btn-sm btn-detalle-action" id="btn-detalle-aprobar" title="Aprobar operación">
             <span>Aprobar</span>
@@ -811,31 +1074,45 @@ export class MovimientosComercialesView {
       }
     }
 
-    // State 2 (Facturado): Finalizar (MOVCOM_FINALIZAR), Rechazar (MOVCOM_RECHAZAR)
+    // State 2 (Facturado): Pendiente Aprobación Factura -> Aprobar Factura, Rechazar Factura
     if (st === 2 && tipo !== 3) {
       if (authService.tienePermiso('MOVCOM_FINALIZAR')) {
         btns.push(`
-          <button type="button" class="btn btn-success btn-sm btn-detalle-action" id="btn-detalle-finalizar" title="Finalizar e impactar stock">
-            <span>Finalizar</span>
+          <button type="button" class="btn btn-success btn-sm btn-detalle-action" id="btn-detalle-finalizar" title="Aprobar factura y finalizar operación (impacta stock físico)">
+            <span>Aprobar Factura</span>
           </button>
         `);
       }
       if (authService.tienePermiso('MOVCOM_RECHAZAR')) {
         btns.push(`
-          <button type="button" class="btn btn-outline btn-sm btn-detalle-action" id="btn-detalle-rechazar" title="Rechazar y anular factura">
+          <button type="button" class="btn btn-outline btn-sm btn-detalle-action" id="btn-detalle-rechazar" title="Rechazar factura (Anula la factura actual y permite generar una nueva)">
             ${getProhibitionIcon({ size: 'sm', title: 'Rechazar' })}
-            <span style="color: var(--danger); font-weight: 600;">Rechazar</span>
+            <span style="color: var(--danger); font-weight: 600;">Rechazar Factura</span>
           </button>
         `);
       }
     }
 
-    // State 4 (Rechazado): Corregir y Reenviar (MOVCOM_CORREGIR o creador)
+    // State 4 (Rechazado): Nuevo Contrato, Nueva Factura o Corregir Operación
     if (st === 4) {
+      if (tipo === 1 && authService.tienePermiso('MOVCOM_APROBAR')) {
+        btns.push(`
+          <button type="button" class="btn btn-warning btn-sm btn-detalle-action" id="btn-detalle-contrato" title="Regenerar o editar contrato oficial tras rechazo">
+            <span>${mov.contrato ? 'Editar Contrato' : 'Generar Contrato'}</span>
+          </button>
+        `);
+      }
+      if (authService.tienePermiso('MOVCOM_FACTURAR') && tipo !== 3) {
+        btns.push(`
+          <button type="button" class="btn btn-primary btn-sm btn-detalle-action" id="btn-detalle-facturar" title="Emitir nueva factura comercial corregida">
+            <span>Nueva Factura</span>
+          </button>
+        `);
+      }
       if (isCreator || authService.tienePermiso('MOVCOM_CORREGIR')) {
         btns.push(`
-          <button type="button" class="btn btn-secondary btn-sm btn-detalle-action" id="btn-detalle-corregir" title="Corregir y reenviar a revisión">
-            <span>Corregir y Reenviar</span>
+          <button type="button" class="btn btn-secondary btn-sm btn-detalle-action" id="btn-detalle-corregir" title="Corregir datos de la operación y reenviar a revisión">
+            <span>Corregir Operación</span>
           </button>
         `);
       }
@@ -853,6 +1130,23 @@ export class MovimientosComercialesView {
       b.addEventListener('click', () => {
         const id = Number(b.getAttribute('data-id'));
         this._openModalDetalle(id);
+      });
+    });
+
+    // Generar Contrato
+    tbody.querySelectorAll('.btn-action-contrato').forEach(b => {
+      b.addEventListener('click', () => {
+        const id = Number(b.getAttribute('data-id'));
+        this._abrirModalAccion('contrato', id);
+      });
+    });
+
+    // Ver / Descargar Contrato Generado
+    tbody.querySelectorAll('.btn-action-ver-contrato, .btn-badge-contrato').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = Number(b.getAttribute('data-id'));
+        this._descargarOVerContrato(id);
       });
     });
 
@@ -927,7 +1221,7 @@ export class MovimientosComercialesView {
       try {
         const mov = await movimientosComercialesService.obtenerPorId(editId);
         this.currentEditMovimiento = mov;
-        this.selectedTipo = Number(mov.tipo);
+        this.selectedTipo = _parseTipoIndex(mov.tipo ?? mov.nombreTipo);
       } catch (err) {
         toast.error('No se pudo cargar el movimiento para editar.');
         return;
@@ -1011,10 +1305,16 @@ export class MovimientosComercialesView {
           <input type="hidden" id="mov-origen-id" value="1" />
         </div>
         <div class="form-group mb-0">
-          <label for="mov-destino-id" class="form-label text-xs font-bold uppercase text-muted">Destino (Cliente Comprador) *</label>
+          <div class="d-flex justify-between align-center" style="margin-bottom: 0.375rem;">
+            <label for="mov-destino-id" class="form-label text-xs font-bold uppercase text-muted mb-0">Destino (Cliente Comprador) *</label>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btn-nuevo-cliente-venta" style="padding: 2px 8px; font-size: 0.7rem;" title="Registrar un nuevo cliente">
+              + Nuevo Cliente
+            </button>
+          </div>
           <select id="mov-destino-id" class="form-control" required>
             <option value="">Seleccione cliente comprador...</option>
             ${clientesOptions}
+            <option value="__nuevo__">+ Registrar nuevo cliente...</option>
           </select>
         </div>
       `;
@@ -1022,9 +1322,20 @@ export class MovimientosComercialesView {
       // Cargar stock origen de Empresa para advertencias
       this._cargarStockOrigen(EMPRESA_SINGLETON_ID);
 
-      // Event listener sobre destino para verificar cliente nuevo
+      // Botón + Nuevo Cliente en Venta
+      this.container.querySelector('#btn-nuevo-cliente-venta')?.addEventListener('click', () => {
+        this._openModalNuevoCliente();
+      });
+
+      // Event listener sobre destino para verificar cliente nuevo o abrir modal de creación
       const destSelect = this.container.querySelector('#mov-destino-id');
       destSelect?.addEventListener('change', async (e) => {
+        if (e.target.value === '__nuevo__') {
+          e.target.value = '';
+          avisoCliente.style.display = 'none';
+          this._openModalNuevoCliente();
+          return;
+        }
         const cliId = Number(e.target.value);
         if (cliId) {
           await this._verificarClienteNuevoBadge(cliId);
@@ -1567,34 +1878,70 @@ export class MovimientosComercialesView {
       const mov = await movimientosComercialesService.obtenerPorId(id);
       this.activeMovimiento = mov;
 
-      const tipoMeta = TIPOS_MOVIMIENTO[mov.tipo] || { label: `Tipo ${mov.tipo}`, badgeClass: 'badge-secondary' };
-      const estadoMeta = ESTADOS_MOVIMIENTO[mov.estado] || { label: `Estado ${mov.estado}`, badgeClass: 'badge-secondary' };
+      const movTipoNum = _parseTipoIndex(mov.tipo ?? mov.nombreTipo);
+      const movEstadoNum = _parseEstadoIndex(mov.estado ?? mov.nombreEstado);
+      const tipoMeta = TIPOS_MOVIMIENTO[movTipoNum] || TIPOS_MOVIMIENTO[mov.tipo] || { label: `Tipo ${mov.tipo}`, badgeClass: 'badge-secondary' };
+      const estadoMeta = ESTADOS_MOVIMIENTO[movEstadoNum] || ESTADOS_MOVIMIENTO[mov.estado] || { label: `Estado ${mov.estado}`, badgeClass: 'badge-secondary' };
       const fReg = mov.fechaRegistro ? new Date(mov.fechaRegistro).toLocaleString('es-AR') : '-';
 
-      const origenLabel = mov.nombreOrigen || (mov.origenParticipanteId === 1 ? 'Empresa Central' : `Cliente #${mov.origenParticipanteId}`);
-      const destinoLabel = mov.nombreDestino || (mov.destinoParticipanteId === 1 ? 'Empresa Central' : `Cliente #${mov.destinoParticipanteId}`);
+      // Detección de factura anulada y resolución de estado amigable (5 fases)
+      const isFacturaAnulada = mov.factura && (mov.factura.estado === 2 || mov.factura.estado === 'Anulada' || (typeof mov.factura.estado === 'string' && mov.factura.estado.toLowerCase().includes('anulad')));
+      let friendlyEstadoLabel = estadoMeta.label;
+      let friendlyBadgeClass = estadoMeta.badgeClass;
+      if (movEstadoNum === 0) {
+        if (!mov.contrato && movTipoNum === 1) {
+          friendlyEstadoLabel = 'Pendiente Contrato';
+          friendlyBadgeClass = 'badge-warning';
+        } else {
+          friendlyEstadoLabel = 'Pendiente Aprobación Contrato';
+          friendlyBadgeClass = 'badge-info';
+        }
+      } else if (movEstadoNum === 1) {
+        friendlyEstadoLabel = 'Pendiente Factura';
+        friendlyBadgeClass = 'badge-primary';
+      } else if (movEstadoNum === 2) {
+        friendlyEstadoLabel = 'Pendiente Aprobación Factura';
+        friendlyBadgeClass = 'badge-purple';
+      } else if (movEstadoNum === 3) {
+        friendlyEstadoLabel = 'Completado';
+        friendlyBadgeClass = 'badge-success';
+      } else if (movEstadoNum === 4) {
+        friendlyEstadoLabel = isFacturaAnulada ? 'Rechazado (Factura Anulada)' : 'Rechazado';
+        friendlyBadgeClass = 'badge-danger';
+      }
+
+      const origenLabel = this._resolverNombreParticipante(mov.origenParticipanteId, mov.nombreOrigen, mov);
+      const destinoLabel = this._resolverNombreParticipante(mov.destinoParticipanteId, mov.nombreDestino, mov);
 
       // Comprobantes
+      const fechaContratoStr = mov.contrato ? (mov.contrato.fechaGeneracion || mov.contrato.fechaEmision) : null;
       let contratoHtml = `
         <div class="card p-3 mb-3">
           <div class="d-flex justify-between align-center mb-1">
             <strong class="text-xs uppercase text-muted">Contrato de Compraventa</strong>
             ${mov.contrato
               ? '<span class="badge badge-success text-xs">Firmado / Registrado</span>'
-              : (mov.tipo === 1 && mov.requiereContrato
+              : (movTipoNum === 1 && mov.requiereContrato
                 ? '<span class="badge badge-warning text-xs">Requerido Obligatorio</span>'
                 : '<span class="text-muted text-xs">No Requerido</span>')}
           </div>
           ${mov.contrato ? `
             <div class="text-sm">
               <div><strong>Nº Contrato:</strong> ${escapeHtml(mov.contrato.numeroContrato)}</div>
-              <div class="text-xs text-muted">Fecha Emisión: ${new Date(mov.contrato.fechaEmision).toLocaleString('es-AR')}</div>
-              ${mov.contrato.archivoUrl ? `<a href="${escapeHtml(mov.contrato.archivoUrl)}" target="_blank" class="text-xs text-primary d-inline-block mt-1">Ver Archivo Adjunto</a>` : ''}
+              <div class="text-xs text-muted">Fecha Generación: ${fechaContratoStr ? new Date(fechaContratoStr).toLocaleString('es-AR') : '-'}</div>
+              <div class="d-flex gap-sm mt-2">
+                <button type="button" class="btn btn-outline btn-sm" id="btn-modal-descargar-contrato" title="Descargar contrato oficial PDF">
+                  <span>📥 Descargar Contrato PDF</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-modal-regenerar-contrato" title="Regenerar o editar datos de contrato">
+                  <span>Editar / Regenerar</span>
+                </button>
+              </div>
             </div>
-          ` : (mov.tipo === 1 && mov.requiereContrato && authService.tienePermiso('MOVCOM_APROBAR') ? `
-            <p class="text-xs text-muted mb-2">Este cliente nuevo requiere el registro de contrato antes de la aprobación.</p>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-modal-add-contrato">
-              <span>+ Registrar Contrato</span>
+          ` : (movTipoNum === 1 && movEstadoNum !== 3 && authService.tienePermiso('MOVCOM_APROBAR') ? `
+            <p class="text-xs text-muted mb-2">${mov.requiereContrato ? 'Este cliente nuevo requiere el registro de contrato antes de la aprobación.' : 'Puede registrar un contrato de compraventa asociado a esta operación.'}</p>
+            <button type="button" class="btn btn-accent btn-sm" id="btn-modal-add-contrato">
+              <span>Generar Contrato</span>
             </button>
           ` : '<span class="text-xs text-muted">No se ha registrado contrato formal.</span>')}
         </div>
@@ -1604,17 +1951,29 @@ export class MovimientosComercialesView {
         <div class="card p-3 mb-3">
           <div class="d-flex justify-between align-center mb-1">
             <strong class="text-xs uppercase text-muted">Facturación Comercial</strong>
-            ${mov.factura ? '<span class="badge badge-primary text-xs">Emitida</span>' : '<span class="text-muted text-xs">Sin Factura</span>'}
+            ${isFacturaAnulada 
+              ? '<span class="badge badge-danger text-xs font-bold">Anulada</span>' 
+              : (mov.factura ? '<span class="badge badge-primary text-xs font-bold">Emitida</span>' : '<span class="text-muted text-xs">Sin Factura</span>')}
           </div>
           ${mov.factura ? `
             <div class="text-sm">
-              <div><strong>Nº Factura:</strong> ${escapeHtml(mov.factura.numeroFactura)}</div>
+              <div><strong>Nº Factura:</strong> ${isFacturaAnulada ? `<span style="text-decoration: line-through; opacity: 0.7;">${escapeHtml(mov.factura.numeroFactura)}</span> <span class="badge badge-danger text-xs ml-1">ANULADA</span>` : `<strong>${escapeHtml(mov.factura.numeroFactura)}</strong>`}</div>
               <div class="text-xs text-muted">Fecha Emisión: ${new Date(mov.factura.fechaEmision).toLocaleString('es-AR')}</div>
-              ${mov.factura.observaciones ? `<div class="text-xs text-muted">Notas: ${escapeHtml(mov.factura.observaciones)}</div>` : ''}
-              ${mov.factura.archivoUrl ? `<a href="${escapeHtml(mov.factura.archivoUrl)}" target="_blank" class="text-xs text-primary d-inline-block mt-1">Ver Comprobante Digital</a>` : ''}
+              ${mov.factura.observaciones ? `<div class="text-xs text-muted">Notas / Motivo: ${escapeHtml(mov.factura.observaciones)}</div>` : ''}
+              ${!isFacturaAnulada && mov.factura.archivoUrl ? `<a href="${escapeHtml(mov.factura.archivoUrl)}" target="_blank" class="text-xs text-primary d-inline-block mt-1">Ver Comprobante Digital</a>` : ''}
+              ${isFacturaAnulada ? `
+                <div class="alert alert-warning p-2 mt-2 mb-2 text-xs" style="background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--warning); border-radius: var(--radius-sm);">
+                  ⚠️ Esta factura fue anulada automáticamente al rechazar la operación. Es necesario emitir una nueva factura comercial corregida.
+                </div>
+                ${(movEstadoNum === 4 || movEstadoNum === 1) && authService.tienePermiso('MOVCOM_FACTURAR') ? `
+                  <button type="button" class="btn btn-primary btn-sm mt-1" id="btn-modal-add-factura">
+                    <span>+ Emitir Nueva Factura</span>
+                  </button>
+                ` : ''}
+              ` : ''}
             </div>
-          ` : (Number(mov.estado) === 1 && Number(mov.tipo) !== 3 && authService.tienePermiso('MOVCOM_FACTURAR') ? `
-            <p class="text-xs text-muted mb-2">La operación está aprobada y lista para su facturación contable.</p>
+          ` : ((movEstadoNum === 1 || movEstadoNum === 4) && movTipoNum !== 3 && authService.tienePermiso('MOVCOM_FACTURAR') ? `
+            <p class="text-xs text-muted mb-2">${movEstadoNum === 4 ? 'La operación fue rechazada. Puede emitir una nueva factura comercial corregida.' : 'La operación está aprobada y lista para su facturación contable.'}</p>
             <button type="button" class="btn btn-primary btn-sm" id="btn-modal-add-factura">
               <span>+ Emitir Factura</span>
             </button>
@@ -1653,13 +2012,13 @@ export class MovimientosComercialesView {
 
       // Render cuerpo completo
       body.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-md mb-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-md mb-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--spacing-md);">
           <div class="card p-3">
             <span class="text-xs text-muted uppercase font-bold d-block mb-1">Identificación</span>
             <div class="d-flex align-center gap-xs mb-2">
               <span class="font-bold text-lg text-main">#${mov.id}</span>
               <span class="badge ${tipoMeta.badgeClass} text-xs font-bold">${escapeHtml(tipoMeta.label)}</span>
-              <span class="badge ${estadoMeta.badgeClass} text-xs">${escapeHtml(estadoMeta.label)}</span>
+              <span class="badge ${friendlyBadgeClass} text-xs font-bold">${escapeHtml(friendlyEstadoLabel)}</span>
             </div>
             <div class="text-xs text-muted mb-1">Registrado el: <strong>${escapeHtml(fReg)}</strong></div>
             <div class="text-xs text-muted">Usuario Registro: <strong>${escapeHtml(mov.nombreUsuarioRegistro || '#' + mov.usuarioRegistroId)}</strong></div>
@@ -1710,14 +2069,14 @@ export class MovimientosComercialesView {
               </tfoot>
             </table>
           </div>
-          ${mov.tipo === 2 ? `
+          ${movTipoNum === 2 ? `
             <div class="mt-2 text-xs text-muted text-right">
               Bruto: $ ${(Number(mov.montoBruto) || 0).toFixed(2)} | Comisión (${mov.porcentajeComision}%): -$ ${(Number(mov.montoComision) || 0).toFixed(2)} | Neto: $ ${(Number(mov.montoNeto) || 0).toFixed(2)}
             </div>
           ` : ''}
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-md" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--spacing-md);">
           <div>
             ${contratoHtml}
             ${facturaHtml}
@@ -1772,6 +2131,30 @@ export class MovimientosComercialesView {
         this._closeModalDetalle();
       });
 
+      modalFooter.querySelector('#btn-detalle-contrato')?.addEventListener('click', () => {
+        this._closeModalDetalle();
+        this._abrirModalAccion('contrato', mov.id);
+      });
+
+      modalFooter.querySelector('#btn-detalle-ver-contrato')?.addEventListener('click', () => {
+        this._closeModalDetalle();
+        this._descargarOVerContrato(mov.id);
+      });
+
+      body.querySelector('#btn-modal-add-contrato')?.addEventListener('click', () => {
+        this._closeModalDetalle();
+        this._abrirModalAccion('contrato', mov.id);
+      });
+
+      body.querySelector('#btn-modal-regenerar-contrato')?.addEventListener('click', () => {
+        this._closeModalDetalle();
+        this._abrirModalAccion('contrato', mov.id);
+      });
+
+      body.querySelector('#btn-modal-descargar-contrato')?.addEventListener('click', () => {
+        this._descargarOVerContrato(mov.id);
+      });
+
       modalFooter.querySelector('#btn-detalle-aprobar')?.addEventListener('click', () => {
         this._closeModalDetalle();
         this._abrirModalAccion('aprobar', mov.id);
@@ -1821,7 +2204,7 @@ export class MovimientosComercialesView {
   // MODALES DE ACCIÓN ESPECÍFICA (APROBAR, CONTRATO, FACTURAR, FINALIZAR, RECHAZAR)
   // ===========================================================================
 
-  _abrirModalAccion(tipo, movimientoId) {
+  async _abrirModalAccion(tipo, movimientoId) {
     let mov = this.movimientos.find(m => Number(m.id) === Number(movimientoId));
     if (!mov && this.activeMovimiento && Number(this.activeMovimiento.id) === Number(movimientoId)) {
       mov = this.activeMovimiento;
@@ -1835,14 +2218,20 @@ export class MovimientosComercialesView {
     if (!modal || !title || !body) return;
 
     if (tipo === 'aprobar') {
+      const movTipoNum = _parseTipoIndex(mov.tipo ?? mov.nombreTipo);
       title.textContent = `Aprobar Operación Comercial #${mov.id}`;
       body.innerHTML = `
         <p class="text-sm text-muted mb-3">
-          Confirma la aprobación administrativa del movimiento de <strong>${escapeHtml(TIPOS_MOVIMIENTO[mov.tipo]?.label || '')}</strong> por un total de <strong>${(Number(mov.totalBulbos) || 0).toLocaleString('es-AR')} bulbos</strong>.
+          Confirma la aprobación administrativa del movimiento de <strong>${escapeHtml(TIPOS_MOVIMIENTO[movTipoNum]?.label || TIPOS_MOVIMIENTO[mov.tipo]?.label || '')}</strong> por un total de <strong>${(Number(mov.totalBulbos) || 0).toLocaleString('es-AR')} bulbos</strong>.
         </p>
-        ${mov.tipo === 1 && mov.requiereContrato && !mov.contrato ? `
-          <div class="alert alert-danger p-3 mb-3 text-xs">
-            <strong>Atención:</strong> Este cliente es nuevo y requiere registrar previamente el contrato de compraventa antes de la aprobación.
+        ${movTipoNum === 1 && !mov.contrato ? `
+          <div class="alert alert-warning d-flex justify-between align-center gap-sm p-3 mb-3 text-xs" style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--warning); border-radius: var(--radius-sm);">
+            <div>
+              <strong>Contrato de Compraventa:</strong> ${mov.requiereContrato ? 'Este cliente es nuevo y requiere registrar previamente el contrato antes de aprobar.' : 'Si el cliente es nuevo, recuerde registrar el contrato previo antes de aprobar.'}
+            </div>
+            <button type="button" class="btn btn-accent btn-sm" id="btn-aprobar-ir-contrato" style="flex-shrink: 0;">
+              Generar Contrato
+            </button>
           </div>
         ` : ''}
         <form id="form-accion-aprobar">
@@ -1856,29 +2245,274 @@ export class MovimientosComercialesView {
           </div>
         </form>
       `;
+      body.querySelector('#btn-aprobar-ir-contrato')?.addEventListener('click', () => {
+        this._abrirModalAccion('contrato', mov.id);
+      });
 
     } else if (tipo === 'contrato') {
-      title.textContent = `Registrar Contrato de Compraventa - Movimiento #${mov.id}`;
+      const dialog = modal.querySelector('.modal-dialog');
+      dialog?.classList.add('modal-lg');
+
+      title.textContent = `Generar Contrato para Cliente - Operación #${mov.id}`;
+
+      // Spinner temporal mientras se cargan datos complementarios
       body.innerHTML = `
+        <div class="text-center p-4">
+          <div class="btn-spinner" style="position: static; border-top-color: var(--primary); width: 28px; height: 28px; margin: 0 auto 12px;"></div>
+          <p class="text-sm text-muted">Cargando datos del cliente, sucursales y plantilla de contrato...</p>
+        </div>
+      `;
+      modal.classList.add('is-active');
+
+      let clienteData = null;
+      if (mov.clienteId) {
+        try {
+          clienteData = await clientesService.obtenerPorId(mov.clienteId);
+        } catch (e) {
+          console.warn('[MovComView] Error al obtener cliente:', e);
+        }
+      }
+      if (!clienteData && this.clientes) {
+        clienteData = this.clientes.find(c => Number(c.id) === Number(mov.clienteId));
+      }
+
+      let sucursales = [];
+      try {
+        const sucRes = await sucursalesService.getAll();
+        sucursales = Array.isArray(sucRes) ? sucRes : (sucRes?.items || []);
+      } catch (e) {
+        console.warn('[MovComView] Error al listar sucursales:', e);
+      }
+
+      // Precalcular cantidades de cormos a partir de los detalles de la venta
+      let cormillos = 0;
+      let n1 = 0;
+      let n2 = 0;
+      let n3 = 0;
+      let n4 = 0;
+
+      if (Array.isArray(mov.detalles)) {
+        mov.detalles.forEach(d => {
+          const cl = _parseClaseIndex(d.claseBulbo ?? d.clase);
+          const cant = Number(d.cantidad) || 0;
+          if (cl === 0) cormillos += cant;
+          else if (cl === 1) n1 += cant;
+          else if (cl === 2) n2 += cant;
+          else if (cl === 3) n3 += cant;
+          else if (cl === 4) n4 += cant;
+          else if (cl === 5) {
+            // MIX: se descompone 1/3 a Calibre 1, Calibre 2 y Calibre 3
+            const tercio = Math.floor(cant / 3);
+            n1 += tercio;
+            n2 += tercio;
+            n3 += (cant - 2 * tercio);
+          }
+        });
+      }
+
+      const anioActual = new Date().getFullYear();
+      const numSugerido = mov.contrato?.numeroContrato || `CTR-${anioActual}-${String(mov.id).padStart(4, '0')}`;
+      const currentUser = authService.getUsuarioActual();
+      const referenteSugerido = currentUser ? (currentUser.nombreCompleto || currentUser.nombre || 'Federico Carlos Paak') : 'Federico Carlos Paak';
+
+      const cliNombre = clienteData ? (clienteData.nombreCompleto || `${clienteData.nombre || ''} ${clienteData.apellido || ''}`).trim() : (mov.nombreCliente || '');
+      const cliDoc = clienteData?.documento || clienteData?.dni || clienteData?.cuit || '';
+      const cliTel = clienteData?.telefono || '';
+      const cliEmail = clienteData?.email || '';
+      const cliDir = clienteData?.direccion || '';
+      const cliFechaNac = clienteData?.fechaNacimiento || '';
+      const cliProf = clienteData?.profesion || 'Productor / Inversor';
+      const cliEstCivil = clienteData?.estadoCivil || 'Soltero/a';
+
+      body.innerHTML = `
+        <div class="alert alert-info d-flex align-center gap-sm p-3 mb-3 text-xs" style="background: rgba(74, 21, 75, 0.08); border-left: 4px solid var(--primary); border-radius: var(--radius-sm);">
+          <span style="font-size: 1.25rem;">📄</span>
+          <div>
+            <strong>Generador Oficial de Contratos:</strong> Complete los campos requeridos y haga clic en <strong>Generar Contrato</strong> para obtener el archivo PDF oficial basado en el modelo legal <em>MODELO DE CONTRATO PARA CLIENTES</em> con los datos del cliente, sucursal, fecha y el anexo correspondiente.
+          </div>
+        </div>
+
         <form id="form-accion-contrato">
-          <div class="form-group mb-3">
-            <label for="input-num-contrato" class="form-label text-xs font-bold uppercase text-muted">Número de Contrato *</label>
-            <input type="text" id="input-num-contrato" class="form-control" placeholder="ej. CTR-2026-0042" required />
+          <!-- SECCIÓN 1: DATOS DEL CONTRATO, SUCURSAL Y FECHA -->
+          <div class="card p-3 mb-3" style="background: var(--bg-surface, #f9fafb); border: 1px solid var(--border-color, #e5e7eb);">
+            <h6 class="text-xs font-bold uppercase text-primary mb-2">1. Datos del Contrato, Sucursal y Período</h6>
+            <div class="form-row two-cols mb-2">
+              <div class="form-group">
+                <label for="input-num-contrato" class="form-label text-xs font-bold uppercase text-muted">Número de Contrato *</label>
+                <input type="text" id="input-num-contrato" class="form-control" value="${escapeHtml(numSugerido)}" required />
+              </div>
+              <div class="form-group">
+                <label for="input-anio-inicio" class="form-label text-xs font-bold uppercase text-muted">Año de Inicio *</label>
+                <input type="number" id="input-anio-inicio" class="form-control" value="${anioActual}" min="2020" max="2050" required />
+              </div>
+            </div>
+            <div class="form-row two-cols">
+              <div class="form-group">
+                <label for="select-sucursal-contrato" class="form-label text-xs font-bold uppercase text-muted">Sucursal / Predio</label>
+                <select id="select-sucursal-contrato" class="form-control">
+                  <option value="Central - Villa General Belgrano">Central - Villa General Belgrano</option>
+                  ${sucursales.map(s => `<option value="${escapeHtml(s.nombre || s.codigo)}">${escapeHtml(s.nombre || s.codigo)}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="input-referente-contrato" class="form-label text-xs font-bold uppercase text-muted">Referente Prestador</label>
+                <input type="text" id="input-referente-contrato" class="form-control" value="${escapeHtml(referenteSugerido)}" />
+              </div>
+            </div>
           </div>
-          <div class="form-group mb-3">
-            <label for="input-url-contrato" class="form-label text-xs font-bold uppercase text-muted">URL Archivo Digital (Opcional)</label>
-            <input type="text" id="input-url-contrato" class="form-control" placeholder="ej. https://documentos.azafran.com/contratos/ctr-0042.pdf" />
+
+          <!-- SECCIÓN 2: DATOS DEL CLIENTE (COMITENTE) -->
+          <div class="card p-3 mb-3" style="background: var(--bg-surface, #f9fafb); border: 1px solid var(--border-color, #e5e7eb);">
+            <h6 class="text-xs font-bold uppercase text-primary mb-2">2. Datos del Cliente (COMITENTE)</h6>
+            <div class="form-row two-cols mb-2">
+              <div class="form-group">
+                <label for="input-cliente-nombre" class="form-label text-xs font-bold uppercase text-muted">Nombre y Apellido *</label>
+                <input type="text" id="input-cliente-nombre" class="form-control" value="${escapeHtml(cliNombre)}" required />
+              </div>
+              <div class="form-group">
+                <label for="input-cliente-doc" class="form-label text-xs font-bold uppercase text-muted">D.N.I. / C.U.I.T. / C.U.I.L. *</label>
+                <input type="text" id="input-cliente-doc" class="form-control" value="${escapeHtml(cliDoc)}" required />
+              </div>
+            </div>
+            <div class="form-row two-cols mb-2">
+              <div class="form-group">
+                <label for="input-cliente-tel" class="form-label text-xs font-bold uppercase text-muted">Teléfono</label>
+                <input type="text" id="input-cliente-tel" class="form-control" value="${escapeHtml(cliTel)}" />
+              </div>
+              <div class="form-group">
+                <label for="input-cliente-email" class="form-label text-xs font-bold uppercase text-muted">Domicilio Electrónico (Email)</label>
+                <input type="email" id="input-cliente-email" class="form-control" value="${escapeHtml(cliEmail)}" />
+              </div>
+            </div>
+            <div class="form-group mb-2">
+              <label for="input-cliente-dir" class="form-label text-xs font-bold uppercase text-muted">Dirección / Domicilio Real</label>
+              <input type="text" id="input-cliente-dir" class="form-control" value="${escapeHtml(cliDir)}" placeholder="ej. Ruta Prov. S-210, Villa General Belgrano" />
+            </div>
+            <div class="form-row three-cols">
+              <div class="form-group">
+                <label for="input-cliente-fecnac" class="form-label text-xs font-bold uppercase text-muted">Nacido el día</label>
+                <input type="text" id="input-cliente-fecnac" class="form-control" value="${escapeHtml(cliFechaNac)}" placeholder="ej. 15/05/1985" />
+              </div>
+              <div class="form-group">
+                <label for="input-cliente-prof" class="form-label text-xs font-bold uppercase text-muted">Profesión</label>
+                <input type="text" id="input-cliente-prof" class="form-control" value="${escapeHtml(cliProf)}" />
+              </div>
+              <div class="form-group">
+                <label for="input-cliente-estcivil" class="form-label text-xs font-bold uppercase text-muted">Estado Civil</label>
+                <input type="text" id="input-cliente-estcivil" class="form-control" value="${escapeHtml(cliEstCivil)}" />
+              </div>
+            </div>
           </div>
-          <div class="d-flex justify-end gap-sm">
+
+          <!-- SECCIÓN 3: CLÁUSULA PRIMERA - CANTIDADES DE CORMOS -->
+          <div class="card p-3 mb-3" style="background: var(--bg-surface, #f9fafb); border: 1px solid var(--border-color, #e5e7eb);">
+            <div class="d-flex justify-between align-center mb-2">
+              <h6 class="text-xs font-bold uppercase text-primary">3. Cantidades de Cormos (Cláusula Primera)</h6>
+              <span class="text-xs text-muted">Autocompletado desde los ítems de la operación</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px;">
+              <div class="form-group">
+                <label for="input-cormos-cormillos" class="form-label text-xs font-bold uppercase text-muted">Cormillos</label>
+                <input type="number" id="input-cormos-cormillos" class="form-control font-mono" value="${cormillos}" min="0" />
+              </div>
+              <div class="form-group">
+                <label for="input-cormos-n1" class="form-label text-xs font-bold uppercase text-muted">Calibre 1</label>
+                <input type="number" id="input-cormos-n1" class="form-control font-mono" value="${n1}" min="0" />
+              </div>
+              <div class="form-group">
+                <label for="input-cormos-n2" class="form-label text-xs font-bold uppercase text-muted">Calibre 2</label>
+                <input type="number" id="input-cormos-n2" class="form-control font-mono" value="${n2}" min="0" />
+              </div>
+              <div class="form-group">
+                <label for="input-cormos-n3" class="form-label text-xs font-bold uppercase text-muted">Calibre 3</label>
+                <input type="number" id="input-cormos-n3" class="form-control font-mono" value="${n3}" min="0" />
+              </div>
+              <div class="form-group">
+                <label for="input-cormos-n4" class="form-label text-xs font-bold uppercase text-muted">Calibre 4</label>
+                <input type="number" id="input-cormos-n4" class="form-control font-mono" value="${n4}" min="0" />
+              </div>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 4: CHECKBOX PARA ANEXO DE COPROPIETARIOS (ÚLTIMA PÁGINA) -->
+          <div class="card p-3 mb-3" style="background: var(--bg-surface, #f9fafb); border: 2px solid var(--border-color, #e5e7eb); border-radius: var(--radius-sm);">
+            <label class="form-check-label d-flex align-center gap-sm mb-1" style="font-weight: 600; cursor: pointer; font-size: 0.95rem;">
+              <input type="checkbox" id="chk-anexo-copropietarios" class="form-check-input" style="width: 18px; height: 18px; cursor: pointer;" />
+              <span>¿Necesita el anexo de copropietarios? (Última página)</span>
+            </label>
+            <div class="text-xs text-muted" style="margin-left: 26px;">
+              Si no se marca, el contrato se emitirá únicamente con sus 3 páginas principales. Si se marca, se anexará la 4ª página oficial para registro y firma de copropietarios.
+            </div>
+
+            <div id="section-copropietarios" class="mt-3 pt-3" style="display: none; border-top: 1px dashed var(--border-color, #d1d5db);">
+              <h6 class="text-xs font-bold uppercase text-primary mb-2">Datos de Copropietarios (Página 4 - Opcionales)</h6>
+              <div class="form-row two-cols mb-2">
+                <input type="text" id="coprop-1-nombre" class="form-control" placeholder="Copropietario 1 - Nombre y Apellido" />
+                <input type="text" id="coprop-1-dni" class="form-control" placeholder="Copropietario 1 - DNI / CUIT" />
+              </div>
+              <div class="form-row two-cols mb-2">
+                <input type="text" id="coprop-2-nombre" class="form-control" placeholder="Copropietario 2 - Nombre y Apellido" />
+                <input type="text" id="coprop-2-dni" class="form-control" placeholder="Copropietario 2 - DNI / CUIT" />
+              </div>
+              <div class="form-row two-cols">
+                <input type="text" id="coprop-3-nombre" class="form-control" placeholder="Copropietario 3 - Nombre y Apellido" />
+                <input type="text" id="coprop-3-dni" class="form-control" placeholder="Copropietario 3 - DNI / CUIT" />
+              </div>
+            </div>
+          </div>
+
+          <!-- BOTONES DE ACCIÓN -->
+          <div class="d-flex justify-between align-center gap-sm pt-2">
             <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-accion">Cancelar</button>
-            <button type="submit" class="btn btn-primary btn-sm">Guardar Contrato</button>
+            <div class="d-flex gap-sm">
+              <button type="button" class="btn btn-accent btn-sm" id="btn-descargar-borrador-pdf" title="Genera el PDF y lo descarga de inmediato para revisión">
+                <span>📥 Descargar PDF</span>
+              </button>
+              <button type="submit" class="btn btn-primary btn-sm" id="btn-submit-contrato">
+                <span>Generar Contrato</span>
+              </button>
+            </div>
           </div>
         </form>
       `;
 
+      const chkAnexo = body.querySelector('#chk-anexo-copropietarios');
+      const secCoprop = body.querySelector('#section-copropietarios');
+      if (chkAnexo && secCoprop) {
+        chkAnexo.addEventListener('change', () => {
+          secCoprop.style.display = chkAnexo.checked ? 'block' : 'none';
+        });
+      }
+
+      body.querySelector('#btn-descargar-borrador-pdf')?.addEventListener('click', async () => {
+        const payload = this._getContratoFormData(body);
+        if (!payload.numeroContrato) {
+          toast.warning('El número de contrato es obligatorio.');
+          return;
+        }
+        try {
+          toast.info('Generando documento PDF desde la plantilla...');
+          const res = await contratoGeneratorService.generarContrato(payload);
+          contratoGeneratorService.guardarContratoCache(mov.id, res.dataUrl, res.filename);
+          contratoGeneratorService.descargarPdf(res.blob, res.filename);
+          toast.success(`PDF generado exitosamente (${res.pageCount} páginas). Descarga iniciada.`);
+        } catch (err) {
+          toast.error('Error al generar PDF: ' + (err.message || 'Error'));
+        }
+      });
+
     } else if (tipo === 'facturar') {
-      title.textContent = `Emitir Factura Comercial - Movimiento #${mov.id}`;
+      const isReemplazo = mov.factura && (mov.factura.estado === 2 || mov.factura.estado === 'Anulada' || (typeof mov.factura.estado === 'string' && mov.factura.estado.toLowerCase().includes('anulad')) || mov.estado === 4 || mov.estado === 'Rechazado');
+      title.textContent = isReemplazo ? `Emitir Nueva Factura Comercial (Reemplazo) - Movimiento #${mov.id}` : `Emitir Factura Comercial - Movimiento #${mov.id}`;
       body.innerHTML = `
+        ${isReemplazo ? `
+          <div class="alert alert-info d-flex align-center gap-sm p-3 mb-3 text-xs" style="background: rgba(30, 64, 175, 0.08); border-left: 4px solid var(--primary); border-radius: var(--radius-sm);">
+            <span style="font-size: 1.25rem;">ℹ️</span>
+            <div>
+              <strong>Re-emisión de Factura:</strong> La factura anterior fue anulada tras el rechazo. Al emitir esta nueva factura, la operación avanzará a <strong>Pendiente Aprobación Factura</strong> para su revisión final.
+            </div>
+          </div>
+        ` : ''}
         <form id="form-accion-factura">
           <div class="form-group mb-3">
             <label for="input-num-factura" class="form-label text-xs font-bold uppercase text-muted">Número de Factura *</label>
@@ -1894,7 +2528,7 @@ export class MovimientosComercialesView {
           </div>
           <div class="d-flex justify-end gap-sm">
             <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-accion">Cancelar</button>
-            <button type="submit" class="btn btn-primary btn-sm">Emitir Factura</button>
+            <button type="submit" class="btn btn-primary btn-sm">${isReemplazo ? 'Emitir Nueva Factura' : 'Emitir Factura'}</button>
           </div>
         </form>
       `;
@@ -1921,7 +2555,9 @@ export class MovimientosComercialesView {
       `;
 
     } else if (tipo === 'rechazar') {
-      title.textContent = `Rechazar u Observar Operación #${mov.id}`;
+      const movEstadoNum = _parseEstadoIndex(mov.estado ?? mov.nombreEstado);
+      const isRechazoFactura = (movEstadoNum === 2 || mov.factura);
+      title.textContent = isRechazoFactura ? `Rechazar Factura / Observar Operación #${mov.id}` : `Rechazar u Observar Operación #${mov.id}`;
       body.innerHTML = `
         <div class="d-flex align-center gap-sm mb-3">
           ${getProhibitionIcon({ size: 'md', title: 'Rechazo' })}
@@ -1929,10 +2565,15 @@ export class MovimientosComercialesView {
             Indique obligatoriamente el motivo formal del rechazo u observación.
           </span>
         </div>
+        ${mov.factura ? `
+          <div class="alert alert-warning p-2 mb-3 text-xs" style="background: rgba(239, 68, 68, 0.08); border-left: 4px solid var(--danger); border-radius: var(--radius-sm);">
+            ⚠️ <strong>Atención:</strong> Al confirmar el rechazo, la factura actual <strong>#${escapeHtml(mov.factura.numeroFactura || '')}</strong> quedará marcada automáticamente como <strong>ANULADA</strong>. La operación volverá a estado <em>Rechazado</em> permitiendo emitir una nueva factura comercial corregida o editar los datos de la operación.
+          </div>
+        ` : ''}
         <form id="form-accion-rechazar">
           <div class="form-group mb-3">
             <label for="input-motivo-rechazo" class="form-label text-xs font-bold uppercase text-muted">Motivo del Rechazo *</label>
-            <textarea id="input-motivo-rechazo" class="form-control" rows="3" placeholder="Indique claramente la razón por la que se rechaza la operación..." required></textarea>
+            <textarea id="input-motivo-rechazo" class="form-control" rows="3" placeholder="Indique claramente la razón por la que se rechaza la operación o factura..." required></textarea>
           </div>
           <div class="d-flex justify-end gap-sm">
             <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-accion">Cancelar</button>
@@ -1950,7 +2591,80 @@ export class MovimientosComercialesView {
   _closeModalAccion() {
     const modal = this.container.querySelector('#modal-accion-circuito');
     modal?.classList.remove('is-active');
+    const dialog = modal?.querySelector('.modal-dialog');
+    dialog?.classList.remove('modal-lg');
     this.activeMovimiento = null;
+  }
+
+  _getContratoFormData(body) {
+    const chkAnexo = body.querySelector('#chk-anexo-copropietarios')?.checked ?? false;
+    return {
+      numeroContrato: body.querySelector('#input-num-contrato')?.value.trim() || '',
+      anioInicio: body.querySelector('#input-anio-inicio')?.value.trim() || String(new Date().getFullYear()),
+      sucursal: body.querySelector('#select-sucursal-contrato')?.value || 'Central - Villa General Belgrano',
+      referente: body.querySelector('#input-referente-contrato')?.value.trim() || 'Federico Carlos Paak',
+      cliente: {
+        nombreCompleto: body.querySelector('#input-cliente-nombre')?.value.trim() || '',
+        documento: body.querySelector('#input-cliente-doc')?.value.trim() || '',
+        telefono: body.querySelector('#input-cliente-tel')?.value.trim() || '',
+        email: body.querySelector('#input-cliente-email')?.value.trim() || '',
+        direccion: body.querySelector('#input-cliente-dir')?.value.trim() || '',
+        nacidoElDia: body.querySelector('#input-cliente-fecnac')?.value.trim() || '',
+        profesion: body.querySelector('#input-cliente-prof')?.value.trim() || '',
+        estadoCivil: body.querySelector('#input-cliente-estcivil')?.value.trim() || '',
+      },
+      cormos: {
+        cormillos: body.querySelector('#input-cormos-cormillos')?.value || '0',
+        n1: body.querySelector('#input-cormos-n1')?.value || '0',
+        n2: body.querySelector('#input-cormos-n2')?.value || '0',
+        n3: body.querySelector('#input-cormos-n3')?.value || '0',
+        n4: body.querySelector('#input-cormos-n4')?.value || '0',
+      },
+      incluirAnexoCopropietarios: chkAnexo,
+      copropietarios: [
+        {
+          nombre: body.querySelector('#coprop-1-nombre')?.value.trim() || '',
+          dni: body.querySelector('#coprop-1-dni')?.value.trim() || '',
+        },
+        {
+          nombre: body.querySelector('#coprop-2-nombre')?.value.trim() || '',
+          dni: body.querySelector('#coprop-2-dni')?.value.trim() || '',
+        },
+        {
+          nombre: body.querySelector('#coprop-3-nombre')?.value.trim() || '',
+          dni: body.querySelector('#coprop-3-dni')?.value.trim() || '',
+        },
+      ],
+    };
+  }
+
+  async _descargarOVerContrato(movId) {
+    let mov = this.movimientos.find(m => Number(m.id) === Number(movId)) || this.activeMovimiento;
+    if (!mov) {
+      try {
+        mov = await movimientosComercialesService.obtenerPorId(movId);
+      } catch (e) {}
+    }
+    if (!mov) return;
+
+    // Verificar si ya está en caché local para descarga directa
+    const cached = contratoGeneratorService.obtenerContratoCache(movId);
+    if (cached && cached.dataUrl) {
+      toast.info('Descargando contrato generado previamente...');
+      const cleanNum = (mov.contrato?.numeroContrato || 'CTR').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = cached.filename || `Contrato_${cleanNum}.pdf`;
+      try {
+        const res = await fetch(cached.dataUrl);
+        const blob = await res.blob();
+        contratoGeneratorService.descargarPdf(blob, filename);
+        return;
+      } catch (e) {
+        console.warn('No se pudo usar caché, abriendo modal:', e);
+      }
+    }
+
+    // Si no está en caché o se desea regenerar/ver datos, abrir modal
+    this._abrirModalAccion('contrato', movId);
   }
 
   _bindFormAccionSubmit(tipo, movId) {
@@ -1973,19 +2687,47 @@ export class MovimientosComercialesView {
     } else if (tipo === 'contrato') {
       body.querySelector('#form-accion-contrato')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const num = body.querySelector('#input-num-contrato')?.value.trim();
-        const url = body.querySelector('#input-url-contrato')?.value.trim() || null;
-        if (!num) {
+        const payload = this._getContratoFormData(body);
+        if (!payload.numeroContrato) {
           toast.warning('El número de contrato es obligatorio.');
           return;
         }
+        if (!payload.cliente.nombreCompleto) {
+          toast.warning('El nombre del cliente es obligatorio.');
+          return;
+        }
+
+        const submitBtn = body.querySelector('#btn-submit-contrato');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Generando...';
+        }
+
         try {
-          await movimientosComercialesService.generarContrato(movId, { numeroContrato: num, archivoUrl: url });
-          toast.success(`Contrato registrado para el movimiento #${movId}.`);
+          toast.info('Generando documento PDF desde la plantilla oficial...');
+          const res = await contratoGeneratorService.generarContrato(payload);
+
+          // Descarga automática del archivo completado
+          contratoGeneratorService.descargarPdf(res.blob, res.filename);
+          contratoGeneratorService.guardarContratoCache(movId, res.dataUrl, res.filename);
+
+          // Registrar en el backend / servicio
+          await movimientosComercialesService.generarContrato(movId, {
+            numeroContrato: payload.numeroContrato,
+            archivoUrl: res.filename,
+          });
+
+          toast.success(`Contrato #${payload.numeroContrato} (${res.pageCount} págs.) generado y asociado con éxito.`);
           this._closeModalAccion();
           await this._loadMovimientos();
         } catch (err) {
-          toast.error('Error al registrar contrato: ' + (err.message || 'Error'));
+          console.error('[MovComView] Error al generar contrato:', err);
+          toast.error('Error al generar contrato: ' + (err.message || 'Error desconocido'));
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Generar Contrato';
+          }
         }
       });
     } else if (tipo === 'facturar') {
@@ -2037,6 +2779,160 @@ export class MovimientosComercialesView {
           toast.error('Error al rechazar: ' + (err.message || 'Error'));
         }
       });
+    }
+  }
+
+  // ===========================================================================
+  // MODAL DE CREACIÓN DE CLIENTE (REUTILIZADO DE CLIENTES)
+  // ===========================================================================
+
+  _openModalNuevoCliente() {
+    const form = this.container.querySelector('#form-cliente');
+    if (form) form.reset();
+
+    const idInp = this.container.querySelector('#cliente-id');
+    if (idInp) idInp.value = '';
+
+    const contratoInp = this.container.querySelector('#cliente-contrato-id');
+    if (contratoInp) contratoInp.value = '';
+
+    const titleEl = this.container.querySelector('#modal-cliente-title');
+    if (titleEl) titleEl.textContent = 'Nuevo Cliente';
+
+    const activoChk = this.container.querySelector('#cliente-activo');
+    if (activoChk) activoChk.checked = true;
+
+    this._clearClienteValidationErrors();
+
+    const modal = this.container.querySelector('#modal-cliente');
+    if (modal) {
+      modal.classList.add('is-active');
+      setTimeout(() => this.container.querySelector('#cliente-nombre')?.focus(), 100);
+    }
+  }
+
+  _closeModalNuevoCliente() {
+    const modal = this.container.querySelector('#modal-cliente');
+    modal?.classList.remove('is-active');
+  }
+
+  _clearClienteValidationErrors() {
+    const inputs = this.container.querySelectorAll('#form-cliente .form-control');
+    inputs.forEach(i => i.classList.remove('is-invalid'));
+  }
+
+  async _recargarClientesEnSelectores(selectedId = null) {
+    try {
+      const clientesData = await clientesService.listar({ page: 1, pageSize: 200, estado: 'activos' }).catch(() => ({ items: [] }));
+      this.clientes = Array.isArray(clientesData) ? clientesData : (clientesData?.items || []);
+    } catch (err) {
+      console.warn('[MovimientosComercialesView] Error al recargar clientes:', err);
+    }
+
+    // Actualizar filtro de clientes de la vista principal
+    const selectClienteFiltro = this.container.querySelector('#filtro-cliente');
+    if (selectClienteFiltro) {
+      const prevVal = selectClienteFiltro.value;
+      selectClienteFiltro.innerHTML = '<option value="todos">Todos los Clientes</option>';
+      this.clientes.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = String(c.id);
+        opt.textContent = `👤 ${c.nombre} ${c.apellido} (${c.codigo || 'CLI-' + c.id})`;
+        selectClienteFiltro.appendChild(opt);
+      });
+      selectClienteFiltro.value = prevVal || 'todos';
+    }
+
+    // Actualizar select de destino en modal de venta
+    const destSelect = this.container.querySelector('#mov-destino-id');
+    if (destSelect && this.selectedTipo === 1) {
+      const clientesOptions = this.clientes.map(c =>
+        `<option value="${c.id}">👤 ${escapeHtml(c.nombre)} ${escapeHtml(c.apellido)} (${escapeHtml(c.codigo || 'CLI-' + c.id)})</option>`
+      ).join('');
+      destSelect.innerHTML = `
+        <option value="">Seleccione cliente comprador...</option>
+        ${clientesOptions}
+        <option value="__nuevo__">+ Registrar nuevo cliente...</option>
+      `;
+      if (selectedId) {
+        destSelect.value = String(selectedId);
+        await this._verificarClienteNuevoBadge(Number(selectedId));
+      }
+    }
+  }
+
+  async _handleSubmitNuevoCliente(e) {
+    e.preventDefault();
+
+    const nombre = this.container.querySelector('#cliente-nombre')?.value.trim() || '';
+    const apellido = this.container.querySelector('#cliente-apellido')?.value.trim() || '';
+    const tipoDocumento = this.container.querySelector('#cliente-tipo-doc')?.value || 'DNI';
+    const documento = this.container.querySelector('#cliente-doc')?.value.trim() || '';
+    const email = this.container.querySelector('#cliente-email')?.value.trim() || '';
+    const telefono = this.container.querySelector('#cliente-telefono')?.value.trim() || '';
+    const codigo = this.container.querySelector('#cliente-codigo')?.value.trim() || '';
+    const contratoIdVal = this.container.querySelector('#cliente-contrato-id')?.value.trim() || '';
+    const activo = this.container.querySelector('#cliente-activo')?.checked ?? true;
+    const observaciones = this.container.querySelector('#cliente-observaciones')?.value.trim() || '';
+
+    let valid = true;
+    this._clearClienteValidationErrors();
+
+    if (!nombre) {
+      this.container.querySelector('#cliente-nombre')?.classList.add('is-invalid');
+      valid = false;
+    }
+    if (!apellido) {
+      this.container.querySelector('#cliente-apellido')?.classList.add('is-invalid');
+      valid = false;
+    }
+    if (!documento) {
+      this.container.querySelector('#cliente-doc')?.classList.add('is-invalid');
+      valid = false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      this.container.querySelector('#cliente-email')?.classList.add('is-invalid');
+      valid = false;
+    }
+
+    if (!valid) {
+      toast.warning('Por favor complete los campos obligatorios correctamente.');
+      return;
+    }
+
+    const payload = {
+      nombre,
+      apellido,
+      tipoDocumento,
+      documento,
+      email,
+      telefono,
+      codigo,
+      contratoId: contratoIdVal ? parseInt(contratoIdVal, 10) : null,
+      activo,
+      observaciones
+    };
+
+    const saveBtn = this.container.querySelector('#btn-save-cliente');
+    if (saveBtn) {
+      saveBtn.classList.add('is-loading');
+      saveBtn.disabled = true;
+    }
+
+    try {
+      const nuevoCliente = await clientesService.crear(payload);
+      toast.success(`Cliente ${nombre} ${apellido} registrado. Acceso: ${email} | Clave: DNI`);
+
+      this._closeModalNuevoCliente();
+      await this._recargarClientesEnSelectores(nuevoCliente?.id);
+    } catch (err) {
+      toast.error(err.message || 'Error al guardar el cliente');
+    } finally {
+      if (saveBtn) {
+        saveBtn.classList.remove('is-loading');
+        saveBtn.disabled = false;
+      }
     }
   }
 }

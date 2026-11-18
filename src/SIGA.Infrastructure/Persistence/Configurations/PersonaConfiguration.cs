@@ -42,3 +42,17 @@ public class PersonaConfiguration : IEntityTypeConfiguration<Persona>
         builder.Ignore(p => p.NombreCompleto);
     }
 }
+
+public class EmpleadoConfiguration : IEntityTypeConfiguration<Empleado>
+{
+    public void Configure(EntityTypeBuilder<Empleado> builder)
+    {
+        builder.ToTable("Empleados");
+
+        builder.Property(e => e.Legajo)
+            .HasMaxLength(50);
+
+        builder.Property(e => e.Posicion)
+            .HasMaxLength(100);
+    }
+}

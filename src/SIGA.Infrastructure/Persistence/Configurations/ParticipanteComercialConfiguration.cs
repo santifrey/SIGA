@@ -13,9 +13,8 @@ public class ParticipanteComercialConfiguration : IEntityTypeConfiguration<Parti
 
         builder.HasKey(p => p.Id);
 
-        builder.HasDiscriminator(p => p.TipoParticipante)
-            .HasValue<Cliente>(TipoParticipante.Cliente)
-            .HasValue<Empresa>(TipoParticipante.Empresa);
+        builder.Property(p => p.TipoParticipante)
+            .IsRequired();
 
         builder.Property(p => p.Estado)
             .IsRequired();
@@ -32,6 +31,8 @@ public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
 {
     public void Configure(EntityTypeBuilder<Cliente> builder)
     {
+        builder.ToTable("Clientes");
+
         builder.Property(c => c.CodigoCliente)
             .HasMaxLength(50);
 
@@ -44,6 +45,14 @@ public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
             .WithOne(p => p.Cliente)
             .HasForeignKey<Cliente>(c => c.PersonaId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(c => c.Contrato)
+            .WithOne(co => co.Cliente)
+            .HasForeignKey<Cliente>(c => c.ContratoId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(c => c.ContratoId)
+            .IsUnique();
     }
 }
 
@@ -51,6 +60,8 @@ public class EmpresaConfiguration : IEntityTypeConfiguration<Empresa>
 {
     public void Configure(EntityTypeBuilder<Empresa> builder)
     {
+        builder.ToTable("Empresas");
+
         builder.Property(e => e.RazonSocial)
             .HasMaxLength(150);
 

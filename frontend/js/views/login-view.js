@@ -109,12 +109,12 @@ export class LoginView {
         </div>
 
         <!-- Modal Cambio de Contraseña Obligatorio por Primer Ingreso -->
-        <div id="modal-cambio-password-inicial" class="modal">
-          <div class="modal-card" style="max-width: 440px; border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);">
-            <div class="modal-card-head" style="background: var(--surface); border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem;">
-              <h3 class="modal-card-title text-base font-bold" style="color: var(--primary);">Activación de Cuenta requerida</h3>
+        <div id="modal-cambio-password-inicial" class="modal-backdrop" role="dialog" aria-modal="true">
+          <div class="modal-dialog" style="max-width: 480px;">
+            <div class="modal-header" style="background: var(--surface); border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem;">
+              <h3 class="modal-title text-base font-bold" style="color: var(--primary);">Activación de Cuenta requerida</h3>
             </div>
-            <div class="modal-card-body" style="padding: 1.5rem;">
+            <div class="modal-body" style="padding: 1.5rem;">
               <div class="alert alert-info mb-3" style="font-size: 0.8125rem; line-height: 1.4;">
                 <strong>¡Primer ingreso detectado!</strong> Por motivos de seguridad del sistema, debes cambiar tu contraseña inicial (DNI) para activar tu cuenta y poder ingresar.
               </div>

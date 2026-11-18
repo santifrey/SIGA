@@ -200,13 +200,13 @@ class MovimientosService {
   }
 
   /**
-   * Crear nuevo movimiento en estado Pendiente
+   * Crear nuevo movimiento o ajuste en estado Pendiente
    * @param {object} data { origenId, destinoId, observaciones, cantidades: [{ claseBulbo, cantidad }] }
    */
   async crear(data) {
     try {
-      const origenId = (data.origenId === 'empresa' || data.origenId === 0 || data.origenId === '0') ? 1 : Number(data.origenId);
-      const destinoId = (data.destinoId === 'empresa' || data.destinoId === 0 || data.destinoId === '0') ? 1 : Number(data.destinoId);
+      const origenId = data.origenId === 'empresa' ? 1 : (data.origenId !== undefined && data.origenId !== null ? Number(data.origenId) : 0);
+      const destinoId = data.destinoId === 'empresa' ? 1 : (data.destinoId !== undefined && data.destinoId !== null ? Number(data.destinoId) : 0);
       const cantidades = (data.cantidades || []).map(c => ({
         clase: this._parseClaseIndex(c.claseBulbo ?? c.clase),
         cantidad: Number(c.cantidad) || 0
@@ -231,9 +231,9 @@ class MovimientosService {
           numeroComprobante: `MOV-2025-${String(nextId).padStart(3, '0')}`,
           fecha: new Date().toISOString(),
           origenId: data.origenId,
-          origenNombre: data.origenNombre || (data.origenId === 'empresa' ? 'Empresa Central' : `Cliente #${data.origenId}`),
+          origenNombre: data.origenNombre || (data.origenId === 'empresa' || data.origenId === 1 ? 'Empresa Central' : (data.origenId === 0 ? 'Ajustes de Inventario' : `Cliente #${data.origenId}`)),
           destinoId: data.destinoId,
-          destinoNombre: data.destinoNombre || (data.destinoId === 'empresa' ? 'Empresa Central' : `Cliente #${data.destinoId}`),
+          destinoNombre: data.destinoNombre || (data.destinoId === 'empresa' || data.destinoId === 1 ? 'Empresa Central' : (data.destinoId === 0 ? 'Ajustes de Inventario' : `Cliente #${data.destinoId}`)),
           estado: 'Pendiente',
           observaciones: data.observaciones || '',
           cantidades: data.cantidades || [],
@@ -246,6 +246,60 @@ class MovimientosService {
       }
       throw err;
     }
+  }
+
+  /**
+   * Registrar un Ajuste de Stock (quitar o añadir bulbos a un cliente o a la empresa con motivo)
+   * @param {object} param0 { entidad: 'empresa'|'cliente', clienteId, accion: 'sumar'|'restar', cantidades, motivo, autoConfirmar }
+   */
+  async registrarAjuste({ entidad, clienteId, accion, cantidades, motivo, autoConfirmar = false }) {
+    if (!motivo || !motivo.trim()) {
+      throw new Error('Debe ingresar el motivo u observación del ajuste de stock.');
+    }
+
+    let origenId = 0;
+    let destinoId = 1;
+    let etiqueta = '';
+
+    if (entidad === 'empresa') {
+      if (accion === 'sumar') {
+        origenId = 0;
+        destinoId = 1;
+        etiqueta = `[Ingreso a Empresa] ${motivo.trim()}`;
+      } else {
+        origenId = 1;
+        destinoId = 0;
+        etiqueta = `[Egreso de Empresa] ${motivo.trim()}`;
+      }
+    } else {
+      const cId = Number(clienteId);
+      if (!cId || cId <= 0) {
+        throw new Error('Debe seleccionar el cliente para registrar el ajuste.');
+      }
+      if (accion === 'sumar') {
+        origenId = 1;
+        destinoId = cId;
+        etiqueta = `[Ingreso a Cliente] ${motivo.trim()}`;
+      } else {
+        origenId = cId;
+        destinoId = 1;
+        etiqueta = `[Egreso de Cliente] ${motivo.trim()}`;
+      }
+    }
+
+    const nuevo = await this.crear({
+      origenId,
+      destinoId,
+      observaciones: etiqueta,
+      cantidades
+    });
+
+    if (autoConfirmar && nuevo && nuevo.id) {
+      await this.confirmar(nuevo.id);
+      nuevo.estado = 'Confirmado';
+    }
+
+    return nuevo;
   }
 
   /**

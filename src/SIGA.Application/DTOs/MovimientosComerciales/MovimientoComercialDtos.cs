@@ -148,7 +148,6 @@ public class MovimientoComercialDto
     public int TotalBulbos { get; set; }
 
     public string? Observaciones { get; set; }
-    public int? OperacionComercialId { get; set; }
 
     public bool RequiereContrato { get; set; }
 

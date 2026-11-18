@@ -14,15 +14,23 @@ import { CONFIG } from '../config.js';
 export const TIPOS_MOVIMIENTO = {
   1: { id: 1, codigo: 'VentaACliente', label: 'Venta a Cliente', badgeClass: 'badge-primary' },
   2: { id: 2, codigo: 'CompraACliente', label: 'Compra a Cliente', badgeClass: 'badge-accent' },
-  3: { id: 3, codigo: 'TraspasoEntreClientes', label: 'Traspaso entre Clientes', badgeClass: 'badge-info' }
+  3: { id: 3, codigo: 'TraspasoEntreClientes', label: 'Traspaso entre Clientes', badgeClass: 'badge-info' },
+  VentaACliente: { id: 1, codigo: 'VentaACliente', label: 'Venta a Cliente', badgeClass: 'badge-primary' },
+  CompraACliente: { id: 2, codigo: 'CompraACliente', label: 'Compra a Cliente', badgeClass: 'badge-accent' },
+  TraspasoEntreClientes: { id: 3, codigo: 'TraspasoEntreClientes', label: 'Traspaso entre Clientes', badgeClass: 'badge-info' }
 };
 
 export const ESTADOS_MOVIMIENTO = {
-  0: { id: 0, codigo: 'PendienteRevision', label: 'Pendiente Revisión', badgeClass: 'badge-warning' },
-  1: { id: 1, codigo: 'AprobadoAdmin', label: 'Aprobado Administración', badgeClass: 'badge-info' },
-  2: { id: 2, codigo: 'Facturado', label: 'Facturado', badgeClass: 'badge-primary' },
-  3: { id: 3, codigo: 'Finalizado', label: 'Finalizado', badgeClass: 'badge-success' },
-  4: { id: 4, codigo: 'Rechazado', label: 'Rechazado', badgeClass: 'badge-danger' }
+  0: { id: 0, codigo: 'PendienteRevision', label: 'Pendiente Contrato / Aprobación', badgeClass: 'badge-warning' },
+  1: { id: 1, codigo: 'AprobadoAdmin', label: 'Pendiente Factura', badgeClass: 'badge-primary' },
+  2: { id: 2, codigo: 'Facturado', label: 'Pendiente Aprobación Factura', badgeClass: 'badge-purple' },
+  3: { id: 3, codigo: 'Finalizado', label: 'Completado', badgeClass: 'badge-success' },
+  4: { id: 4, codigo: 'Rechazado', label: 'Rechazado', badgeClass: 'badge-danger' },
+  PendienteRevision: { id: 0, codigo: 'PendienteRevision', label: 'Pendiente Contrato / Aprobación', badgeClass: 'badge-warning' },
+  AprobadoAdmin: { id: 1, codigo: 'AprobadoAdmin', label: 'Pendiente Factura', badgeClass: 'badge-primary' },
+  Facturado: { id: 2, codigo: 'Facturado', label: 'Pendiente Aprobación Factura', badgeClass: 'badge-purple' },
+  Finalizado: { id: 3, codigo: 'Finalizado', label: 'Completado', badgeClass: 'badge-success' },
+  Rechazado: { id: 4, codigo: 'Rechazado', label: 'Rechazado', badgeClass: 'badge-danger' }
 };
 
 export const CLASES_BULBO = [
@@ -31,8 +39,40 @@ export const CLASES_BULBO = [
   { id: 2, codigo: 'Clase2', label: 'Clase 2 (8 - 10cm)', desc: 'Bulbo mediano' },
   { id: 3, codigo: 'Clase3', label: 'Clase 3 (6 - 8cm)', desc: 'Bulbo desarrollo chico' },
   { id: 4, codigo: 'Clase4', label: 'Clase 4 (< 6cm)', desc: 'Semillero / cría' },
-  { id: 5, codigo: 'MIX',    label: 'MIX (1/3 Cal 1, 2, 3)', desc: 'Mezcla comercial (múltiplo de 3)' }
+  { id: 5, codigo: 'MIX', label: 'MIX (1/3 Cal 1, 2, 3)', desc: 'Mezcla comercial (múltiplo de 3)' }
 ];
+
+/**
+ * Extrae el índice numérico (1..3) del tipo de movimiento comercial.
+ * Maneja tanto números (1..3) como strings de enum ("VentaACliente", "CompraACliente", "TraspasoEntreClientes").
+ */
+export function _parseTipoIndex(val) {
+  if (val === undefined || val === null) return 1;
+  if (typeof val === 'number') return isNaN(val) ? 1 : val;
+  const s = String(val).trim().toLowerCase();
+  if (s === '1' || s === 'ventaacliente') return 1;
+  if (s === '2' || s === 'compraacliente') return 2;
+  if (s === '3' || s === 'traspasoentreclientes') return 3;
+  const n = Number(s);
+  return isNaN(n) ? 1 : n;
+}
+
+/**
+ * Extrae el índice numérico (0..4) del estado de movimiento comercial.
+ * Maneja tanto números (0..4) como strings de enum ("PendienteRevision", "AprobadoAdmin", "Facturado", "Finalizado", "Rechazado").
+ */
+export function _parseEstadoIndex(val) {
+  if (val === undefined || val === null) return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  const s = String(val).trim().toLowerCase();
+  if (s === '0' || s === 'pendienterevision' || s === 'registrada' || s === 'enrevisionadministracion') return 0;
+  if (s === '1' || s === 'aprobadoadmin' || s === 'aprobadaadministracion') return 1;
+  if (s === '2' || s === 'facturado' || s === 'facturada') return 2;
+  if (s === '3' || s === 'finalizado' || s === 'completada') return 3;
+  if (s === '4' || s === 'rechazado' || s === 'rechazada' || s === 'anulada') return 4;
+  const n = Number(s);
+  return isNaN(n) ? 0 : n;
+}
 
 /**
  * Extrae el índice numérico (0..5) de la clase de bulbo de manera robusta.
@@ -56,7 +96,17 @@ export const ACCIONES_APROBACION = {
   3: 'Facturado',
   4: 'Finalizado e Inventario Impactado',
   5: 'Rechazado',
-  6: 'Corregido y Reenviado'
+  6: 'Corregido y Reenviado',
+  Registrado: 'Registrado / Enviado a Revisión',
+  EnviadoARevision: 'Registrado / Enviado a Revisión',
+  AprobadoAdmin: 'Aprobado Administración',
+  AprobadoAdministracion: 'Aprobado Administración',
+  Observado: 'Observado',
+  Facturado: 'Facturado',
+  Finalizado: 'Finalizado e Inventario Impactado',
+  AprobacionFinal: 'Finalizado e Inventario Impactado',
+  Rechazado: 'Rechazado',
+  Corregido: 'Corregido y Reenviado'
 };
 
 const STORAGE_KEY_MOCK_MOVIMIENTOS = 'siga_mock_movimientos_comerciales';
@@ -67,6 +117,15 @@ class MovimientosComercialesService {
       return res.data;
     }
     return res;
+  }
+
+  _normalizeMovimiento(m) {
+    if (!m || typeof m !== 'object') return m;
+    return {
+      ...m,
+      tipo: _parseTipoIndex(m.tipo ?? m.nombreTipo),
+      estado: _parseEstadoIndex(m.estado ?? m.nombreEstado)
+    };
   }
 
   /**
@@ -93,7 +152,8 @@ class MovimientosComercialesService {
 
       const response = await apiClient.get('/movimientos-comerciales', params);
       const data = this._unwrap(response);
-      return Array.isArray(data) ? data : (data?.items || []);
+      const list = Array.isArray(data) ? data : (data?.items || []);
+      return list.map(m => this._normalizeMovimiento(m));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         console.info('[MovimientosComercialesService] Fallback mock para listar.');
@@ -110,11 +170,11 @@ class MovimientosComercialesService {
   async obtenerPorId(id) {
     try {
       const response = await apiClient.get(`/movimientos-comerciales/${id}`);
-      return this._unwrap(response);
+      return this._normalizeMovimiento(this._unwrap(response));
     } catch (err) {
       if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
         const item = this._getLocalMovimientos().find(m => Number(m.id) === Number(id));
-        if (item) return item;
+        if (item) return this._normalizeMovimiento(item);
       }
       throw err;
     }

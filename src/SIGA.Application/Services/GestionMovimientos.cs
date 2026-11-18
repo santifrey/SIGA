@@ -11,7 +11,6 @@ namespace SIGA.Application.Services;
 public class GestionMovimientos : IGestionMovimientos
 {
     private readonly IMovimientoBulbosRepository _movimientoRepository;
-    private readonly IOperacionComercialRepository _operacionRepository;
     private readonly IClienteRepository _clienteRepository;
     private readonly IRepository<ParticipanteComercial> _participanteRepository;
     private readonly IGestionStock _gestionStock;
@@ -19,14 +18,12 @@ public class GestionMovimientos : IGestionMovimientos
 
     public GestionMovimientos(
         IMovimientoBulbosRepository movimientoRepository,
-        IOperacionComercialRepository operacionRepository,
         IClienteRepository clienteRepository,
         IRepository<ParticipanteComercial> participanteRepository,
         IGestionStock gestionStock,
         IUnitOfWork unitOfWork)
     {
         _movimientoRepository = movimientoRepository;
-        _operacionRepository = operacionRepository;
         _clienteRepository = clienteRepository;
         _participanteRepository = participanteRepository;
         _gestionStock = gestionStock;
@@ -44,8 +41,33 @@ public class GestionMovimientos : IGestionMovimientos
         if (dto.Cantidades.Any(c => c.Cantidad <= 0))
             throw new ValidationException("Todas las cantidades de bulbos deben ser mayores a cero.");
 
+        // Si el origen o destino es 0 (contraparte técnica de ajuste), resolver el participante "Ajustes de Inventario"
         if (dto.OrigenId <= 0 || dto.DestinoId <= 0)
-            throw new ValidationException("El origen y el destino deben ser identificadores válidos.");
+        {
+            var participantes = await _participanteRepository.FindAsync(
+                p => p is Empresa && ((Empresa)p).RazonSocial == "Ajustes de Inventario", 
+                cancellationToken);
+            var participanteAjustes = participantes.FirstOrDefault();
+
+            if (participanteAjustes == null)
+            {
+                var nuevaEmpresaAjustes = new Empresa
+                {
+                    TipoParticipante = TipoParticipante.Empresa,
+                    Estado = EstadoParticipante.Activo,
+                    FechaRegistro = DateTime.UtcNow,
+                    RazonSocial = "Ajustes de Inventario",
+                    CUIT = "00-00000000-0",
+                    IsDeleted = false
+                };
+                await _participanteRepository.AddAsync(nuevaEmpresaAjustes, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                participanteAjustes = nuevaEmpresaAjustes;
+            }
+
+            if (dto.OrigenId <= 0) dto.OrigenId = participanteAjustes.Id;
+            if (dto.DestinoId <= 0) dto.DestinoId = participanteAjustes.Id;
+        }
 
         if (dto.OrigenId == dto.DestinoId)
             throw new OperacionInvalidaException("El participante Origen no puede ser igual al participante Destino.");
@@ -61,36 +83,11 @@ public class GestionMovimientos : IGestionMovimientos
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            int operacionId;
-            if (dto.OperacionComercialId.HasValue && dto.OperacionComercialId.Value > 0)
-            {
-                var operacionExistente = await _operacionRepository.GetByIdAsync(dto.OperacionComercialId.Value, cancellationToken);
-                if (operacionExistente == null)
-                    throw new NotFoundException(nameof(OperacionComercial), dto.OperacionComercialId.Value);
-
-                operacionId = operacionExistente.Id;
-            }
-            else
-            {
-                var nuevaOperacion = new OperacionComercial
-                {
-                    Fecha = DateTime.UtcNow,
-                    Tipo = dto.TipoOperacion,
-                    Estado = EstadoOperacion.Pendiente,
-                    UsuarioCreadorId = usuarioCreadorId,
-                    Observaciones = dto.Observaciones
-                };
-
-                await _operacionRepository.AddAsync(nuevaOperacion, cancellationToken);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-                operacionId = nuevaOperacion.Id;
-            }
-
             var movimiento = new MovimientoBulbos(
-                operacionId, 
                 dto.OrigenId, 
                 dto.DestinoId, 
                 usuarioCreadorId, 
+                dto.TipoOperacion,
                 dto.Observaciones);
 
             foreach (var cant in dto.Cantidades)
@@ -150,11 +147,6 @@ public class GestionMovimientos : IGestionMovimientos
             movimiento.Confirmar();
             await _movimientoRepository.UpdateAsync(movimiento, cancellationToken);
 
-            if (movimiento.OperacionComercial != null)
-            {
-                await _operacionRepository.UpdateAsync(movimiento.OperacionComercial, cancellationToken);
-            }
-
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
             return ApiResponse<MovimientoBulbosDto>.Ok(MapToDto(movimiento), "Movimiento confirmado exitosamente.");
@@ -205,11 +197,6 @@ public class GestionMovimientos : IGestionMovimientos
             movimiento.Anular(motivo);
             await _movimientoRepository.UpdateAsync(movimiento, cancellationToken);
 
-            if (movimiento.OperacionComercial != null)
-            {
-                await _operacionRepository.UpdateAsync(movimiento.OperacionComercial, cancellationToken);
-            }
-
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
             return ApiResponse<MovimientoBulbosDto>.Ok(MapToDto(movimiento), "Movimiento anulado exitosamente.");
@@ -250,16 +237,24 @@ public class GestionMovimientos : IGestionMovimientos
 
     private static MovimientoBulbosDto MapToDto(MovimientoBulbos m)
     {
+        var usuarioNombre = m.UsuarioCreador?.Persona != null
+            ? m.UsuarioCreador.Persona.NombreCompleto
+            : (m.UsuarioCreador?.Username ?? $"Usuario #{m.UsuarioCreadorId}");
+
         return new MovimientoBulbosDto
         {
             Id = m.Id,
-            OperacionComercialId = m.OperacionComercialId,
+            MovimientoComercialId = m.MovimientoComercialId,
+            CosechaId = m.CosechaId,
+            PlantacionId = m.PlantacionId,
+            TipoOperacion = m.TipoOperacion,
             Fecha = m.Fecha,
             OrigenId = m.OrigenId,
             OrigenNombre = ObtenerNombreParticipante(m.Origen),
             DestinoId = m.DestinoId,
             DestinoNombre = ObtenerNombreParticipante(m.Destino),
             UsuarioCreadorId = m.UsuarioCreadorId,
+            UsuarioCreadorNombre = usuarioNombre,
             Estado = m.Estado,
             Observaciones = m.Observaciones,
             TotalBulbos = m.CalcularTotal(),
@@ -278,13 +273,19 @@ public class GestionMovimientos : IGestionMovimientos
 
         if (p is Cliente c)
         {
-            var nombre = c.Persona != null ? c.Persona.NombreCompleto : c.CodigoCliente;
-            return $"{nombre} ({c.CodigoCliente})".Trim();
+            if (c.Persona != null && !string.IsNullOrWhiteSpace(c.Persona.NombreCompleto))
+            {
+                return !string.IsNullOrWhiteSpace(c.CodigoCliente) 
+                    ? $"{c.Persona.NombreCompleto} ({c.CodigoCliente})" 
+                    : c.Persona.NombreCompleto;
+            }
+
+            return !string.IsNullOrWhiteSpace(c.CodigoCliente) ? $"Cliente {c.CodigoCliente}" : $"Cliente #{c.Id}";
         }
 
         if (p is Empresa e)
         {
-            return e.RazonSocial;
+            return !string.IsNullOrWhiteSpace(e.RazonSocial) ? e.RazonSocial : $"Empresa #{e.Id}";
         }
 
         return $"Participante #{p.Id}";

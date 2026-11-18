@@ -3,7 +3,7 @@ using SIGA.Application.DTOs.Movimientos;
 using SIGA.Application.DTOs.Reportes;
 using SIGA.Application.DTOs.Stock;
 using SIGA.Application.DTOs.Transferencias;
-using SIGA.Application.DTOs.Ventas;
+using SIGA.Application.DTOs.MovimientosComerciales;
 using SIGA.Application.Interfaces;
 using SIGA.Domain.Entities;
 using SIGA.Domain.Enums;
@@ -19,10 +19,10 @@ public class GestionReportes : IGestionReportes
     private readonly ILoteRepository _loteRepository;
     private readonly ICosechaRepository _cosechaRepository;
     private readonly ITransferenciaLoteRepository _transferenciaRepository;
-    private readonly IVentaRepository _ventaRepository;
+    private readonly IMovimientoComercialRepository _movimientoComercialRepository;
     private readonly IGestionStock _gestionStock;
     private readonly IGestionMovimientos _gestionMovimientos;
-    private readonly IGestionVentas _gestionVentas;
+    private readonly IGestionMovimientosComerciales _gestionMovimientosComerciales;
 
     private static readonly ClaseBulbo[] TodasLasClases =
     {
@@ -40,10 +40,10 @@ public class GestionReportes : IGestionReportes
         ILoteRepository loteRepository,
         ICosechaRepository cosechaRepository,
         ITransferenciaLoteRepository transferenciaRepository,
-        IVentaRepository ventaRepository,
+        IMovimientoComercialRepository movimientoComercialRepository,
         IGestionStock gestionStock,
         IGestionMovimientos gestionMovimientos,
-        IGestionVentas gestionVentas)
+        IGestionMovimientosComerciales gestionMovimientosComerciales)
     {
         _clienteRepository = clienteRepository;
         _sucursalRepository = sucursalRepository;
@@ -51,10 +51,10 @@ public class GestionReportes : IGestionReportes
         _loteRepository = loteRepository;
         _cosechaRepository = cosechaRepository;
         _transferenciaRepository = transferenciaRepository;
-        _ventaRepository = ventaRepository;
+        _movimientoComercialRepository = movimientoComercialRepository;
         _gestionStock = gestionStock;
         _gestionMovimientos = gestionMovimientos;
-        _gestionVentas = gestionVentas;
+        _gestionMovimientosComerciales = gestionMovimientosComerciales;
     }
 
     public async Task<ApiResponse<ReporteIntegralClienteDto>> ObtenerEstadoIntegralClienteAsync(
@@ -158,8 +158,8 @@ public class GestionReportes : IGestionReportes
         }).ToList();
 
         // 5. Historial de compras / ventas del cliente
-        var ventasResp = await _gestionVentas.ListarPorClienteAsync(clienteId, cancellationToken);
-        var historialVentas = ventasResp.Data?.ToList() ?? new List<VentaDto>();
+        var movsComercialesResp = await _gestionMovimientosComerciales.ListarPorClienteAsync(clienteId, cancellationToken);
+        var historialVentas = movsComercialesResp.Data?.ToList() ?? new List<MovimientoComercialDto>();
 
         var reporte = new ReporteIntegralClienteDto
         {
@@ -329,7 +329,7 @@ public class GestionReportes : IGestionReportes
         var clientes = await _clienteRepository.GetAllWithPersonaAsync(null, cancellationToken);
         var sucursales = await _sucursalRepository.GetAllAsync(cancellationToken);
         var temporadaActiva = await _temporadaRepository.GetActivaAsync(cancellationToken);
-        var ventas = await _ventaRepository.GetAllWithDetailsAsync(cancellationToken);
+        var movimientos = await _movimientoComercialRepository.GetAllWithDetailsAsync(cancellationToken);
 
         int totalLotesActiva = 0;
         int totalPlantadoActiva = 0;
@@ -348,8 +348,8 @@ public class GestionReportes : IGestionReportes
                 .Sum(d => d.Cantidad);
         }
 
-        var ventasCompletadas = ventas.Where(v => v.Estado == EstadoVenta.Completada).ToList();
-        var ventasEnCircuito = ventas.Where(v => v.Estado != EstadoVenta.Completada && v.Estado != EstadoVenta.Anulada && v.Estado != EstadoVenta.Rechazada).ToList();
+        var ventasCompletadas = movimientos.Where(m => m.Estado == EstadoMovimientoComercial.Finalizado).ToList();
+        var ventasEnCircuito = movimientos.Where(m => m.Estado != EstadoMovimientoComercial.Finalizado && m.Estado != EstadoMovimientoComercial.Rechazado).ToList();
 
         var resumen = new ResumenEjecutivoDto
         {
@@ -361,10 +361,10 @@ public class GestionReportes : IGestionReportes
             TotalLotesTemporadaActiva = totalLotesActiva,
             TotalBulbosPlantadosTemporadaActiva = totalPlantadoActiva,
             TotalBulbosCosechadosTemporadaActiva = totalCosechadoActiva,
-            TotalVentasRegistradas = ventas.Count,
+            TotalVentasRegistradas = movimientos.Count,
             TotalVentasCompletadas = ventasCompletadas.Count,
-            MontoTotalVentasCompletadas = ventasCompletadas.Sum(v => v.MontoTotal),
-            MontoTotalVentasEnCircuito = ventasEnCircuito.Sum(v => v.MontoTotal)
+            MontoTotalVentasCompletadas = ventasCompletadas.Sum(m => m.MontoTotal),
+            MontoTotalVentasEnCircuito = ventasEnCircuito.Sum(m => m.MontoTotal)
         };
 
         return ApiResponse<ResumenEjecutivoDto>.Ok(resumen, "Resumen ejecutivo obtenido exitosamente.");

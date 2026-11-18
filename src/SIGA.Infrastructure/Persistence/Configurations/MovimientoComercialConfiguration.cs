@@ -68,10 +68,11 @@ public class MovimientoComercialConfiguration : IEntityTypeConfiguration<Movimie
             .HasForeignKey(m => m.UsuarioRegistroId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(m => m.OperacionComercial)
-            .WithMany()
-            .HasForeignKey(m => m.OperacionComercialId)
-            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasMany(m => m.MovimientosBulbos)
+            .WithOne(mb => mb.MovimientoComercial)
+            .HasForeignKey(mb => mb.MovimientoComercialId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasMany(m => m.Detalles)
             .WithOne(d => d.MovimientoComercial)

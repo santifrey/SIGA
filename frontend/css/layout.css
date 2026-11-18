@@ -3,14 +3,20 @@
  * Estructura de la aplicación: Shell, Sidebar, Topbar, Contenido Principal y Responsive
  */
 
+html, body {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+}
+
 /* Shell Base */
 #app {
-  height: 100vh;
-  max-height: 100vh;
+  height: 100vh !important;
+  max-height: 100vh !important;
   display: flex;
   flex-direction: column;
   background-color: var(--bg-app);
-  overflow: hidden;
+  overflow: hidden !important;
 }
 
 /* ==========================================================================
@@ -18,11 +24,11 @@
    ========================================================================== */
 .app-container {
   display: flex;
-  height: 100vh;
-  max-height: 100vh;
-  width: 100%;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  width: 100% !important;
   position: relative;
-  overflow: hidden;
+  overflow: hidden !important;
 }
 
 /* Sidebar */
@@ -111,25 +117,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xxs);
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }
 
 .sidebar-nav::-webkit-scrollbar {
-  width: 5px;
-}
-
-.sidebar-nav::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar-nav::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-}
-
-.sidebar-nav::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  display: none; /* Chrome, Safari, Edge */
+  width: 0;
+  height: 0;
 }
 
 /* ==========================================================================

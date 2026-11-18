@@ -9,5 +9,5 @@ public interface IMovimientoBulbosRepository : IRepository<MovimientoBulbos>
     Task<IReadOnlyList<MovimientoBulbos>> GetAllWithDetailsAsync(EstadoMovimiento? estado = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<MovimientoBulbos>> GetByParticipanteAsync(int participanteId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<MovimientoBulbos>> GetConfirmadosByParticipanteAsync(int participanteId, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<MovimientoBulbos>> GetByOperacionIdAsync(int operacionId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<MovimientoBulbos>> GetByMovimientoComercialIdAsync(int movimientoComercialId, CancellationToken cancellationToken = default);
 }

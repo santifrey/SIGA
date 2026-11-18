@@ -131,17 +131,6 @@ public enum EstadoCosecha
     Cerrada = 2
 }
 
-[Obsolete("Utilizar EstadoMovimientoComercial en su lugar.")]
-public enum EstadoVenta
-{
-    Registrada = 0,
-    EnRevisionAdministracion = 1,
-    AprobadaAdministracion = 2,
-    Facturada = 3,
-    Completada = 4,
-    Rechazada = 5,
-    Anulada = 6
-}
 
 public enum EstadoContrato
 {

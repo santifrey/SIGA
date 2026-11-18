@@ -14,13 +14,12 @@ public class CantidadBulbosDto
 
 public class CrearMovimientoDto
 {
-    public int? OperacionComercialId { get; set; }
-    public TipoOperacionComercial TipoOperacion { get; set; } = TipoOperacionComercial.CompraVentaBulbos;
+    public TipoOperacionComercial TipoOperacion { get; set; } = TipoOperacionComercial.AjusteStock;
 
-    [Range(1, int.MaxValue, ErrorMessage = "El origen es requerido.")]
+    [Range(0, int.MaxValue, ErrorMessage = "El origen es requerido.")]
     public int OrigenId { get; set; }
 
-    [Range(1, int.MaxValue, ErrorMessage = "El destino es requerido.")]
+    [Range(0, int.MaxValue, ErrorMessage = "El destino es requerido.")]
     public int DestinoId { get; set; }
 
     [StringLength(1000)]
@@ -34,13 +33,17 @@ public class CrearMovimientoDto
 public class MovimientoBulbosDto
 {
     public int Id { get; set; }
-    public int OperacionComercialId { get; set; }
+    public int? MovimientoComercialId { get; set; }
+    public int? CosechaId { get; set; }
+    public int? PlantacionId { get; set; }
+    public TipoOperacionComercial? TipoOperacion { get; set; }
     public DateTime Fecha { get; set; }
     public int OrigenId { get; set; }
     public string OrigenNombre { get; set; } = string.Empty;
     public int DestinoId { get; set; }
     public string DestinoNombre { get; set; } = string.Empty;
     public int UsuarioCreadorId { get; set; }
+    public string UsuarioCreadorNombre { get; set; } = string.Empty;
     public EstadoMovimiento Estado { get; set; }
     public string? Observaciones { get; set; }
     public int TotalBulbos { get; set; }

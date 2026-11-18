@@ -23,7 +23,6 @@ public static class DependencyInjection
         services.AddScoped<IGestionFilas, GestionFilas>();
         services.AddScoped<IGestionTransferencias, GestionTransferencias>();
         services.AddScoped<IGestionCosechas, GestionCosechas>();
-        services.AddScoped<IGestionVentas, GestionVentas>();
         services.AddScoped<IGestionMovimientosComerciales, GestionMovimientosComerciales>();
         services.AddScoped<IGestionPreciosReferencia, GestionPreciosReferencia>();
         services.AddScoped<IGestionReportes, GestionReportes>();

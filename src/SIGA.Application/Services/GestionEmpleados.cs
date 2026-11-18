@@ -95,23 +95,25 @@ public class GestionEmpleados : IGestionEmpleados
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            var persona = new Persona
+            var empleado = new Empleado
             {
                 Nombre = dto.Nombre.Trim(),
                 Apellido = dto.Apellido.Trim(),
                 Documento = dto.Documento.Trim(),
+                Legajo = dto.Legajo?.Trim() ?? string.Empty,
+                Posicion = dto.Posicion?.Trim() ?? string.Empty,
                 Telefono = dto.Telefono?.Trim(),
                 Email = dto.Email?.Trim(),
                 FechaCreacion = DateTime.UtcNow
             };
-            await _personaRepository.AddAsync(persona, cancellationToken);
+            await _personaRepository.AddAsync(empleado, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             var passwordHash = _passwordHasher.HashPassword(rawPassword);
             var usuario = new Usuario
             {
-                PersonaId = persona.Id,
-                Persona = persona,
+                PersonaId = empleado.Id,
+                Persona = empleado,
                 Username = username,
                 PasswordHash = passwordHash,
                 Estado = EstadoUsuario.Activo,
@@ -187,6 +189,13 @@ public class GestionEmpleados : IGestionEmpleados
                 usuario.Persona.Documento = dto.Documento.Trim();
                 usuario.Persona.Telefono = dto.Telefono?.Trim();
                 usuario.Persona.Email = dto.Email?.Trim();
+
+                if (usuario.Persona is Empleado emp)
+                {
+                    if (dto.Legajo != null) emp.Legajo = dto.Legajo.Trim();
+                    if (dto.Posicion != null) emp.Posicion = dto.Posicion.Trim();
+                }
+
                 await _personaRepository.UpdateAsync(usuario.Persona, cancellationToken);
             }
 
@@ -248,6 +257,8 @@ public class GestionEmpleados : IGestionEmpleados
 
     private static EmpleadoDto MapToEmpleadoDto(Usuario usuario)
     {
+        var empleado = usuario.Persona as Empleado;
+
         return new EmpleadoDto
         {
             Id = usuario.Id,
@@ -257,6 +268,8 @@ public class GestionEmpleados : IGestionEmpleados
             Apellido = usuario.Persona?.Apellido ?? string.Empty,
             NombreCompleto = usuario.Persona?.NombreCompleto ?? usuario.Username,
             Documento = usuario.Persona?.Documento ?? string.Empty,
+            Legajo = empleado?.Legajo,
+            Posicion = empleado?.Posicion,
             Telefono = usuario.Persona?.Telefono,
             Email = usuario.Persona?.Email,
             RolId = usuario.RolId,

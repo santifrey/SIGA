@@ -12,6 +12,9 @@ public class Cliente : ParticipanteComercial
     public int PersonaId { get; set; }
     public virtual Persona Persona { get; set; } = null!;
 
+    public int? ContratoId { get; set; }
+    public virtual Contrato? Contrato { get; set; }
+
     public string CodigoCliente { get; set; } = string.Empty;
     public string? Observaciones { get; set; }
     public EstadoCliente EstadoCliente { get; set; } = EstadoCliente.Activo;

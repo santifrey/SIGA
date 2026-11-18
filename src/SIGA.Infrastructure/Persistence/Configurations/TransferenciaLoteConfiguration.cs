@@ -43,10 +43,5 @@ public class TransferenciaLoteConfiguration : IEntityTypeConfiguration<Transfere
             .WithMany()
             .HasForeignKey(t => t.UsuarioCreadorId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(t => t.OperacionComercial)
-            .WithMany()
-            .HasForeignKey(t => t.OperacionComercialId)
-            .OnDelete(DeleteBehavior.SetNull);
     }
 }

@@ -102,13 +102,14 @@ export class ClientesView {
                   <th>Cliente (Persona)</th>
                   <th>Identificación</th>
                   <th>Contacto</th>
+                  <th>Contrato</th>
                   <th>Estado</th>
                   <th style="text-align: right;">Acciones</th>
                 </tr>
               </thead>
               <tbody id="clientes-table-body">
                 <tr class="table-loading-row">
-                  <td colspan="6">
+                  <td colspan="7">
                     <div class="d-flex align-center justify-center gap-sm">
                       <div class="btn-spinner" style="position: static; border-top-color: var(--primary);"></div>
                       <span>Cargando clientes...</span>
@@ -225,6 +226,14 @@ export class ClientesView {
                   </div>
                 </div>
 
+                <div class="form-group mb-3">
+                  <label for="cliente-contrato-id" class="form-label">
+                    ID de Contrato Vinculado
+                    <span class="label-hint">(Opcional / Clave foránea al contrato asociado)</span>
+                  </label>
+                  <input type="number" id="cliente-contrato-id" class="form-control" placeholder="ej. 1, 2, ..." min="1" />
+                </div>
+
                 <div class="form-group">
                   <label for="cliente-observaciones" class="form-label">Observaciones y Notas</label>
                   <textarea id="cliente-observaciones" class="form-control" rows="3" placeholder="Información crediticia, preferencias o datos de facturación..."></textarea>
@@ -339,7 +348,7 @@ export class ClientesView {
 
     tbody.innerHTML = `
       <tr class="table-loading-row">
-        <td colspan="6">
+        <td colspan="7">
           <div class="d-flex align-center justify-center gap-sm">
             <span class="spinner-icon">⏳</span>
             <span>Consultando registros...</span>
@@ -364,7 +373,7 @@ export class ClientesView {
       if (items.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="6">
+            <td colspan="7">
               <div class="table-empty-state">
                 <div class="empty-state-icon">
                   <svg class="icon-svg lg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>
@@ -405,6 +414,15 @@ export class ClientesView {
             <td>
               <div class="text-sm text-main">${escapeHtml(cliente.email)}</div>
               <div class="text-xs text-muted">${escapeHtml(cliente.telefono || 'Sin teléfono')}</div>
+            </td>
+            <td>
+              ${cliente.numeroContrato ? `
+                <span class="badge badge-primary font-mono text-xs" title="Contrato Asociado: #${escapeHtml(cliente.contratoId || '')} - ${escapeHtml(cliente.numeroContrato)}">
+                  ${escapeHtml(cliente.numeroContrato)}
+                </span>
+              ` : `
+                <span class="text-muted text-xs">Sin Contrato</span>
+              `}
             </td>
             <td>
               <span class="badge ${cliente.activo ? 'badge-success' : 'badge-danger'}">
@@ -551,6 +569,7 @@ export class ClientesView {
     const form = this.container.querySelector('#form-cliente');
     form.reset();
     this.container.querySelector('#cliente-id').value = '';
+    this.container.querySelector('#cliente-contrato-id').value = '';
     this.container.querySelector('#modal-cliente-title').textContent = 'Nuevo Cliente';
     this.container.querySelector('#cliente-activo').checked = true;
     this._clearValidationErrors();
@@ -574,6 +593,7 @@ export class ClientesView {
       this.container.querySelector('#cliente-email').value = cliente.email || '';
       this.container.querySelector('#cliente-telefono').value = cliente.telefono || '';
       this.container.querySelector('#cliente-codigo').value = cliente.codigo || '';
+      this.container.querySelector('#cliente-contrato-id').value = cliente.contratoId || '';
       this.container.querySelector('#cliente-activo').checked = cliente.activo !== false;
       this.container.querySelector('#cliente-observaciones').value = cliente.observaciones || '';
 
@@ -634,6 +654,7 @@ export class ClientesView {
     const email = this.container.querySelector('#cliente-email').value.trim();
     const telefono = this.container.querySelector('#cliente-telefono').value.trim();
     const codigo = this.container.querySelector('#cliente-codigo').value.trim();
+    const contratoIdVal = this.container.querySelector('#cliente-contrato-id').value.trim();
     const activo = this.container.querySelector('#cliente-activo').checked;
     const observaciones = this.container.querySelector('#cliente-observaciones').value.trim();
 
@@ -672,6 +693,7 @@ export class ClientesView {
       email,
       telefono,
       codigo,
+      contratoId: contratoIdVal ? parseInt(contratoIdVal, 10) : null,
       activo,
       observaciones
     };

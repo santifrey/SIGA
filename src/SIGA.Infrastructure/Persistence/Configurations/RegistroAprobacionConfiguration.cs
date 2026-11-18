@@ -12,8 +12,6 @@ public class RegistroAprobacionConfiguration : IEntityTypeConfiguration<Registro
 
         builder.HasKey(r => r.Id);
 
-        builder.Ignore(r => r.VentaId);
-        builder.Ignore(r => r.Venta);
 
         builder.Property(r => r.TipoEntidad)
             .HasMaxLength(50)

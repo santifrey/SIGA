@@ -135,13 +135,40 @@ class AuthService {
    * Cierra la sesión activa
    */
   async logout() {
+    this._permisosSet = null;
+    storage.clearSession();
     try {
       // Intenta avisar al backend de forma opcional (best-effort)
       await apiClient.post('/auth/logout').catch(() => { });
-    } finally {
-      this._permisosSet = null;
-      storage.clearSession();
+    } catch {
+      // No bloqueante
     }
+  }
+
+  /**
+   * Actualiza los datos personales y de contacto del usuario autenticado
+   * @param {object} datos { nombre, apellido, documento, email, telefono }
+   * @returns {Promise<object>}
+   */
+  async actualizarPerfil(datos) {
+    const response = await apiClient.put('/auth/me', datos);
+    const data = (response && typeof response === 'object' && 'data' in response && response.data !== null && response.data !== undefined)
+      ? response.data
+      : response;
+
+    if (data) {
+      const user = this.getUsuarioActual() || {};
+      const updatedUser = {
+        ...user,
+        nombre: data.nombreCompleto || `${data.nombre || ''} ${data.apellido || ''}`.trim() || user.nombre,
+        nombreCompleto: data.nombreCompleto,
+        email: data.email || user.email,
+        telefono: data.telefono,
+        documento: data.documento
+      };
+      storage.setUser(updatedUser);
+    }
+    return data;
   }
 
   /**

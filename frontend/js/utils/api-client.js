@@ -90,7 +90,7 @@ class ApiClient {
         let errorMsg = (data && (data.message || data.error || data.title)) ||
           `Error en la petición (${response.status}: ${response.statusText})`;
 
-        // Errores de validación (400): anexar el detalle de `errors` distinto del mensaje
+        // Errores de validación (400): anexar el detalle de `errors` funcional distinto del mensaje
         // (soporta tanto el array de ApiResponse como el diccionario de ProblemDetails)
         if (response.status === 400 && data && data.errors && typeof data.errors === 'object') {
           const lista = Array.isArray(data.errors)

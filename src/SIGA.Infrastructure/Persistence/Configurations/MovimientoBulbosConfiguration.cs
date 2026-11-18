@@ -39,6 +39,24 @@ public class MovimientoBulbosConfiguration : IEntityTypeConfiguration<Movimiento
             .HasForeignKey(m => m.UsuarioCreadorId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(m => m.MovimientoComercial)
+            .WithMany(mc => mc.MovimientosBulbos)
+            .HasForeignKey(m => m.MovimientoComercialId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(m => m.Cosecha)
+            .WithMany()
+            .HasForeignKey(m => m.CosechaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(m => m.Plantacion)
+            .WithMany()
+            .HasForeignKey(m => m.PlantacionId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasMany(m => m.Cantidades)
             .WithOne(c => c.MovimientoBulbos)
             .HasForeignKey(c => c.MovimientoBulbosId)

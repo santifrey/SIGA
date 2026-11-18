@@ -152,6 +152,221 @@ public static class DatabaseSeeder
             }
             catch { }
 
+            // Limpieza y compatibilidad de FK obsoletas a Ventas en RegistrosAprobacion, Contratos y Facturas
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE RegistrosAprobacion DROP FOREIGN KEY FK_RegistrosAprobacion_Ventas_VentaId;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE RegistrosAprobacion MODIFY COLUMN VentaId INT NULL;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Contratos DROP FOREIGN KEY FK_Contratos_Ventas_VentaId;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Contratos MODIFY COLUMN VentaId INT NULL;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Facturas DROP FOREIGN KEY FK_Facturas_Ventas_VentaId;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Facturas DROP INDEX IX_Facturas_VentaId;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Facturas MODIFY COLUMN VentaId INT NULL DEFAULT NULL;");
+            }
+            catch { }
+
+            // Limpieza de columnas de discriminador o campos redundantes en Personas si existieran de migraciones previas
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Personas DROP COLUMN Discriminator;");
+            }
+            catch { }
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Personas DROP COLUMN Legajo;");
+            }
+            catch { }
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Personas DROP COLUMN Posicion;");
+            }
+            catch { }
+
+            // Asegurar tabla Empleados con Foreign Key a Personas (Estrategia TPT - sin discriminador)
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE IF NOT EXISTS Empleados (
+                        Id INT NOT NULL PRIMARY KEY,
+                        Legajo VARCHAR(50) NULL,
+                        Posicion VARCHAR(100) NULL,
+                        CONSTRAINT FK_Empleados_Personas_Id FOREIGN KEY (Id) REFERENCES Personas(Id) ON DELETE CASCADE
+                    );
+                ");
+            }
+            catch { }
+
+            try
+            {
+                // Migrar o asegurar que usuarios internos tengan registro en Empleados
+                var personalSinEmpleado = await context.Usuarios
+                    .Include(u => u.Rol)
+                    .Where(u => u.Rol != null && u.Rol.Nombre != "CLIENTE")
+                    .Select(u => u.PersonaId)
+                    .ToListAsync();
+
+                foreach (var personaId in personalSinEmpleado)
+                {
+                    var exists = await context.Empleados.AnyAsync(e => e.Id == personaId);
+                    if (!exists)
+                    {
+                        await context.Database.ExecuteSqlRawAsync(
+                            "INSERT INTO Empleados (Id, Legajo, Posicion) VALUES ({0}, {1}, {2});",
+                            personaId, $"LEG-{personaId:D4}", "Personal Interno");
+                    }
+                }
+            }
+            catch { }
+
+            // Asegurar tabla Clientes con Foreign Key a Personas y a Contratos (Estrategia TPT)
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE IF NOT EXISTS Clientes (
+                        Id INT NOT NULL PRIMARY KEY,
+                        PersonaId INT NOT NULL,
+                        ContratoId INT NULL,
+                        CodigoCliente VARCHAR(50) NULL,
+                        Observaciones VARCHAR(500) NULL,
+                        EstadoCliente INT NOT NULL DEFAULT 1,
+                        CONSTRAINT FK_Clientes_ParticipantesComerciales_Id FOREIGN KEY (Id) REFERENCES ParticipantesComerciales(Id) ON DELETE CASCADE,
+                        CONSTRAINT FK_Clientes_Personas_PersonaId FOREIGN KEY (PersonaId) REFERENCES Personas(Id) ON DELETE RESTRICT,
+                        CONSTRAINT FK_Clientes_Contratos_ContratoId FOREIGN KEY (ContratoId) REFERENCES Contratos(Id) ON DELETE SET NULL
+                    );
+                ");
+            }
+            catch { }
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Clientes ADD COLUMN ContratoId INT NULL;");
+            }
+            catch { }
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Clientes ADD CONSTRAINT UQ_Clientes_ContratoId UNIQUE (ContratoId);");
+            }
+            catch { }
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync(@"
+                    INSERT IGNORE INTO Clientes (Id, PersonaId, CodigoCliente, Observaciones, EstadoCliente)
+                    SELECT Id, PersonaId, CodigoCliente, Observaciones, COALESCE(EstadoCliente, 1)
+                    FROM ParticipantesComerciales
+                    WHERE TipoParticipante = 1 AND PersonaId IS NOT NULL;
+                ");
+            }
+            catch { }
+
+            // Asegurar tabla Empresas con Foreign Key a ParticipantesComerciales (Estrategia TPT)
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE IF NOT EXISTS Empresas (
+                        Id INT NOT NULL PRIMARY KEY,
+                        RazonSocial VARCHAR(150) NULL,
+                        CUIT VARCHAR(20) NULL,
+                        DireccionFiscal VARCHAR(200) NULL,
+                        Telefono VARCHAR(50) NULL,
+                        Email VARCHAR(150) NULL,
+                        EsCasaMatriz TINYINT(1) NOT NULL DEFAULT 0,
+                        CONSTRAINT FK_Empresas_ParticipantesComerciales_Id FOREIGN KEY (Id) REFERENCES ParticipantesComerciales(Id) ON DELETE CASCADE
+                    );
+                ");
+            }
+            catch { }
+
+            // Asegurar columnas autónomas en MovimientosBulbos tras la eliminación de OperacionComercial
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosBulbos ADD COLUMN MovimientoComercialId INT NULL;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosBulbos ADD COLUMN CosechaId INT NULL;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosBulbos ADD COLUMN PlantacionId INT NULL;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosBulbos ADD COLUMN TipoOperacion INT NOT NULL DEFAULT 1;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosBulbos MODIFY COLUMN OperacionComercialId INT NULL;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosBulbos DROP FOREIGN KEY FK_MovimientosBulbos_OperacionesComerciales_OperacionComercialId;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE TransferenciasLotes DROP FOREIGN KEY FK_TransferenciasLotes_OperacionesComerciales_OperacionComercialId;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE TransferenciasLotes MODIFY COLUMN OperacionComercialId INT NULL;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosComerciales DROP FOREIGN KEY FK_MovimientosComerciales_OperacionesComerciales_OperacionComercialId;");
+            }
+            catch { }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosComerciales MODIFY COLUMN OperacionComercialId INT NULL;");
+            }
+            catch { }
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync(@"
+                    INSERT IGNORE INTO Empresas (Id, RazonSocial, CUIT, DireccionFiscal, Telefono, Email, EsCasaMatriz)
+                    SELECT Id, RazonSocial, CUIT, DireccionFiscal, Telefono, Email, COALESCE(EsCasaMatriz, 0)
+                    FROM ParticipantesComerciales
+                    WHERE TipoParticipante = 2;
+                ");
+            }
+            catch { }
+
             // 1. Asegurar Roles del Sistema (EsSistema = true)
             var systemRoles = new (int Id, string Nombre, string Descripcion)[]
             {
@@ -259,13 +474,15 @@ public static class DatabaseSeeder
 
                     if (adminPersona == null)
                     {
-                        adminPersona = new Persona
+                        adminPersona = new Empleado
                         {
                             Nombre = nombre,
                             Apellido = apellido,
                             Documento = doc,
                             Telefono = telefono,
                             Email = email,
+                            Legajo = "LEG-0001",
+                            Posicion = "Administrador General",
                             FechaCreacion = DateTime.UtcNow
                         };
                         await context.Personas.AddAsync(adminPersona);
@@ -307,6 +524,24 @@ public static class DatabaseSeeder
                     FechaCreacion = DateTime.UtcNow
                 });
                 await context.SaveChangesAsync();
+            }
+
+            // 6. Asegurar entidad de contraparte para Ajustes de Inventario
+            var existeAjuste = await context.Empresas.IgnoreQueryFilters().AnyAsync(e => e.RazonSocial == "Ajustes de Inventario");
+            if (!existeAjuste)
+            {
+                var empresaAjustes = new Empresa
+                {
+                    TipoParticipante = TipoParticipante.Empresa,
+                    Estado = EstadoParticipante.Activo,
+                    FechaRegistro = DateTime.UtcNow,
+                    RazonSocial = "Ajustes de Inventario",
+                    CUIT = "00-00000000-0",
+                    IsDeleted = false
+                };
+                await context.Empresas.AddAsync(empresaAjustes);
+                await context.SaveChangesAsync();
+                logger?.LogInformation("Entidad 'Ajustes de Inventario' aprovisionada exitosamente con Id = {Id}.", empresaAjustes.Id);
             }
         }
         catch (Exception ex)

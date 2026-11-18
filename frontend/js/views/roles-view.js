@@ -82,10 +82,10 @@ export class RolesView {
 
         <!-- Modal Crear / Editar Rol con Matriz de Permisos -->
         <div class="modal-backdrop" id="modal-rol">
-          <div class="modal" style="max-width: 850px;">
+          <div class="modal-dialog" style="max-width: 850px;">
             <div class="modal-header">
               <h3 class="modal-title" id="modal-rol-title">Nuevo Rol</h3>
-              <button type="button" class="btn-close" id="btn-close-modal-rol">&times;</button>
+              <button type="button" class="modal-close-btn btn-close" id="btn-close-modal-rol">&times;</button>
             </div>
             <form id="form-rol">
               <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
@@ -128,10 +128,10 @@ export class RolesView {
 
         <!-- Modal Confirmación de Eliminación (Prohibition) -->
         <div class="modal-backdrop" id="modal-delete-rol">
-          <div class="modal" style="max-width: 480px;">
+          <div class="modal-dialog" style="max-width: 480px;">
             <div class="modal-header">
               <h3 class="modal-title" style="color: var(--danger);">Eliminar Rol</h3>
-              <button type="button" class="btn-close" id="btn-close-modal-delete-rol">&times;</button>
+              <button type="button" class="modal-close-btn btn-close" id="btn-close-modal-delete-rol">&times;</button>
             </div>
             <div class="modal-body">
               <div class="d-flex gap-md align-start">

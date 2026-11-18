@@ -1,7 +1,7 @@
 using SIGA.Application.DTOs.Movimientos;
+using SIGA.Application.DTOs.MovimientosComerciales;
 using SIGA.Application.DTOs.Stock;
 using SIGA.Application.DTOs.Transferencias;
-using SIGA.Application.DTOs.Ventas;
 using SIGA.Domain.Enums;
 
 namespace SIGA.Application.DTOs.Reportes;
@@ -59,7 +59,7 @@ public class ReporteIntegralClienteDto
     public List<ResumenProductivoTemporadaClienteDto> HistorialProductivoPorTemporada { get; set; } = new();
     public List<MovimientoBulbosDto> HistorialMovimientos { get; set; } = new();
     public List<TransferenciaLoteDto> HistorialTransferencias { get; set; } = new();
-    public List<VentaDto> HistorialComprasVentas { get; set; } = new();
+    public List<MovimientoComercialDto> HistorialComprasVentas { get; set; } = new();
 }
 
 public class ComparativaClaseBulboDto

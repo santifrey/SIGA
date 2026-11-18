@@ -9,6 +9,7 @@ public interface IGestionUsuarios
 {
     Task<ApiResponse<LoginResponseDto>> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default);
     Task<ApiResponse<UserInfoResponseDto>> GetMeAsync(int usuarioId, CancellationToken cancellationToken = default);
+    Task<ApiResponse<UserInfoResponseDto>> UpdateMeAsync(int usuarioId, ActualizarPerfilDto dto, CancellationToken cancellationToken = default);
     Task<ApiResponse<UsuarioDto>> GetByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<ApiResponse<IEnumerable<UsuarioDto>>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<ApiResponse<UsuarioDto>> CreateAsync(CreateUsuarioDto dto, CancellationToken cancellationToken = default);

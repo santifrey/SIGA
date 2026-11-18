@@ -90,6 +90,8 @@ export class EmpleadosView {
               <thead>
                 <tr>
                   <th>Empleado</th>
+                  <th>Legajo</th>
+                  <th>Posición</th>
                   <th>Documento</th>
                   <th>Contacto</th>
                   <th>Rol</th>
@@ -100,7 +102,7 @@ export class EmpleadosView {
               </thead>
               <tbody id="tbody-empleados">
                 <tr>
-                  <td colspan="7" class="text-center text-muted" style="padding: 2.5rem;">
+                  <td colspan="9" class="text-center text-muted" style="padding: 2.5rem;">
                     <div class="btn-spinner" style="display:inline-block; width:24px; height:24px; border-width:2px;"></div>
                     <p class="mt-2">Cargando nómina de empleados...</p>
                   </td>
@@ -118,15 +120,27 @@ export class EmpleadosView {
 
         <!-- Modal Crear / Editar Empleado -->
         <div class="modal-backdrop" id="modal-empleado">
-          <div class="modal" style="max-width: 650px;">
+          <div class="modal-dialog" style="max-width: 650px;">
             <div class="modal-header">
               <h3 class="modal-title" id="modal-empleado-title">Nuevo Empleado</h3>
-              <button type="button" class="btn-close" id="btn-close-modal-empleado">&times;</button>
+              <button type="button" class="modal-close-btn btn-close" id="btn-close-modal-empleado">&times;</button>
             </div>
             <form id="form-empleado">
               <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                 <input type="hidden" id="emp-id" value="" />
                 
+                <h4 class="text-xs text-muted font-bold text-uppercase mb-2">Datos Laborales</h4>
+                <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                  <div class="form-group">
+                    <label class="form-label" for="emp-legajo">Legajo</label>
+                    <input type="text" id="emp-legajo" class="form-control" placeholder="Ej: LEG-0012" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="emp-posicion">Posición / Cargo</label>
+                    <input type="text" id="emp-posicion" class="form-control" placeholder="Ej: Encargado de Depósito" />
+                  </div>
+                </div>
+
                 <h4 class="text-xs text-muted font-bold text-uppercase mb-2">Datos Personales</h4>
                 <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                   <div class="form-group">
@@ -193,10 +207,10 @@ export class EmpleadosView {
 
         <!-- Modal Confirmación de Desactivación (Prohibition) -->
         <div class="modal-backdrop" id="modal-delete-empleado">
-          <div class="modal" style="max-width: 480px;">
+          <div class="modal-dialog" style="max-width: 480px;">
             <div class="modal-header">
               <h3 class="modal-title" style="color: var(--danger);">Desactivar Empleado</h3>
-              <button type="button" class="btn-close" id="btn-close-modal-delete">&times;</button>
+              <button type="button" class="modal-close-btn btn-close" id="btn-close-modal-delete">&times;</button>
             </div>
             <div class="modal-body">
               <div class="d-flex gap-md align-start">
@@ -298,7 +312,7 @@ export class EmpleadosView {
     const tbody = this.container.querySelector('#tbody-empleados');
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" class="text-center text-muted" style="padding: 2.5rem;">
+        <td colspan="9" class="text-center text-muted" style="padding: 2.5rem;">
           <div class="btn-spinner" style="display:inline-block; width:24px; height:24px; border-width:2px;"></div>
           <p class="mt-2">Cargando nómina de empleados...</p>
         </td>
@@ -311,7 +325,7 @@ export class EmpleadosView {
     } catch (err) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7" class="text-center" style="padding: 2.5rem; color: var(--danger);">
+          <td colspan="9" class="text-center" style="padding: 2.5rem; color: var(--danger);">
             ${escapeHtml(err.message || 'Error al cargar empleados.')}
           </td>
         </tr>
@@ -332,12 +346,16 @@ export class EmpleadosView {
       const username = (emp.username || '').toLowerCase();
       const doc = (emp.documento || '').toLowerCase();
       const email = (emp.email || '').toLowerCase();
+      const legajo = (emp.legajo || '').toLowerCase();
+      const posicion = (emp.posicion || '').toLowerCase();
 
       const matchesSearch = !this.filterSearch ||
         fullName.includes(this.filterSearch) ||
         username.includes(this.filterSearch) ||
         doc.includes(this.filterSearch) ||
-        email.includes(this.filterSearch);
+        email.includes(this.filterSearch) ||
+        legajo.includes(this.filterSearch) ||
+        posicion.includes(this.filterSearch);
 
       const matchesRol = !this.filterRol || emp.rol === this.filterRol;
 
@@ -359,7 +377,7 @@ export class EmpleadosView {
     if (paginated.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7" class="text-center text-muted" style="padding: 2.5rem;">
+          <td colspan="9" class="text-center text-muted" style="padding: 2.5rem;">
             No se encontraron empleados registrados que coincidan con los filtros.
           </td>
         </tr>
@@ -390,6 +408,12 @@ export class EmpleadosView {
                 <div class="text-xs text-muted">@${escapeHtml(emp.username)}</div>
               </div>
             </div>
+          </td>
+          <td>
+            <span class="badge badge-secondary font-mono">${escapeHtml(emp.legajo || '-')}</span>
+          </td>
+          <td>
+            <div class="text-sm font-medium text-main">${escapeHtml(emp.posicion || '-')}</div>
           </td>
           <td>
             <div class="font-medium">${escapeHtml(emp.documento || '-')}</div>
@@ -483,6 +507,8 @@ export class EmpleadosView {
     const form = this.container.querySelector('#form-empleado');
     form.reset();
     this.container.querySelector('#emp-id').value = '';
+    this.container.querySelector('#emp-legajo').value = '';
+    this.container.querySelector('#emp-posicion').value = '';
     this.container.querySelector('#modal-empleado-title').textContent = 'Nuevo Empleado';
     this.container.querySelector('#emp-activo').checked = true;
 
@@ -504,6 +530,8 @@ export class EmpleadosView {
       this.selectedEmpleado = emp;
 
       this.container.querySelector('#emp-id').value = emp.id;
+      this.container.querySelector('#emp-legajo').value = emp.legajo || '';
+      this.container.querySelector('#emp-posicion').value = emp.posicion || '';
       this.container.querySelector('#emp-nombre').value = emp.nombre || '';
       this.container.querySelector('#emp-apellido').value = emp.apellido || '';
       this.container.querySelector('#emp-documento').value = emp.documento || '';
@@ -534,6 +562,8 @@ export class EmpleadosView {
     errBox.textContent = '';
 
     const id = this.container.querySelector('#emp-id').value;
+    const legajo = this.container.querySelector('#emp-legajo').value.trim();
+    const posicion = this.container.querySelector('#emp-posicion').value.trim();
     const nombre = this.container.querySelector('#emp-nombre').value.trim();
     const apellido = this.container.querySelector('#emp-apellido').value.trim();
     const documento = this.container.querySelector('#emp-documento').value.trim();
@@ -569,6 +599,8 @@ export class EmpleadosView {
       nombre,
       apellido,
       documento,
+      legajo: legajo || null,
+      posicion: posicion || null,
       telefono: telefono || null,
       email,
       username: email.toLowerCase(),

@@ -12,8 +12,6 @@ public class ContratoConfiguration : IEntityTypeConfiguration<Contrato>
 
         builder.HasKey(c => c.Id);
 
-        builder.Ignore(c => c.VentaId);
-        builder.Ignore(c => c.Venta);
 
         builder.Property(c => c.NumeroContrato)
             .HasMaxLength(60)

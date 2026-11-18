@@ -62,7 +62,6 @@ public static class DependencyInjection
         services.AddScoped<ISucursalRepository, SucursalRepository>();
         services.AddScoped<IRolRepository, RolRepository>();
         services.AddScoped<IMovimientoBulbosRepository, MovimientoBulbosRepository>();
-        services.AddScoped<IOperacionComercialRepository, OperacionComercialRepository>();
         services.AddScoped<ITemporadaRepository, TemporadaRepository>();
         services.AddScoped<IFilaRepository, FilaRepository>();
         services.AddScoped<ILoteRepository, LoteRepository>();
@@ -70,7 +69,6 @@ public static class DependencyInjection
         services.AddScoped<ITransferenciaLoteRepository, TransferenciaLoteRepository>();
         services.AddScoped<ICosechaRepository, CosechaRepository>();
         services.AddScoped<IPrecioClaseRepository, PrecioClaseRepository>();
-        services.AddScoped<IVentaRepository, VentaRepository>();
         services.AddScoped<IMovimientoComercialRepository, MovimientoComercialRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 

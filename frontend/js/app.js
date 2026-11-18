@@ -16,6 +16,8 @@ import { DashboardView } from './views/dashboard-view.js';
 import { ClientesView } from './views/clientes-view.js';
 import { SucursalesView } from './views/sucursales-view.js';
 import { StockView } from './views/stock-view.js';
+import { HistorialMovimientosView } from './views/historial-movimientos-view.js';
+import { AjustesStockView } from './views/ajustes-stock-view.js';
 import { MovimientosView } from './views/movimientos-view.js';
 import { TemporadasView } from './views/temporadas-view.js';
 import { PlantacionesView } from './views/plantaciones-view.js';
@@ -25,7 +27,7 @@ import { MovimientosComercialesView } from './views/movimientos-comerciales-view
 import { ReportesView } from './views/reportes-view.js';
 
 // Nuevas Vistas (Milestone 4)
-import { PerfilView } from './views/perfil-view.js';
+import { PerfilView } from './views/perfil-view.js?v=2.0';
 import { EmpleadosView } from './views/empleados-view.js';
 import { RolesView } from './views/roles-view.js';
 import { PreciosReferenciaView } from './views/precios-referencia-view.js';
@@ -62,7 +64,9 @@ class App {
     this.clientesView = new ClientesView(this.router);
     this.sucursalesView = new SucursalesView(this.router);
     this.stockView = new StockView(this.router);
-    this.movimientosView = new MovimientosView(this.router);
+    this.historialMovimientosView = new HistorialMovimientosView(this.router);
+    this.ajustesStockView = new AjustesStockView(this.router);
+    this.movimientosView = this.historialMovimientosView;
     this.temporadasView = new TemporadasView(this.router);
     this.plantacionesView = new PlantacionesView(this.router);
     this.transferenciasView = new TransferenciasView(this.router);
@@ -98,7 +102,8 @@ class App {
 
     // Stock y Bulbos
     this.router.register('#stock', this.stockView, true, 'Consulta de Stock', 'STOCK_VER');
-    this.router.register('#movimientos', this.movimientosView, true, 'Movimientos de Stock', 'STOCK_VER');
+    this.router.register('#movimientos', this.historialMovimientosView, true, 'Historial de Movimientos', 'STOCK_VER');
+    this.router.register('#ajustes-stock', this.ajustesStockView, true, 'Ajustes de Stock', 'STOCK_VER');
 
     // Producción y Campo
     this.router.register('#temporadas', this.temporadasView, true, 'Gestión de Temporadas', 'TEMPORADAS_VER');
@@ -235,10 +240,10 @@ class App {
               </div>
             </div>
 
-            <!-- 2. Movimientos Comerciales -->
+            <!-- 2. Transacciones -->
             <div class="nav-section" data-section="movimientos-comerciales">
               <button type="button" class="nav-section-header" data-toggle="section" aria-expanded="true">
-                <span class="nav-section-title">Movimientos Comerciales</span>
+                <span class="nav-section-title">Transacciones</span>
                 <svg class="nav-section-chevron" viewBox="0 0 24 24">
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
@@ -253,6 +258,22 @@ class App {
                     <polyline points="10 9 9 9 8 9"></polyline>
                   </svg>
                   <span class="nav-text">Movimientos Comerciales</span>
+                </a>
+                <a href="#movimientos" class="nav-item" data-path="#movimientos" data-permiso="STOCK_VER,MOVIMIENTOS_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="17 1 21 5 17 9"></polyline>
+                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                    <polyline points="7 23 3 19 7 15"></polyline>
+                    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                  </svg>
+                  <span class="nav-text">Movimientos</span>
+                </a>
+                <a href="#ajustes-stock" class="nav-item" data-path="#ajustes-stock" data-permiso="STOCK_VER">
+                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 20v-6M6 20V10M18 20V4"></path>
+                    <polyline points="17 1 21 5 17 9"></polyline>
+                  </svg>
+                  <span class="nav-text">Ajustes de Stock</span>
                 </a>
               </div>
             </div>
@@ -273,15 +294,6 @@ class App {
                     <line x1="12" y1="22.08" x2="12" y2="12"></line>
                   </svg>
                   <span class="nav-text">Consulta Stock</span>
-                </a>
-                <a href="#movimientos" class="nav-item" data-path="#movimientos" data-permiso="STOCK_VER">
-                  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="17 1 21 5 17 9"></polyline>
-                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
-                    <polyline points="7 23 3 19 7 15"></polyline>
-                    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
-                  </svg>
-                  <span class="nav-text">Movimientos de Stock</span>
                 </a>
               </div>
             </div>
@@ -470,10 +482,12 @@ class App {
     }
 
     if (logoutBtn) {
-      logoutBtn.addEventListener('click', () => {
+      logoutBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
         if (confirm('¿Está seguro de que desea cerrar la sesión actual?')) {
-          authService.logout();
+          await authService.logout();
           toast.info('Sesión finalizada correctamente.');
+          window.location.hash = '#login';
           this.router.navigate('#login');
         }
       });
@@ -643,13 +657,15 @@ class App {
     if (!modal) {
       modal = document.createElement('div');
       modal.id = 'modal-forzar-activacion';
-      modal.className = 'modal is-active';
+      modal.className = 'modal-backdrop is-active';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
       modal.innerHTML = `
-        <div class="modal-card" style="max-width: 440px; border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); z-index: 10000;">
-          <div class="modal-card-head" style="background: var(--surface); border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem;">
-            <h3 class="modal-card-title text-base font-bold" style="color: var(--primary);">Activación de Cuenta requerida</h3>
+        <div class="modal-dialog" style="max-width: 480px;">
+          <div class="modal-header" style="background: var(--surface); border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem;">
+            <h3 class="modal-title text-base font-bold" style="color: var(--primary);">Activación de Cuenta requerida</h3>
           </div>
-          <div class="modal-card-body" style="padding: 1.5rem;">
+          <div class="modal-body" style="padding: 1.5rem;">
             <div class="alert alert-info mb-3" style="font-size: 0.8125rem; line-height: 1.4;">
               <strong>¡Primer ingreso detectado!</strong> Por motivos de seguridad del sistema, debes cambiar tu contraseña inicial (DNI) para activar tu cuenta y poder utilizar la aplicación.
             </div>

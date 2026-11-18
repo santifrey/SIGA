@@ -17,8 +17,9 @@ public class MovimientoBulbosRepository : Repository<MovimientoBulbos>, IMovimie
             .Include(m => m.Cantidades)
             .Include(m => m.Origen)
             .Include(m => m.Destino)
-            .Include(m => m.OperacionComercial)
+            .Include(m => m.MovimientoComercial)
             .Include(m => m.UsuarioCreador)
+                .ThenInclude(u => u!.Persona)
             .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
     }
 
@@ -29,8 +30,9 @@ public class MovimientoBulbosRepository : Repository<MovimientoBulbos>, IMovimie
             .Include(m => m.Cantidades)
             .Include(m => m.Origen)
             .Include(m => m.Destino)
-            .Include(m => m.OperacionComercial)
+            .Include(m => m.MovimientoComercial)
             .Include(m => m.UsuarioCreador)
+                .ThenInclude(u => u!.Persona)
             .AsQueryable();
 
         if (estado.HasValue)
@@ -48,7 +50,6 @@ public class MovimientoBulbosRepository : Repository<MovimientoBulbos>, IMovimie
             .Include(m => m.Cantidades)
             .Include(m => m.Origen)
             .Include(m => m.Destino)
-            .Include(m => m.OperacionComercial)
             .Where(m => m.OrigenId == participanteId || m.DestinoId == participanteId)
             .OrderByDescending(m => m.Fecha)
             .ToListAsync(cancellationToken);
@@ -67,14 +68,14 @@ public class MovimientoBulbosRepository : Repository<MovimientoBulbos>, IMovimie
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<MovimientoBulbos>> GetByOperacionIdAsync(int operacionId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<MovimientoBulbos>> GetByMovimientoComercialIdAsync(int movimientoComercialId, CancellationToken cancellationToken = default)
     {
         return await _dbSet
             .AsNoTracking()
             .Include(m => m.Cantidades)
             .Include(m => m.Origen)
             .Include(m => m.Destino)
-            .Where(m => m.OperacionComercialId == operacionId)
+            .Where(m => m.MovimientoComercialId == movimientoComercialId)
             .ToListAsync(cancellationToken);
     }
 }

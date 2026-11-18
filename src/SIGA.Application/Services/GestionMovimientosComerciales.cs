@@ -16,7 +16,6 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
     private readonly ITemporadaRepository _temporadaRepository;
     private readonly IRepository<ParticipanteComercial> _participanteRepository;
     private readonly IGestionStock _gestionStock;
-    private readonly IOperacionComercialRepository _operacionRepository;
     private readonly IMovimientoBulbosRepository _movimientoBulbosRepository;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -27,7 +26,6 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         ITemporadaRepository temporadaRepository,
         IRepository<ParticipanteComercial> participanteRepository,
         IGestionStock gestionStock,
-        IOperacionComercialRepository operacionRepository,
         IMovimientoBulbosRepository movimientoBulbosRepository,
         IUnitOfWork unitOfWork)
     {
@@ -37,7 +35,6 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         _temporadaRepository = temporadaRepository;
         _participanteRepository = participanteRepository;
         _gestionStock = gestionStock;
-        _operacionRepository = operacionRepository;
         _movimientoBulbosRepository = movimientoBulbosRepository;
         _unitOfWork = unitOfWork;
     }
@@ -211,8 +208,8 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         if (mov.Tipo == TipoMovimientoComercial.TraspasoEntreClientes)
             throw new OperacionInvalidaException("Los traspasos entre clientes no generan facturas comerciales.");
 
-        if (mov.Estado != EstadoMovimientoComercial.AprobadoAdmin)
-            throw new OperacionInvalidaException($"El movimiento comercial debe estar en estado AprobadoAdmin para emitir factura (estado actual: '{mov.Estado}').");
+        if (mov.Estado != EstadoMovimientoComercial.AprobadoAdmin && mov.Estado != EstadoMovimientoComercial.Rechazado)
+            throw new OperacionInvalidaException($"El movimiento comercial debe estar en estado AprobadoAdmin o Rechazado para emitir factura (estado actual: '{mov.Estado}').");
 
         if (string.IsNullOrWhiteSpace(dto.NumeroFactura))
             throw new ValidationException("El número de factura es obligatorio.");
@@ -289,23 +286,13 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
                 ? TipoOperacionComercial.Traspaso
                 : TipoOperacionComercial.CompraVentaBulbos;
 
-            var operacion = new OperacionComercial
-            {
-                Fecha = DateTime.UtcNow,
-                Tipo = tipoOp,
-                Estado = EstadoOperacion.Confirmada,
-                UsuarioCreadorId = usuarioId,
-                Observaciones = $"Movimiento #{mov.Id} ({mov.Tipo}) finalizado"
-            };
-            await _operacionRepository.AddAsync(operacion, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
             var movBulbos = new MovimientoBulbos(
-                operacion.Id,
                 mov.OrigenParticipanteId,
                 mov.DestinoParticipanteId,
                 usuarioId,
-                $"Entrega comercial #{mov.Id} ({mov.Tipo}) finalizada");
+                tipoOp,
+                $"Entrega comercial #{mov.Id} ({mov.Tipo}) finalizada",
+                movimientoComercialId: mov.Id);
 
             foreach (var (clase, cantidad) in requerimientosFisicos.Where(r => r.Value > 0))
             {
@@ -315,7 +302,7 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
             await _movimientoBulbosRepository.AddAsync(movBulbos, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            mov.Finalizar(usuarioId, operacion.Id, dto?.Observaciones);
+            mov.Finalizar(usuarioId, dto?.Observaciones);
             await _movimientoRepository.UpdateAsync(mov, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -500,16 +487,16 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
 
     private static MovimientoComercialDto MapToDto(MovimientoComercial mov, bool requiereContrato = false)
     {
-        string nombreOrigen = mov.OrigenParticipante is Empresa eOrig ? eOrig.RazonSocial :
-            mov.OrigenParticipante is Cliente cOrig ? (cOrig.Persona != null ? cOrig.Persona.NombreCompleto : cOrig.CodigoCliente) :
-            $"Participante #{mov.OrigenParticipanteId}";
-
-        string nombreDestino = mov.DestinoParticipante is Empresa eDest ? eDest.RazonSocial :
-            mov.DestinoParticipante is Cliente cDest ? (cDest.Persona != null ? cDest.Persona.NombreCompleto : cDest.CodigoCliente) :
-            $"Participante #{mov.DestinoParticipanteId}";
-
         string codigoCliente = mov.Cliente?.CodigoCliente ?? string.Empty;
         string nombreCliente = mov.Cliente?.Persona != null ? mov.Cliente.Persona.NombreCompleto : codigoCliente;
+
+        string nombreOrigen = mov.OrigenParticipante is Empresa eOrig ? eOrig.RazonSocial :
+            mov.OrigenParticipante is Cliente cOrig ? (cOrig.Persona != null ? cOrig.Persona.NombreCompleto : (mov.ClienteId == mov.OrigenParticipanteId && !string.IsNullOrWhiteSpace(nombreCliente) ? nombreCliente : cOrig.CodigoCliente)) :
+            (mov.OrigenParticipanteId == Empresa.SingletonId ? "Empresa Central" : (mov.ClienteId == mov.OrigenParticipanteId && !string.IsNullOrWhiteSpace(nombreCliente) ? nombreCliente : $"Participante #{mov.OrigenParticipanteId}"));
+
+        string nombreDestino = mov.DestinoParticipante is Empresa eDest ? eDest.RazonSocial :
+            mov.DestinoParticipante is Cliente cDest ? (cDest.Persona != null ? cDest.Persona.NombreCompleto : (mov.ClienteId == mov.DestinoParticipanteId && !string.IsNullOrWhiteSpace(nombreCliente) ? nombreCliente : cDest.CodigoCliente)) :
+            (mov.DestinoParticipanteId == Empresa.SingletonId ? "Empresa Central" : (mov.ClienteId == mov.DestinoParticipanteId && !string.IsNullOrWhiteSpace(nombreCliente) ? nombreCliente : $"Participante #{mov.DestinoParticipanteId}"));
 
         string nombreUsuarioRegistro = mov.UsuarioRegistro?.Persona != null
             ? mov.UsuarioRegistro.Persona.NombreCompleto
@@ -540,7 +527,6 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
             MontoTotal = mov.MontoTotal,
             TotalBulbos = mov.Detalles.Where(d => !d.IsDeleted).Sum(d => d.Cantidad),
             Observaciones = mov.Observaciones,
-            OperacionComercialId = mov.OperacionComercialId,
             RequiereContrato = requiereContrato,
             FechaCreacion = mov.FechaRegistro,
             Detalles = mov.Detalles.Where(d => !d.IsDeleted).Select(d => new DetalleMovimientoComercialDto

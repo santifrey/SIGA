@@ -6,7 +6,8 @@
 .vs/
 .vscode/
 .agents/
-.tests/
+tests/
+diagrams2/
 *.user
 *.suo
 *.userosscache
@@ -29,3 +30,5 @@
 ## OS generated files
 .DS_Store
 Thumbs.db
+
+*.py

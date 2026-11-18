@@ -138,6 +138,7 @@ public class GestionClientes : IGestionClientes
             var cliente = new Cliente
             {
                 PersonaId = persona.Id,
+                ContratoId = dto.ContratoId,
                 CodigoCliente = codigoCliente,
                 Observaciones = dto.Observaciones?.Trim(),
                 EstadoCliente = estadoInicial,
@@ -242,6 +243,11 @@ public class GestionClientes : IGestionClientes
             cliente.Observaciones = dto.Observaciones.Trim();
         }
 
+        if (dto.ContratoId.HasValue)
+        {
+            cliente.ContratoId = dto.ContratoId.Value > 0 ? dto.ContratoId.Value : null;
+        }
+
         if (dto.EstadoCliente.HasValue)
         {
             cliente.EstadoCliente = dto.EstadoCliente.Value;
@@ -277,6 +283,8 @@ public class GestionClientes : IGestionClientes
         {
             Id = cliente.Id,
             PersonaId = cliente.PersonaId,
+            ContratoId = cliente.ContratoId,
+            NumeroContrato = cliente.Contrato?.NumeroContrato,
             Nombre = cliente.Persona?.Nombre ?? string.Empty,
             Apellido = cliente.Persona?.Apellido ?? string.Empty,
             NombreCompleto = cliente.Persona != null ? cliente.Persona.NombreCompleto : string.Empty,

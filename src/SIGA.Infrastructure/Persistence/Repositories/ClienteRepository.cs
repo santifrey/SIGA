@@ -14,6 +14,7 @@ public class ClienteRepository : Repository<Cliente>, IClienteRepository
     {
         return await _dbSet
             .Include(c => c.Persona)
+            .Include(c => c.Contrato)
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
     }
 
@@ -21,6 +22,7 @@ public class ClienteRepository : Repository<Cliente>, IClienteRepository
     {
         return await _dbSet
             .Include(c => c.Persona)
+            .Include(c => c.Contrato)
             .FirstOrDefaultAsync(c => c.CodigoCliente.ToLower() == codigo.ToLower(), cancellationToken);
     }
 
@@ -28,12 +30,16 @@ public class ClienteRepository : Repository<Cliente>, IClienteRepository
     {
         return await _dbSet
             .Include(c => c.Persona)
+            .Include(c => c.Contrato)
             .FirstOrDefaultAsync(c => c.PersonaId == personaId, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Cliente>> GetAllWithPersonaAsync(string? busqueda = null, CancellationToken cancellationToken = default)
     {
-        var query = _dbSet.Include(c => c.Persona).AsQueryable();
+        var query = _dbSet
+            .Include(c => c.Persona)
+            .Include(c => c.Contrato)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(busqueda))
         {

@@ -95,6 +95,8 @@ public class GestionUsuarios : IGestionUsuarios
             .Distinct()
             .ToList() ?? new List<string>();
 
+        var empleado = usuario.Persona as Empleado;
+
         var response = new UserInfoResponseDto
         {
             UsuarioId = usuario.Id,
@@ -105,6 +107,8 @@ public class GestionUsuarios : IGestionUsuarios
             NombreCompleto = usuario.Persona?.NombreCompleto ?? usuario.Username,
             Email = usuario.Persona?.Email ?? string.Empty,
             Documento = usuario.Persona?.Documento ?? string.Empty,
+            Legajo = empleado?.Legajo,
+            Posicion = empleado?.Posicion,
             Telefono = usuario.Persona?.Telefono,
             RolId = usuario.RolId,
             Rol = rolNombre,
@@ -117,6 +121,55 @@ public class GestionUsuarios : IGestionUsuarios
         };
 
         return ApiResponse<UserInfoResponseDto>.Ok(response);
+    }
+
+    public async Task<ApiResponse<UserInfoResponseDto>> UpdateMeAsync(int usuarioId, ActualizarPerfilDto dto, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Nombre) || string.IsNullOrWhiteSpace(dto.Apellido))
+            throw new ValidationException("El nombre y apellido son requeridos.");
+
+        var usuario = await _usuarioRepository.GetByIdWithRolesAsync(usuarioId, cancellationToken);
+        if (usuario == null)
+            throw new NotFoundException(nameof(Usuario), usuarioId);
+
+        if (usuario.Persona != null)
+        {
+            usuario.Persona.Nombre = dto.Nombre.Trim();
+            usuario.Persona.Apellido = dto.Apellido.Trim();
+            usuario.Persona.Telefono = dto.Telefono?.Trim();
+
+            if (!string.IsNullOrWhiteSpace(dto.Documento) && !string.Equals(usuario.Persona.Documento, dto.Documento.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                var existingPersona = await _personaRepository.GetByDocumentoAsync(dto.Documento.Trim(), cancellationToken);
+                if (existingPersona != null && existingPersona.Id != usuario.PersonaId)
+                {
+                    throw new ValidationException($"Ya existe otra persona registrada con el documento '{dto.Documento}'.");
+                }
+                usuario.Persona.Documento = dto.Documento.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Email))
+            {
+                var newEmail = dto.Email.Trim().ToLowerInvariant();
+                if (!string.Equals(usuario.Persona.Email, newEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    var existingUser = await _usuarioRepository.GetByUsernameWithRolesAsync(newEmail, cancellationToken);
+                    if (existingUser != null && existingUser.Id != usuario.Id)
+                    {
+                        throw new ValidationException($"El correo electrónico '{newEmail}' ya está siendo utilizado por otro usuario.");
+                    }
+                    usuario.Persona.Email = newEmail;
+                    usuario.Username = newEmail;
+                }
+            }
+
+            await _personaRepository.UpdateAsync(usuario.Persona, cancellationToken);
+        }
+
+        await _usuarioRepository.UpdateAsync(usuario, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return await GetMeAsync(usuarioId, cancellationToken);
     }
 
     public async Task<ApiResponse<UsuarioDto>> GetByIdAsync(int id, CancellationToken cancellationToken = default)
