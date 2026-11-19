@@ -117,6 +117,7 @@ export function renderRowActionButtons(m) {
   const tipo = _parseTipoIndex(m.tipo ?? m.nombreTipo);
   const currentUser = authService.getUsuarioActual();
   const isCreator = currentUser && Number(currentUser.id) === Number(m.usuarioRegistroId);
+  const puedeRechazar = authService.tienePermiso('MOVCOM_RECHAZAR') || isCreator;
 
   // 1. Estado 0: Pendiente Contrato / Pendiente Aprobación Contrato
   if (st === 0) {
@@ -131,13 +132,6 @@ export function renderRowActionButtons(m) {
           </button>
         `);
       } else {
-        if (tipo === 1 && tieneContrato) {
-          btns.push(`
-            <button type="button" class="btn btn-outline btn-sm btn-action-ver-contrato" data-id="${m.id}" title="Descargar / Ver Contrato PDF">
-              <span>Ver Contrato</span>
-            </button>
-          `);
-        }
         btns.push(`
           <button type="button" class="btn btn-primary btn-sm btn-action-aprobar" data-id="${m.id}" title="Aprobar contrato / operación y avanzar a Pendiente Factura">
             <span>Aprobar Contrato</span>
@@ -145,24 +139,10 @@ export function renderRowActionButtons(m) {
         `);
       }
     }
-    if (authService.tienePermiso('MOVCOM_RECHAZAR')) {
-      btns.push(`
-        <button type="button" class="btn btn-outline btn-sm btn-action-rechazar" data-id="${m.id}" title="Rechazar u Observar Operación">
-          ${getProhibitionIcon({ size: 'sm', title: 'Rechazar' })}
-        </button>
-      `);
-    }
   }
 
   // 2. Estado 1: Pendiente Factura (o Pendiente Finalización en Traspaso)
   if (st === 1) {
-    if (tipo === 1 && m.contrato) {
-      btns.push(`
-        <button type="button" class="btn btn-outline btn-sm btn-action-ver-contrato" data-id="${m.id}" title="Descargar / Ver Contrato PDF">
-          <span>Ver Contrato</span>
-        </button>
-      `);
-    }
     if (tipo !== 3) {
       if (authService.tienePermiso('MOVCOM_FACTURAR')) {
         btns.push(`
@@ -178,24 +158,10 @@ export function renderRowActionButtons(m) {
         </button>
       `);
     }
-    if (authService.tienePermiso('MOVCOM_RECHAZAR')) {
-      btns.push(`
-        <button type="button" class="btn btn-outline btn-sm btn-action-rechazar" data-id="${m.id}" title="Rechazar u Observar Operación">
-          ${getProhibitionIcon({ size: 'sm', title: 'Rechazar' })}
-        </button>
-      `);
-    }
   }
 
   // 3. Estado 2: Pendiente Aprobación Factura
   if (st === 2 && tipo !== 3) {
-    if (tipo === 1 && m.contrato) {
-      btns.push(`
-        <button type="button" class="btn btn-outline btn-sm btn-action-ver-contrato" data-id="${m.id}" title="Descargar / Ver Contrato PDF">
-          <span>Ver Contrato</span>
-        </button>
-      `);
-    }
     if (authService.tienePermiso('MOVCOM_FINALIZAR')) {
       btns.push(`
         <button type="button" class="btn btn-success btn-sm btn-action-finalizar" data-id="${m.id}" title="Aprobar Factura y Finalizar Operación (Impacta stock físico)">
@@ -203,13 +169,24 @@ export function renderRowActionButtons(m) {
         </button>
       `);
     }
-    if (authService.tienePermiso('MOVCOM_RECHAZAR')) {
-      btns.push(`
-        <button type="button" class="btn btn-outline-danger btn-sm btn-action-rechazar" data-id="${m.id}" title="Rechazar Factura (Anula la factura actual y permite generar una nueva)">
-          <span>Rechazar Factura</span>
-        </button>
-      `);
-    }
+  }
+
+  // Botón Anular / Cancelar / Rechazar disponible en TODOS los estados activos (0, 1, 2, 3)
+  if (st !== 4 && puedeRechazar) {
+    const isFinalizado = st === 3;
+    const isFactura = st === 2;
+    const btnTitle = isFinalizado
+      ? 'Anular Operación Finalizada (Cancela la operación, revierte inventario y anula factura)'
+      : isFactura
+        ? 'Rechazar / Anular Operación (Anula factura y requiere corrección)'
+        : 'Anular / Cancelar Operación Comercial';
+
+    btns.push(`
+      <button type="button" class="btn btn-outline-danger btn-sm btn-action-rechazar" data-id="${m.id}" title="${btnTitle}">
+        ${getProhibitionIcon({ size: 'sm', title: 'Anular' })}
+        <span>Anular</span>
+      </button>
+    `);
   }
 
   // 4. Estado 4: Rechazado -> Nuevo Contrato, Nueva Factura o Corregir Operación
@@ -235,15 +212,6 @@ export function renderRowActionButtons(m) {
         </button>
       `);
     }
-  }
-
-  // 5. Finalizado (3)
-  if (st === 3 && tipo === 1 && m.contrato) {
-    btns.push(`
-      <button type="button" class="btn btn-outline btn-sm btn-action-ver-contrato" data-id="${m.id}" title="Descargar / Ver Contrato PDF">
-        <span>Ver Contrato</span>
-      </button>
-    `);
   }
 
   return btns.join('');
@@ -333,6 +301,15 @@ export function renderDetailActionButtons(mov) {
         </button>
       `);
     }
+  }
+
+  if (st === 3 && (authService.tienePermiso('MOVCOM_RECHAZAR') || isCreator)) {
+    btns.push(`
+      <button type="button" class="btn btn-outline-danger btn-sm btn-detalle-action" id="btn-detalle-rechazar" title="Anular Operación Finalizada (Revierte inventario de stock y anula factura)">
+        ${getProhibitionIcon({ size: 'sm', title: 'Anular' })}
+        <span style="color: var(--danger); font-weight: 600;">Anular Operación</span>
+      </button>
+    `);
   }
 
   if (st === 4) {

@@ -18,23 +18,35 @@
     </div>
   </div>
 
-  <!-- Selector de Sucursal o Búsqueda de Cliente -->
-  <div class="table-card mb-4" style="padding: 1.25rem;">
-    <!-- Selector de Modo (Sucursal vs Cliente) -->
+  <!-- Selector de Titular: overflow visible para desplegable de autocompletado -->
+  <div class="card mb-4" style="padding: 1.25rem; overflow: visible; position: relative; z-index: 20;">
+    <!-- Selector de Modo (Cliente vs Sucursal) -->
     <div class="d-flex align-center gap-md flex-wrap mb-3" id="modo-titular-container">
       <span class="text-sm font-semibold text-muted" style="min-width: 140px;">Consultar stock de:</span>
       <div class="d-flex gap-sm">
-        <button type="button" class="btn btn-sm btn-primary" id="btn-modo-sucursal">
-          🏢 Depósito de Sucursal
-        </button>
-        <button type="button" class="btn btn-sm btn-secondary" id="btn-modo-cliente">
+        <button type="button" class="btn btn-sm btn-primary" id="btn-modo-cliente">
           👤 Cliente / Productor
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary" id="btn-modo-sucursal">
+          🏢 Depósito de Sucursal
         </button>
       </div>
     </div>
 
-    <!-- Opción A: Desplegable de Sucursales -->
-    <div id="panel-sucursal" class="d-flex align-center gap-md flex-wrap">
+    <!-- Opción A: Búsqueda Rápida de Cliente (DEFAULT) -->
+    <div id="panel-cliente" style="position: relative; overflow: visible;">
+      <div class="d-flex align-start gap-md flex-wrap">
+        <label class="form-label font-semibold" style="margin-top: 0.5rem; min-width: 140px;">
+          Buscar Cliente:
+        </label>
+        <div style="flex: 1; max-width: 540px; position: relative; overflow: visible;">
+          <div id="stock-cliente-autocomplete" style="position: relative; overflow: visible;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Opción B: Desplegable de Sucursales -->
+    <div id="panel-sucursal" class="d-flex align-center gap-md flex-wrap hidden">
       <label for="select-sucursal-stock" class="form-label font-semibold" style="margin: 0; min-width: 140px;">
         Sucursal:
       </label>
@@ -42,18 +54,6 @@
         <select id="select-sucursal-stock" class="form-control">
           <option value="">Cargando sucursales...</option>
         </select>
-      </div>
-    </div>
-
-    <!-- Opción B: Búsqueda Rápida de Cliente -->
-    <div id="panel-cliente" class="hidden">
-      <div class="d-flex align-start gap-md flex-wrap">
-        <label class="form-label font-semibold" style="margin-top: 0.5rem; min-width: 140px;">
-          Buscar Cliente:
-        </label>
-        <div style="flex: 1; max-width: 520px;">
-          <div id="stock-cliente-autocomplete"></div>
-        </div>
       </div>
     </div>
   </div>

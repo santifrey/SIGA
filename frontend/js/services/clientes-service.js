@@ -117,16 +117,16 @@ class ClientesService {
 
   /**
    * Búsqueda rápida asíncrona para Autocomplete / Typeahead
-   * @param {string} busqueda Texto a buscar (DNI, nombre, apellido, código)
+   * @param {string} busqueda Texto a buscar (DNI, nombre, apellido, código) o vacío para recomendaciones
    * @param {number} limit Límite de resultados devueltos (default: 10)
    */
-  async buscarRapido(busqueda, limit = 10) {
-    if (!busqueda || busqueda.trim().length < 2) return [];
+  async buscarRapido(busqueda = '', limit = 10) {
     try {
-      const response = await apiClient.get('/clientes', {
-        busqueda: busqueda.trim(),
-        limit
-      });
+      const params = { limit };
+      if (busqueda && typeof busqueda === 'string' && busqueda.trim().length > 0) {
+        params.busqueda = busqueda.trim();
+      }
+      const response = await apiClient.get('/clientes', params);
       const unwrapped = this._unwrap(response);
       const items = Array.isArray(unwrapped) ? unwrapped : (unwrapped?.items || []);
       return items.map(c => this._normalizeCliente(c));

@@ -7,7 +7,8 @@
     </div>
     <div class="d-flex gap-sm">
       <button class="btn btn-secondary" id="btn-refresh-empleados" title="Recargar lista">
-        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
           <polyline points="23 4 23 10 17 10"></polyline>
           <polyline points="1 20 1 14 7 14"></polyline>
           <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
@@ -15,7 +16,8 @@
         <span>Refrescar</span>
       </button>
       <button class="btn btn-primary" id="btn-nuevo-empleado">
-        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"></line>
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
@@ -28,7 +30,8 @@
   <div class="card mb-4" style="padding: 1rem 1.25rem;">
     <div class="d-flex gap-md flex-wrap align-center">
       <div style="flex: 2; min-width: 220px;">
-        <input type="text" id="filtro-buscar" class="form-control" placeholder="Buscar por nombre, usuario, documento o email..." />
+        <input type="text" id="filtro-buscar" class="form-control"
+          placeholder="Buscar por nombre, usuario, documento o email..." />
       </div>
       <div style="flex: 1; min-width: 160px;">
         <select id="filtro-rol" class="form-control">
@@ -82,93 +85,155 @@
   </div>
 
   <!-- Modal Crear / Editar Empleado -->
-  <div class="modal-backdrop" id="modal-empleado">
-    <div class="modal-dialog" style="max-width: 650px;">
+  <div class="modal-backdrop" id="modal-empleado" role="dialog" aria-modal="true" aria-labelledby="modal-empleado-title"
+    style="z-index: 100010 !important;">
+    <div class="modal-dialog modal-lg" style="max-width: 680px;">
       <div class="modal-header">
         <h3 class="modal-title" id="modal-empleado-title">Nuevo Empleado</h3>
-        <button type="button" class="modal-close-btn btn-close" id="btn-close-modal-empleado">&times;</button>
+        <button type="button" class="modal-close-btn" id="btn-close-modal-empleado" aria-label="Cerrar modal">
+          <svg class="icon-svg sm" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
-      <form id="form-empleado">
-        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+      <form id="form-empleado" novalidate>
+        <div class="modal-body" style="max-height: calc(85vh - 130px); overflow-y: auto;">
           <input type="hidden" id="emp-id" value="" />
 
-          <h4 class="text-xs text-muted font-bold text-uppercase mb-2">Datos Laborales</h4>
-          <div class="grid-two-cols mb-2" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-            <div class="form-group">
-              <label class="form-label" for="emp-legajo">Legajo</label>
-              <input type="text" id="emp-legajo" class="form-control" placeholder="Ej: LEG-0012" />
+          <!-- Sección 1: Datos Personales -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <svg class="icon-svg sm" viewBox="0 0 24 24">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <span>1. Datos de la Persona</span>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="emp-posicion">Posición / Cargo</label>
-              <input type="text" id="emp-posicion" class="form-control" placeholder="Ej: Encargado de Depósito" />
+
+            <div class="form-row two-cols">
+              <div class="form-group">
+                <label class="form-label" for="emp-nombre">
+                  Nombre <span class="required-mark">*</span>
+                </label>
+                <input type="text" id="emp-nombre" class="form-control" placeholder="ej. Martín" required />
+                <div class="invalid-feedback" id="val-emp-nombre">El nombre es obligatorio.</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="emp-apellido">
+                  Apellido <span class="required-mark">*</span>
+                </label>
+                <input type="text" id="emp-apellido" class="form-control" placeholder="ej. Gómez" required />
+                <div class="invalid-feedback" id="val-emp-apellido">El apellido es obligatorio.</div>
+              </div>
             </div>
-          </div>
-          <div class="form-group mb-3">
-            <label class="form-label" for="emp-sucursal">Sucursal Asignada</label>
-            <select id="emp-sucursal" class="form-control">
-              <option value="">Sin sucursal asignada (Central / Corporativo)</option>
-            </select>
+
+            <div class="form-row two-cols">
+              <div class="form-group">
+                <label class="form-label" for="emp-tipo-doc">Tipo Documento</label>
+                <select id="emp-tipo-doc" class="form-control">
+                  <option value="DNI">DNI - Documento Nacional</option>
+                  <option value="CUIT">CUIT / CUIL</option>
+                  <option value="PASAPORTE">Pasaporte</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="emp-documento">
+                  Número de Documento <span class="required-mark">*</span>
+                </label>
+                <input type="text" id="emp-documento" class="form-control" placeholder="ej. 32456789" required />
+                <div class="invalid-feedback" id="val-emp-doc">El número de documento es obligatorio.</div>
+              </div>
+            </div>
+
+            <div class="form-row two-cols">
+              <div class="form-group">
+                <label class="form-label" for="emp-email">
+                  Correo Electrónico <span class="required-mark">*</span>
+                </label>
+                <input type="email" id="emp-email" class="form-control" placeholder="ej. empleado@correo.com"
+                  required />
+                <div class="invalid-feedback" id="val-emp-email">Ingrese un correo electrónico válido.</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="emp-telefono">Teléfono / WhatsApp</label>
+                <input type="tel" id="emp-telefono" class="form-control" placeholder="ej. +54 351 456-7890" />
+                <div class="invalid-feedback" id="val-emp-telefono">El teléfono solo debe contener números y símbolos
+                  válidos (+, -, espacios).</div>
+              </div>
+            </div>
           </div>
 
-          <h4 class="text-xs text-muted font-bold text-uppercase mb-2">Datos Personales</h4>
-          <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-            <div class="form-group">
-              <label class="form-label" for="emp-nombre">Nombre <span class="text-danger">*</span></label>
-              <input type="text" id="emp-nombre" class="form-control" required />
+          <!-- Sección 2: Datos Laborales y Asignación de Rol -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <svg class="icon-svg sm" viewBox="0 0 24 24">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+              <span>2. Información Laboral y Rol</span>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="emp-apellido">Apellido <span class="text-danger">*</span></label>
-              <input type="text" id="emp-apellido" class="form-control" required />
-            </div>
-          </div>
 
-          <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-            <div class="form-group">
-              <label class="form-label" for="emp-documento">Documento (DNI/CUIT) <span class="text-danger">*</span></label>
-              <input type="text" id="emp-documento" class="form-control" required />
+            <div class="form-row two-cols">
+              <div class="form-group">
+                <label class="form-label" for="emp-legajo">Legajo Interno</label>
+                <input type="text" id="emp-legajo" class="form-control" placeholder="Ej: LEG-0012" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="emp-posicion">Posición / Cargo</label>
+                <input type="text" id="emp-posicion" class="form-control" placeholder="Ej: Encargado de Depósito" />
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="emp-telefono">Teléfono</label>
-              <input type="tel" id="emp-telefono" class="form-control" />
-            </div>
-          </div>
 
-          <div class="form-group mb-3">
-            <label class="form-label" for="emp-email">Correo Electrónico <span class="text-danger">*</span></label>
-            <input type="email" id="emp-email" class="form-control" required />
-          </div>
-
-          <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-            <div class="form-group">
-              <label class="form-label" for="emp-rol">Rol del Empleado <span class="text-danger">*</span></label>
-              <select id="emp-rol" class="form-control" required>
-                <option value="">Seleccione un Rol...</option>
+            <div class="form-group mb-3">
+              <label class="form-label" for="emp-sucursal">Sucursal Asignada</label>
+              <select id="emp-sucursal" class="form-control">
+                <option value="">Sin sucursal asignada (Central / Corporativo)</option>
               </select>
             </div>
-            <div class="form-group" style="display:flex; align-items:center; margin-top: 1.5rem;">
-              <label class="d-flex align-center gap-xs" style="cursor: pointer;">
-                <input type="checkbox" id="emp-activo" checked />
-                <span class="font-medium text-sm">Usuario Activo</span>
-              </label>
+
+            <div class="form-row two-cols">
+              <div class="form-group">
+                <label class="form-label" for="emp-rol">
+                  Rol del Sistema <span class="required-mark">*</span>
+                </label>
+                <select id="emp-rol" class="form-control" required>
+                  <option value="">Seleccione un Rol...</option>
+                </select>
+                <div class="invalid-feedback" id="val-emp-rol">Debe seleccionar un rol para el empleado.</div>
+              </div>
+              <div class="form-group d-flex justify-center" style="margin-top: 1.5rem;">
+                <label class="form-switch">
+                  <input type="checkbox" id="emp-activo" class="switch-input" checked />
+                  <span class="switch-slider"></span>
+                  <span class="form-check-label font-semibold">Usuario Activo</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="alert alert-info d-flex align-center gap-sm mb-2"
+              style="background: rgba(30, 58, 138, 0.06); border: 1px solid rgba(30, 58, 138, 0.2); border-radius: var(--radius-md); padding: 0.75rem 1rem;">
+              <svg class="icon-svg sm text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <div class="text-xs text-muted">
+                <strong class="text-main">Credenciales automáticas:</strong> El usuario de acceso será su <strong>correo
+                  electrónico</strong> y la contraseña inicial su <strong>DNI</strong>. En el primer inicio de sesión se
+                le exigirá cambiar la contraseña para activar su cuenta.
+              </div>
             </div>
           </div>
-
-          <div class="alert alert-info d-flex align-center gap-sm mb-3" style="background: rgba(30, 58, 138, 0.06); border: 1px solid rgba(30, 58, 138, 0.2); border-radius: var(--radius-md); padding: 0.75rem 1rem;">
-            <svg class="icon-svg sm text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="16" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12.01" y2="8"></line>
-            </svg>
-            <div class="text-xs text-muted">
-              <strong class="text-main">Credenciales automáticas:</strong> El usuario de acceso será su <strong>correo electrónico</strong> y la contraseña inicial su <strong>DNI</strong>. En el primer inicio de sesión se le exigirá cambiar la contraseña para activar su cuenta.
-            </div>
-          </div>
-
-          <div id="form-empleado-error" class="alert alert-danger hidden mt-2"></div>
         </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="btn-cancel-empleado">Cancelar</button>
-          <button type="submit" class="btn btn-primary" id="btn-save-empleado">Guardar Empleado</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-empleado">
+            <span class="btn-text">Guardar Empleado</span>
+            <span class="btn-spinner"></span>
+          </button>
         </div>
       </form>
     </div>

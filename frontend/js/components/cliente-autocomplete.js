@@ -100,21 +100,15 @@ export class ClienteAutocomplete {
   }
 
   _bindEvents() {
-    // Escribir en el input de búsqueda (con debounce de 250ms)
+    // Escribir en el input de búsqueda (con debounce de 200ms, soporta desde 1 caracter o vacío)
     this.elInput.addEventListener('input', (e) => {
       this.clearInvalid();
       const val = e.target.value.trim();
       clearTimeout(this.debounceTimer);
 
-      if (val.length < 2) {
-        this._hideDropdown();
-        this.results = [];
-        return;
-      }
-
       this.debounceTimer = setTimeout(() => {
         this._performSearch(val);
-      }, 250);
+      }, 200);
     });
 
     // Navegación con teclado en el menú
@@ -149,10 +143,13 @@ export class ClienteAutocomplete {
       }
     });
 
-    // Reabrir dropdown al hacer foco si ya hay texto buscado
+    // Abrir sugerencias inmediatas al hacer foco o clic en el input
     this.elInput.addEventListener('focus', () => {
-      if (this.elInput.value.trim().length >= 2 && this.results.length > 0) {
-        this._showDropdown();
+      this._performSearch(this.elInput.value.trim());
+    });
+    this.elInput.addEventListener('click', () => {
+      if (this.elDrop.classList.contains('hidden')) {
+        this._performSearch(this.elInput.value.trim());
       }
     });
 
@@ -222,9 +219,13 @@ export class ClienteAutocomplete {
       `;
     }).join('');
 
+    const hintText = query
+      ? 'Use las teclas ↑ / ↓ para navegar y Enter para seleccionar'
+      : 'Escriba DNI, Nombre o Código para filtrar resultados';
+
     const hintHtml = `
       <div class="autocomplete-hint">
-        Use las teclas ↑ / ↓ para navegar y Enter para seleccionar
+        ${escapeHtml(hintText)}
       </div>
     `;
 

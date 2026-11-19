@@ -39,6 +39,11 @@ class EmpleadosService {
     const response = await apiClient.delete(`/empleados/${id}`);
     return this._unwrap(response);
   }
+
+  async reactivar(id) {
+    const response = await apiClient.post(`/empleados/${id}/reactivar`);
+    return this._unwrap(response);
+  }
 }
 
 export const empleadosService = new EmpleadosService();

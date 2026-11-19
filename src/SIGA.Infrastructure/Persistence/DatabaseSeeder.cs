@@ -379,6 +379,32 @@ public static class DatabaseSeeder
             {
                 await SeedSampleDevelopmentDataAsync(context, sucursalAjustes.Id, logger);
             }
+
+            // 7. Sincronizar ContratoId en Clientes que registren operaciones comerciales con contrato
+            var clientesSinContrato = await context.Clientes
+                .Where(c => c.ContratoId == null && !c.IsDeleted)
+                .ToListAsync();
+
+            if (clientesSinContrato.Any())
+            {
+                foreach (var cliente in clientesSinContrato)
+                {
+                    var contratoValido = await context.MovimientosComerciales
+                        .Where(m => (m.ClienteId == cliente.Id || (m.Tipo == TipoMovimientoComercial.VentaACliente && m.DestinoParticipanteId == cliente.Id))
+                                    && m.Contrato != null && !m.Contrato.IsDeleted && m.Estado != EstadoMovimientoComercial.Rechazado)
+                        .OrderByDescending(m => m.Estado == EstadoMovimientoComercial.Finalizado ? 1 : 0)
+                        .ThenByDescending(m => m.Fecha)
+                        .Select(m => m.Contrato)
+                        .FirstOrDefaultAsync();
+
+                    if (contratoValido != null)
+                    {
+                        cliente.ContratoId = contratoValido.Id;
+                        logger?.LogInformation("Sincronizado Contrato #{ContratoId} para cliente #{ClienteId} ({Codigo}).", contratoValido.Id, cliente.Id, cliente.CodigoCliente);
+                    }
+                }
+                await context.SaveChangesAsync();
+            }
         }
         catch (Exception ex)
         {

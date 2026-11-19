@@ -404,28 +404,49 @@ export class MovimientoAccionesModal {
 
     } else if (tipo === 'rechazar') {
       const movEstadoNum = _parseEstadoIndex(mov.estado ?? mov.nombreEstado);
-      const isRechazoFactura = (movEstadoNum === 2 || mov.factura);
-      title.textContent = isRechazoFactura ? `Rechazar Factura / Observar Operación #${mov.id}` : `Rechazar u Observar Operación #${mov.id}`;
+      const isFinalizado = (movEstadoNum === 3);
+      const isRechazoFactura = (movEstadoNum === 2 || (!isFinalizado && mov.factura));
+
+      let modalTitle = `Anular / Cancelar Operación #${mov.id}`;
+      let submitBtnText = 'Confirmar Rechazo';
+      if (isFinalizado) {
+        modalTitle = `Anular Operación Comercial Finalizada #${mov.id}`;
+        submitBtnText = 'Confirmar Anulación (Revierte Stock)';
+      } else if (isRechazoFactura) {
+        modalTitle = `Rechazar Factura / Observar Operación #${mov.id}`;
+        submitBtnText = 'Confirmar Rechazo';
+      }
+      title.textContent = modalTitle;
+
       body.innerHTML = `
         <div class="d-flex align-center gap-sm mb-3">
-          ${getProhibitionIcon({ size: 'md', title: 'Rechazo' })}
+          ${getProhibitionIcon({ size: 'md', title: 'Anular/Rechazo' })}
           <span class="text-sm text-danger font-bold">
-            Indique obligatoriamente el motivo formal del rechazo u observación.
+            Indique obligatoriamente el motivo formal de la anulación o rechazo.
           </span>
         </div>
-        ${mov.factura ? `
+        ${isFinalizado ? `
+          <div class="alert alert-danger p-2 mb-3 text-xs" style="background: rgba(239, 68, 68, 0.12); border-left: 4px solid var(--danger); border-radius: var(--radius-sm);">
+            ⚠️ <strong>Atención crítica:</strong> Esta operación comercial ya se encuentra <strong>FINALIZADA</strong>. Al confirmar la anulación:
+            <ul class="mt-1 pl-3 mb-0">
+              <li>Se <strong>revertirá automáticamente el movimiento físico de bulbos</strong> en el stock/inventario.</li>
+              ${mov.factura ? `<li>La factura asociada <strong>#${escapeHtml(mov.factura.numeroFactura || '')}</strong> quedará marcada como <strong>ANULADA</strong>.</li>` : ''}
+              <li>La operación cambiará a estado <strong>RECHAZADO</strong> para su auditoría y corrección.</li>
+            </ul>
+          </div>
+        ` : mov.factura ? `
           <div class="alert alert-warning p-2 mb-3 text-xs" style="background: rgba(239, 68, 68, 0.08); border-left: 4px solid var(--danger); border-radius: var(--radius-sm);">
             ⚠️ <strong>Atención:</strong> Al confirmar el rechazo, la factura actual <strong>#${escapeHtml(mov.factura.numeroFactura || '')}</strong> quedará marcada automáticamente como <strong>ANULADA</strong>. La operación volverá a estado <em>Rechazado</em> permitiendo emitir una nueva factura comercial corregida o editar los datos de la operación.
           </div>
         ` : ''}
         <form id="form-accion-rechazar">
           <div class="form-group mb-3">
-            <label for="input-motivo-rechazo" class="form-label text-xs font-bold uppercase text-muted">Motivo del Rechazo *</label>
-            <textarea id="input-motivo-rechazo" class="form-control" rows="3" placeholder="Indique claramente la razón por la que se rechaza la operación o factura..." required></textarea>
+            <label for="input-motivo-rechazo" class="form-label text-xs font-bold uppercase text-muted">Motivo de Anulación / Rechazo *</label>
+            <textarea id="input-motivo-rechazo" class="form-control" rows="3" placeholder="Indique claramente la razón por la que se anula o rechaza la operación..." required></textarea>
           </div>
           <div class="d-flex justify-end gap-sm">
             <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-accion">Cancelar</button>
-            <button type="submit" class="btn btn-danger btn-sm">Confirmar Rechazo</button>
+            <button type="submit" class="btn btn-danger btn-sm">${submitBtnText}</button>
           </div>
         </form>
       `;
@@ -617,11 +638,11 @@ export class MovimientoAccionesModal {
         }
         try {
           await movimientosComercialesService.rechazar(movId, { motivo });
-          toast.success(`Movimiento #${movId} rechazado / observado.`);
+          toast.success(`Movimiento #${movId} anulado / rechazado exitosamente.`);
           this.close();
           if (this.onCompleted) await this.onCompleted();
         } catch (err) {
-          toast.error('Error al rechazar: ' + (err.message || 'Error'));
+          toast.error('Error al anular: ' + (err.message || 'Error'));
         }
       });
     }

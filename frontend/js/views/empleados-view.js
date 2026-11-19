@@ -92,6 +92,16 @@ export class EmpleadosView {
     this.container.querySelector('#btn-close-modal-empleado').addEventListener('click', () => this.closeModalEmpleado());
     this.container.querySelector('#btn-cancel-empleado').addEventListener('click', () => this.closeModalEmpleado());
     this.container.querySelector('#form-empleado').addEventListener('submit', (e) => this._handleSubmitEmpleado(e));
+    this.container.querySelector('#form-empleado')?.addEventListener('input', (e) => {
+      if (e.target?.classList?.contains('is-invalid')) {
+        e.target.classList.remove('is-invalid');
+      }
+    });
+    this.container.querySelector('#form-empleado')?.addEventListener('change', (e) => {
+      if (e.target?.classList?.contains('is-invalid')) {
+        e.target.classList.remove('is-invalid');
+      }
+    });
   }
 
   async _loadInitialData() {
@@ -287,7 +297,14 @@ export class EmpleadosView {
                   <button class="btn-icon btn-action-delete" data-id="${escapeHtml(emp.id)}" data-name="${escapeHtml(emp.nombreCompleto || emp.username)}" title="Dar de baja / Desactivar">
                     ${getProhibitionIcon({ size: 'sm', title: 'Dar de baja / Desactivar' })}
                   </button>
-                ` : ''}
+                ` : `
+                  <button class="btn-icon btn-action-reactivate" data-id="${escapeHtml(emp.id)}" title="Reactivar empleado">
+                    <svg class="icon-svg sm" viewBox="0 0 24 24" style="color: var(--success);">
+                      <polyline points="23 4 23 10 17 10"></polyline>
+                      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                  </button>
+                `}
               ` : '<span class="text-xs text-muted">Solo lectura</span>'}
             </div>
           </td>
@@ -311,6 +328,19 @@ export class EmpleadosView {
       });
     });
 
+    tbody.querySelectorAll('.btn-action-reactivate').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        try {
+          await empleadosService.reactivar(id);
+          toast.success('Empleado reactivado correctamente.');
+          await this.loadEmpleados();
+        } catch (err) {
+          toast.error(err.message || 'Error al reactivar empleado');
+        }
+      });
+    });
+
     // Paginación
     renderPagination({
       infoEl,
@@ -327,31 +357,46 @@ export class EmpleadosView {
     });
   }
 
+  _clearValidationErrors() {
+    this.container.querySelectorAll('#form-empleado .form-control').forEach(i => i.classList.remove('is-invalid'));
+    const valNombre = this.container.querySelector('#val-emp-nombre');
+    if (valNombre) valNombre.textContent = 'El nombre es obligatorio.';
+    const valApellido = this.container.querySelector('#val-emp-apellido');
+    if (valApellido) valApellido.textContent = 'El apellido es obligatorio.';
+    const valDoc = this.container.querySelector('#val-emp-doc');
+    if (valDoc) valDoc.textContent = 'El número de documento es obligatorio.';
+    const valEmail = this.container.querySelector('#val-emp-email');
+    if (valEmail) valEmail.textContent = 'El correo electrónico es obligatorio.';
+    const valTel = this.container.querySelector('#val-emp-telefono');
+    if (valTel) valTel.textContent = 'El teléfono solo debe contener números y símbolos válidos (+, -, espacios).';
+    const valRol = this.container.querySelector('#val-emp-rol');
+    if (valRol) valRol.textContent = 'Debe seleccionar un rol para el empleado.';
+  }
+
   openModalNuevo() {
     this.selectedEmpleado = null;
+    this._clearValidationErrors();
     const form = this.container.querySelector('#form-empleado');
     form.reset();
     this.container.querySelector('#emp-id').value = '';
     this.container.querySelector('#emp-legajo').value = '';
     this.container.querySelector('#emp-posicion').value = '';
+    if (this.container.querySelector('#emp-tipo-doc')) {
+      this.container.querySelector('#emp-tipo-doc').value = 'DNI';
+    }
     if (this.container.querySelector('#emp-sucursal')) {
       this.container.querySelector('#emp-sucursal').value = '';
     }
     this.container.querySelector('#modal-empleado-title').textContent = 'Nuevo Empleado';
     this.container.querySelector('#emp-activo').checked = true;
 
-    const errBox = this.container.querySelector('#form-empleado-error');
-    errBox.classList.add('hidden');
-    errBox.textContent = '';
-
     const modal = this.container.querySelector('#modal-empleado');
     modal.classList.add('is-active');
+    setTimeout(() => this.container.querySelector('#emp-nombre')?.focus(), 50);
   }
 
   async openModalEditar(id) {
-    const errBox = this.container.querySelector('#form-empleado-error');
-    errBox.classList.add('hidden');
-    errBox.textContent = '';
+    this._clearValidationErrors();
 
     try {
       const emp = await empleadosService.obtenerPorId(id);
@@ -365,7 +410,18 @@ export class EmpleadosView {
       }
       this.container.querySelector('#emp-nombre').value = emp.nombre || '';
       this.container.querySelector('#emp-apellido').value = emp.apellido || '';
-      this.container.querySelector('#emp-documento').value = emp.documento || '';
+
+      const docVal = emp.documento || '';
+      this.container.querySelector('#emp-documento').value = docVal;
+      if (this.container.querySelector('#emp-tipo-doc')) {
+        const cleanDoc = docVal.replace(/[-\s]/g, '');
+        if (cleanDoc.length === 11) {
+          this.container.querySelector('#emp-tipo-doc').value = 'CUIT';
+        } else {
+          this.container.querySelector('#emp-tipo-doc').value = 'DNI';
+        }
+      }
+
       this.container.querySelector('#emp-telefono').value = emp.telefono || '';
       this.container.querySelector('#emp-email').value = emp.email || '';
       this.container.querySelector('#emp-rol').value = emp.rolId || '';
@@ -375,12 +431,14 @@ export class EmpleadosView {
 
       const modal = this.container.querySelector('#modal-empleado');
       modal.classList.add('is-active');
+      setTimeout(() => this.container.querySelector('#emp-nombre')?.focus(), 50);
     } catch (err) {
       toast.error('No se pudo cargar la información del empleado.');
     }
   }
 
   closeModalEmpleado() {
+    this._clearValidationErrors();
     const modal = this.container.querySelector('#modal-empleado');
     modal.classList.remove('is-active');
   }
@@ -388,9 +446,6 @@ export class EmpleadosView {
   async _handleSubmitEmpleado(e) {
     e.preventDefault();
     const saveBtn = this.container.querySelector('#btn-save-empleado');
-    const errBox = this.container.querySelector('#form-empleado-error');
-    errBox.classList.add('hidden');
-    errBox.textContent = '';
 
     const id = this.container.querySelector('#emp-id').value;
     const legajo = this.container.querySelector('#emp-legajo').value.trim();
@@ -398,15 +453,97 @@ export class EmpleadosView {
     const sucursalIdVal = this.container.querySelector('#emp-sucursal')?.value || '';
     const nombre = this.container.querySelector('#emp-nombre').value.trim();
     const apellido = this.container.querySelector('#emp-apellido').value.trim();
+    const tipoDocumento = this.container.querySelector('#emp-tipo-doc')?.value || 'DNI';
     const documento = this.container.querySelector('#emp-documento').value.trim();
     const telefono = this.container.querySelector('#emp-telefono').value.trim();
     const email = this.container.querySelector('#emp-email').value.trim();
     const rolIdVal = this.container.querySelector('#emp-rol').value;
     const activo = this.container.querySelector('#emp-activo').checked;
 
-    if (!nombre || !apellido || !documento || !email || !rolIdVal) {
-      errBox.textContent = 'Por favor complete todos los campos obligatorios (Nombre, Apellido, Documento, Email y Rol).';
-      errBox.classList.remove('hidden');
+    const errors = [];
+    this._clearValidationErrors();
+
+    // 1. Nombre
+    if (!nombre) {
+      this.container.querySelector('#emp-nombre')?.classList.add('is-invalid');
+      errors.push('El nombre es obligatorio.');
+    }
+
+    // 2. Apellido
+    if (!apellido) {
+      this.container.querySelector('#emp-apellido')?.classList.add('is-invalid');
+      errors.push('El apellido es obligatorio.');
+    }
+
+    // 3. Documento (DNI / CUIT / Pasaporte)
+    const docInput = this.container.querySelector('#emp-documento');
+    const valDoc = this.container.querySelector('#val-emp-doc');
+    if (!documento) {
+      docInput?.classList.add('is-invalid');
+      if (valDoc) valDoc.textContent = 'El número de documento es obligatorio.';
+      errors.push('El número de documento es obligatorio.');
+    } else if (tipoDocumento === 'DNI') {
+      const cleanDoc = documento.replace(/\./g, '');
+      if (!/^\d{7,9}$/.test(cleanDoc)) {
+        docInput?.classList.add('is-invalid');
+        const msg = 'El DNI debe ser numérico y contener entre 7 y 9 dígitos.';
+        if (valDoc) valDoc.textContent = msg;
+        errors.push(msg);
+      }
+    } else if (tipoDocumento === 'CUIT') {
+      const cleanCuit = documento.replace(/[-\s]/g, '');
+      if (!/^\d{11}$/.test(cleanCuit)) {
+        docInput?.classList.add('is-invalid');
+        const msg = 'El CUIT debe contener 11 dígitos numéricos.';
+        if (valDoc) valDoc.textContent = msg;
+        errors.push(msg);
+      }
+    }
+
+    // 4. Correo electrónico
+    const emailInput = this.container.querySelector('#emp-email');
+    const valEmail = this.container.querySelector('#val-emp-email');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      emailInput?.classList.add('is-invalid');
+      if (valEmail) valEmail.textContent = 'El correo electrónico es obligatorio.';
+      errors.push('El correo electrónico es obligatorio.');
+    } else if (!emailRegex.test(email)) {
+      emailInput?.classList.add('is-invalid');
+      const msg = 'El formato del correo electrónico ingresado no es válido (ej. usuario@dominio.com).';
+      if (valEmail) valEmail.textContent = msg;
+      errors.push(msg);
+    }
+
+    // 5. Teléfono (opcional, pero si se ingresa debe tener formato válido)
+    if (telefono) {
+      const telInput = this.container.querySelector('#emp-telefono');
+      const valTel = this.container.querySelector('#val-emp-telefono');
+      const telRegex = /^[\d\s+\-()]{6,25}$/;
+      if (!telRegex.test(telefono)) {
+        telInput?.classList.add('is-invalid');
+        const msg = 'El teléfono ingresado solo debe contener números y símbolos válidos (+, -, espacios).';
+        if (valTel) valTel.textContent = msg;
+        errors.push(msg);
+      }
+    }
+
+    // 6. Rol del sistema
+    const rolInput = this.container.querySelector('#emp-rol');
+    if (!rolIdVal) {
+      rolInput?.classList.add('is-invalid');
+      errors.push('Debe seleccionar un rol para el empleado.');
+    }
+
+    if (errors.length > 0) {
+      const firstInvalid = this.container.querySelector('#form-empleado .form-control.is-invalid');
+      firstInvalid?.focus();
+
+      if (errors.length === 1) {
+        toast.warning(errors[0], 'Campo Inválido');
+      } else {
+        toast.warning(errors[0], `Por favor revise el formulario (${errors.length} campos con error)`);
+      }
       return;
     }
 
@@ -420,8 +557,7 @@ export class EmpleadosView {
           (e.estado === 'Activo' || e.activo === true)
         );
         if (activeAdmins.length <= 1) {
-          errBox.textContent = 'No se puede desactivar el único administrador activo.';
-          errBox.classList.remove('hidden');
+          toast.warning('No se puede desactivar el único administrador activo.', 'Acción Denegada');
           return;
         }
       }
@@ -463,8 +599,6 @@ export class EmpleadosView {
       await this.loadEmpleados();
     } catch (err) {
       const msg = err.message || 'Error al guardar empleado.';
-      errBox.textContent = msg;
-      errBox.classList.remove('hidden');
       toast.error(msg);
     } finally {
       saveBtn.disabled = false;

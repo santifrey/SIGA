@@ -298,6 +298,21 @@ public class GestionEmpleados : IGestionEmpleados
         return ApiResponse<bool>.Ok(true, "Empleado desactivado exitosamente.");
     }
 
+    public async Task<ApiResponse<EmpleadoDto>> ReactivarEmpleadoAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var usuario = await _usuarioRepository.GetByIdWithRolesAsync(id, cancellationToken);
+        if (usuario == null || usuario.IsDeleted || string.Equals(usuario.Rol?.Nombre, "CLIENTE", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new NotFoundException("Empleado", id);
+        }
+
+        usuario.Estado = EstadoUsuario.Activo;
+        await _usuarioRepository.UpdateAsync(usuario, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return ApiResponse<EmpleadoDto>.Ok(MapToEmpleadoDto(usuario), "Empleado reactivado exitosamente.");
+    }
+
     private static EmpleadoDto MapToEmpleadoDto(Usuario usuario)
     {
         var empleado = usuario.Persona as Empleado;

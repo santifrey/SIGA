@@ -17,7 +17,7 @@ export class StockView {
     this.router = router;
     this.container = null;
     this.selectedClienteId = null;
-    this.modo = 'sucursal'; // 'sucursal' | 'cliente'
+    this.modo = 'cliente'; // 'cliente' (por defecto) | 'sucursal'
     this.clienteAutocomplete = null;
   }
 
@@ -37,7 +37,7 @@ export class StockView {
     this.clienteAutocomplete = new ClienteAutocomplete({
       container: acEl,
       name: 'stock-cliente-id',
-      placeholder: 'Escriba DNI, Nombre, Apellido o Código (ej: CLI-0001)...',
+      placeholder: 'Escriba DNI, Nombre o Código (o haga clic para ver clientes)...',
       onSelect: (cliente) => {
         if (cliente && cliente.id) {
           this.selectedClienteId = String(cliente.id);
@@ -63,18 +63,18 @@ export class StockView {
       });
     }
 
-    const btnModoSucursal = this.container.querySelector('#btn-modo-sucursal');
     const btnModoCliente = this.container.querySelector('#btn-modo-cliente');
-
-    if (btnModoSucursal) {
-      btnModoSucursal.addEventListener('click', () => {
-        this._cambiarModo('sucursal');
-      });
-    }
+    const btnModoSucursal = this.container.querySelector('#btn-modo-sucursal');
 
     if (btnModoCliente) {
       btnModoCliente.addEventListener('click', () => {
         this._cambiarModo('cliente');
+      });
+    }
+
+    if (btnModoSucursal) {
+      btnModoSucursal.addEventListener('click', () => {
+        this._cambiarModo('sucursal');
       });
     }
 
@@ -106,8 +106,8 @@ export class StockView {
 
       // Cargar automáticamente su propio perfil de cliente
       try {
-        const res = await clientesService.listar({ page: 1, pageSize: 1 });
-        const propio = res?.items?.[0];
+        const res = await clientesService.buscarRapido('', 1);
+        const propio = res?.[0];
         if (propio && propio.id) {
           this.selectedClienteId = String(propio.id);
           this.clienteAutocomplete?.setValue(propio);
@@ -125,34 +125,34 @@ export class StockView {
         this._showPromptSelectCliente();
       }
     } else {
-      // Personal interno / Administradores: pueden consultar depósitos de sucursales o buscar clientes
+      // Personal interno / Administradores: por defecto modo Cliente con primer cliente cargado
       await this._loadSucursales();
-      this._cambiarModo('sucursal');
+      this._cambiarModo('cliente');
+
+      try {
+        const clientes = await clientesService.buscarRapido('', 10);
+        if (clientes && clientes.length > 0) {
+          this.clienteAutocomplete?.setValue(clientes[0]);
+          this.selectedClienteId = String(clientes[0].id);
+          await this._loadStock();
+        } else {
+          this._showPromptSelectCliente();
+        }
+      } catch (err) {
+        console.warn('[StockView] Error al inicializar clientes:', err);
+        this._showPromptSelectCliente();
+      }
     }
   }
 
   _cambiarModo(nuevoModo) {
     this.modo = nuevoModo;
-    const btnModoSucursal = this.container.querySelector('#btn-modo-sucursal');
     const btnModoCliente = this.container.querySelector('#btn-modo-cliente');
-    const panelSucursal = this.container.querySelector('#panel-sucursal');
+    const btnModoSucursal = this.container.querySelector('#btn-modo-sucursal');
     const panelCliente = this.container.querySelector('#panel-cliente');
+    const panelSucursal = this.container.querySelector('#panel-sucursal');
 
-    if (nuevoModo === 'sucursal') {
-      btnModoSucursal?.classList.add('btn-primary');
-      btnModoSucursal?.classList.remove('btn-secondary');
-      btnModoCliente?.classList.add('btn-secondary');
-      btnModoCliente?.classList.remove('btn-primary');
-
-      panelSucursal?.classList.remove('hidden');
-      panelCliente?.classList.add('hidden');
-
-      const selectSucursal = this.container.querySelector('#select-sucursal-stock');
-      if (selectSucursal && selectSucursal.value) {
-        this.selectedClienteId = selectSucursal.value;
-        this._loadStock();
-      }
-    } else {
+    if (nuevoModo === 'cliente') {
       btnModoCliente?.classList.add('btn-primary');
       btnModoCliente?.classList.remove('btn-secondary');
       btnModoSucursal?.classList.add('btn-secondary');
@@ -168,6 +168,20 @@ export class StockView {
       } else {
         this.selectedClienteId = null;
         this._showPromptSelectCliente();
+      }
+    } else {
+      btnModoSucursal?.classList.add('btn-primary');
+      btnModoSucursal?.classList.remove('btn-secondary');
+      btnModoCliente?.classList.add('btn-secondary');
+      btnModoCliente?.classList.remove('btn-primary');
+
+      panelSucursal?.classList.remove('hidden');
+      panelCliente?.classList.add('hidden');
+
+      const selectSucursal = this.container.querySelector('#select-sucursal-stock');
+      if (selectSucursal && selectSucursal.value) {
+        this.selectedClienteId = selectSucursal.value;
+        this._loadStock();
       }
     }
   }
@@ -190,18 +204,15 @@ export class StockView {
           select.appendChild(opt);
         });
         select.value = String(sucursales[0].participanteComercialId || sucursales[0].id);
-        this.selectedClienteId = select.value;
       } else {
         const opt = document.createElement('option');
         opt.value = '1';
         opt.textContent = '🏢 Sede Central (Depósito Principal)';
         select.appendChild(opt);
-        this.selectedClienteId = '1';
       }
     } catch (err) {
       console.warn('[StockView] Error al cargar sucursales:', err);
       select.innerHTML = '<option value="1">🏢 Sede Central (Depósito Principal)</option>';
-      this.selectedClienteId = '1';
     }
   }
 
@@ -214,8 +225,8 @@ export class StockView {
           <td colspan="3" class="text-center text-muted" style="padding: 3rem 1.5rem;">
             <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
             <p class="font-semibold text-main mb-1">Búsqueda rápida de clientes</p>
-            <p class="text-sm text-muted" style="max-width: 420px; margin: 0 auto;">
-              Escriba en la caja de búsqueda superior el <strong>DNI, Nombre o Código</strong> del cliente para consultar al instante sus existencias de bulbos en custodia.
+            <p class="text-sm text-muted" style="max-width: 440px; margin: 0 auto;">
+              Haga clic en la caja de búsqueda superior o escriba el <strong>DNI, Nombre o Código</strong> del cliente para consultar al instante sus existencias de bulbos en custodia.
             </p>
           </td>
         </tr>`;

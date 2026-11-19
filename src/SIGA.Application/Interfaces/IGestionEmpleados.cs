@@ -10,4 +10,5 @@ public interface IGestionEmpleados
     Task<ApiResponse<EmpleadoDto>> CreateEmpleadoAsync(CrearEmpleadoDto dto, CancellationToken cancellationToken = default);
     Task<ApiResponse<EmpleadoDto>> UpdateEmpleadoAsync(int id, ActualizarEmpleadoDto dto, CancellationToken cancellationToken = default);
     Task<ApiResponse<bool>> DeleteEmpleadoAsync(int id, CancellationToken cancellationToken = default);
+    Task<ApiResponse<EmpleadoDto>> ReactivarEmpleadoAsync(int id, CancellationToken cancellationToken = default);
 }

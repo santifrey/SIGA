@@ -270,8 +270,8 @@ public class MovimientoComercial : BaseEntity
 
     public void Rechazar(int usuarioId, string motivo)
     {
-        if (Estado == EstadoMovimientoComercial.Finalizado)
-            throw new OperacionInvalidaException("No se puede rechazar un movimiento comercial finalizado.");
+        if (Estado == EstadoMovimientoComercial.Rechazado)
+            throw new OperacionInvalidaException("El movimiento ya se encuentra en estado Rechazado.");
 
         if (string.IsNullOrWhiteSpace(motivo))
             throw new OperacionInvalidaException("Debe indicar el motivo del rechazo u observación.");

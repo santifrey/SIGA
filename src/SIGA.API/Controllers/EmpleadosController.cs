@@ -66,4 +66,14 @@ public class EmpleadosController : BaseApiController
         var result = await _gestionEmpleados.DeleteEmpleadoAsync(id, cancellationToken);
         return CustomResult(result);
     }
+
+    [HttpPost("{id:int}/reactivar")]
+    [RequierePermiso(Permisos.EmpleadosGestionar)]
+    [ProducesResponseType(typeof(ApiResponse<EmpleadoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<EmpleadoDto>>> Reactivar(int id, CancellationToken cancellationToken)
+    {
+        var result = await _gestionEmpleados.ReactivarEmpleadoAsync(id, cancellationToken);
+        return CustomResult(result);
+    }
 }

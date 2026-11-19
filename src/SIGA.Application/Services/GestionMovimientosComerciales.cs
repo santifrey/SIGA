@@ -60,6 +60,18 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         if (dto.OrigenParticipanteId == dto.DestinoParticipanteId)
             throw new ValidationException("El participante origen y destino no pueden ser el mismo.");
 
+        if (dto.Tipo == TipoMovimientoComercial.CompraACliente && (dto.PorcentajeComision < 0 || dto.PorcentajeComision > 100))
+            throw new ValidationException("El porcentaje de comisión debe estar entre 0 y 100.");
+
+        foreach (var item in dto.Detalles)
+        {
+            if (item.Cantidad <= 0)
+                throw new ValidationException("La cantidad debe ser mayor a cero.");
+
+            if (item.ClaseBulbo == ClaseBulbo.MIX && item.Cantidad % 3 != 0)
+                throw new ValidationException($"La cantidad para ítems MIX debe ser un múltiplo de 3 (recibido: {item.Cantidad}).");
+        }
+
         await ValidarParticipanteActivoAsync(dto.OrigenParticipanteId, "origen", cancellationToken);
         await ValidarParticipanteActivoAsync(dto.DestinoParticipanteId, "destino", cancellationToken);
 
@@ -75,18 +87,6 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
                 if (userSucursalId.HasValue && dto.OrigenParticipanteId != userSucursalId.Value && dto.DestinoParticipanteId != userSucursalId.Value)
                     throw new ForbiddenException("Solo posee permisos para registrar operaciones comerciales que involucren a su propia sucursal.");
             }
-        }
-
-        if (dto.Tipo == TipoMovimientoComercial.CompraACliente && (dto.PorcentajeComision < 0 || dto.PorcentajeComision > 100))
-            throw new ValidationException("El porcentaje de comisión debe estar entre 0 y 100.");
-
-        foreach (var item in dto.Detalles)
-        {
-            if (item.Cantidad <= 0)
-                throw new ValidationException("La cantidad debe ser mayor a cero.");
-
-            if (item.ClaseBulbo == ClaseBulbo.MIX && item.Cantidad % 3 != 0)
-                throw new ValidationException($"La cantidad para ítems MIX debe ser un múltiplo de 3 (recibido: {item.Cantidad}).");
         }
 
         // Participant linkage defaults per type
@@ -219,6 +219,8 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         await _movimientoRepository.UpdateAsync(mov, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        await VincularContratoAClienteSiAplicaAsync(mov, cancellationToken);
+
         return ApiResponse<MovimientoComercialDto>.Ok(MapToDto(mov, requiereContrato), "Movimiento comercial aprobado por Administración.");
     }
 
@@ -242,6 +244,8 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
 
         await _movimientoRepository.UpdateAsync(mov, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await VincularContratoAClienteSiAplicaAsync(mov, cancellationToken);
 
         return ApiResponse<MovimientoComercialDto>.Ok(MapToDto(mov), "Contrato comercial generado exitosamente.");
     }
@@ -352,6 +356,8 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
             await _movimientoRepository.UpdateAsync(mov, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+            await VincularContratoAClienteSiAplicaAsync(mov, cancellationToken);
+
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
         catch
@@ -373,16 +379,58 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         if (mov == null)
             throw new NotFoundException(nameof(MovimientoComercial), id);
 
-        if (mov.Estado == EstadoMovimientoComercial.Finalizado)
-            throw new OperacionInvalidaException("No se puede rechazar un movimiento comercial finalizado.");
+        if (mov.Estado == EstadoMovimientoComercial.Rechazado)
+            throw new OperacionInvalidaException("El movimiento ya se encuentra en estado Rechazado.");
 
         if (string.IsNullOrWhiteSpace(dto.Motivo))
             throw new ValidationException("Debe indicar el motivo del rechazo u observación.");
 
-        mov.Rechazar(usuarioId, dto.Motivo);
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            if (mov.Estado == EstadoMovimientoComercial.Finalizado)
+            {
+                var bulbosList = await _movimientoBulbosRepository.GetByMovimientoComercialIdAsync(mov.Id, cancellationToken);
+                if (bulbosList != null)
+                {
+                    foreach (var item in bulbosList)
+                    {
+                        var entity = await _movimientoBulbosRepository.GetByIdAsync(item.Id, cancellationToken);
+                        if (entity != null && entity.Estado == EstadoMovimiento.Confirmado)
+                        {
+                            entity.Anular($"Anulación por cancelación de operación comercial #{mov.Id}: {dto.Motivo.Trim()}");
+                            await _movimientoBulbosRepository.UpdateAsync(entity, cancellationToken);
+                        }
+                    }
+                }
+            }
 
-        await _movimientoRepository.UpdateAsync(mov, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+            if (mov.Contrato != null)
+            {
+                int? clienteId = mov.ClienteId ?? (mov.Tipo == TipoMovimientoComercial.VentaACliente ? mov.DestinoParticipanteId : null);
+                if (clienteId.HasValue)
+                {
+                    var cliente = await _clienteRepository.GetByIdAsync(clienteId.Value, cancellationToken);
+                    if (cliente != null && cliente.ContratoId == mov.Contrato.Id)
+                    {
+                        cliente.ContratoId = null;
+                        await _clienteRepository.UpdateAsync(cliente, cancellationToken);
+                    }
+                }
+            }
+
+            mov.Rechazar(usuarioId, dto.Motivo);
+
+            await _movimientoRepository.UpdateAsync(mov, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            throw;
+        }
 
         return ApiResponse<MovimientoComercialDto>.Ok(MapToDto(mov), "Movimiento comercial rechazado.");
     }
@@ -687,6 +735,25 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         {
             if (!sucursal.Activo)
                 throw new ReglaNegocioException($"La sucursal {rol} '{sucursal.Nombre}' se encuentra inactiva.");
+        }
+    }
+
+    private async Task VincularContratoAClienteSiAplicaAsync(MovimientoComercial mov, CancellationToken cancellationToken)
+    {
+        if (mov.Contrato == null || mov.Contrato.IsDeleted) return;
+
+        int? clienteId = mov.ClienteId ?? (mov.Tipo == TipoMovimientoComercial.VentaACliente ? mov.DestinoParticipanteId : null);
+        if (!clienteId.HasValue) return;
+
+        var cliente = await _clienteRepository.GetByIdAsync(clienteId.Value, cancellationToken);
+        if (cliente != null)
+        {
+            if (cliente.ContratoId == null || cliente.ContratoId <= 0 || mov.Estado == EstadoMovimientoComercial.Finalizado)
+            {
+                cliente.ContratoId = mov.Contrato.Id;
+                await _clienteRepository.UpdateAsync(cliente, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
         }
     }
 }
