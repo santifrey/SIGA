@@ -133,5 +133,14 @@ public enum AccionAprobacion
     Corregido = 6
 }
 
+public enum AlcancePermiso
+{
+    Ninguno = 0,
+    Propio = 1,
+    Sucursal = 2,
+    Todos = 3
+}
+
+
 
 

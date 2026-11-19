@@ -23,6 +23,7 @@ public class GestionReportes : IGestionReportes
     private readonly IGestionStock _gestionStock;
     private readonly IGestionMovimientos _gestionMovimientos;
     private readonly IGestionMovimientosComerciales _gestionMovimientosComerciales;
+    private readonly ICurrentUserService? _currentUserService;
 
     private static readonly ClaseBulbo[] TodasLasClases =
     {
@@ -43,7 +44,8 @@ public class GestionReportes : IGestionReportes
         IMovimientoComercialRepository movimientoComercialRepository,
         IGestionStock gestionStock,
         IGestionMovimientos gestionMovimientos,
-        IGestionMovimientosComerciales gestionMovimientosComerciales)
+        IGestionMovimientosComerciales gestionMovimientosComerciales,
+        ICurrentUserService? currentUserService = null)
     {
         _clienteRepository = clienteRepository;
         _sucursalRepository = sucursalRepository;
@@ -55,6 +57,7 @@ public class GestionReportes : IGestionReportes
         _gestionStock = gestionStock;
         _gestionMovimientos = gestionMovimientos;
         _gestionMovimientosComerciales = gestionMovimientosComerciales;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ApiResponse<ReporteIntegralClienteDto>> ObtenerEstadoIntegralClienteAsync(
@@ -223,6 +226,19 @@ public class GestionReportes : IGestionReportes
             .OrderBy(id => id)
             .ToList();
 
+        if (_currentUserService != null)
+        {
+            var alcance = await _currentUserService.ObtenerAlcanceAsync("REPORTES_VER", cancellationToken);
+            if (alcance == AlcancePermiso.Sucursal)
+            {
+                var userSucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+                if (userSucursalId.HasValue)
+                {
+                    idsSucursalesInvolucradas = idsSucursalesInvolucradas.Where(id => id == userSucursalId.Value).ToList();
+                }
+            }
+        }
+
         var desgloseSucursales = new List<RendimientoSucursalDto>();
         foreach (var sucId in idsSucursalesInvolucradas)
         {
@@ -326,7 +342,7 @@ public class GestionReportes : IGestionReportes
     public async Task<ApiResponse<ResumenEjecutivoDto>> ObtenerResumenEjecutivoAsync(
         CancellationToken cancellationToken = default)
     {
-        var clientes = await _clienteRepository.GetAllWithPersonaAsync(null, null, cancellationToken);
+        var clientes = await _clienteRepository.GetAllWithPersonaAsync(cancellationToken: cancellationToken);
         var sucursales = await _sucursalRepository.GetAllAsync(cancellationToken);
         var temporadaActiva = await _temporadaRepository.GetActivaAsync(cancellationToken);
         var movimientos = await _movimientoComercialRepository.GetAllWithDetailsAsync(cancellationToken);

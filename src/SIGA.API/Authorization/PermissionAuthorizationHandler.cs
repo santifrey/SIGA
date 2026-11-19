@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using SIGA.Domain.Common;
 
 namespace SIGA.API.Authorization;
 
@@ -24,7 +25,7 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
             return Task.CompletedTask;
         }
 
-        // 3. Verificación de claims "permiso" / "permission"
+        // 3. Verificación de claims "permiso" / "permission" considerando jerarquía de alcances
         var userPermissions = context.User.Claims
             .Where(c => c.Type.Equals("permiso", StringComparison.OrdinalIgnoreCase) ||
                         c.Type.Equals("permission", StringComparison.OrdinalIgnoreCase))
@@ -32,7 +33,7 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Si el usuario posee cualquiera de los permisos especificados en el requerimiento
-        if (requirement.Permisos.Any(p => userPermissions.Contains(p)))
+        if (requirement.Permisos.Any(p => PermisoHierarchy.SatisfaceRequerimiento(userPermissions, p)))
         {
             context.Succeed(requirement);
         }

@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SIGA.Domain\SIGA.Domain.csproj" />
     <ProjectReference Include="..\SIGA.Application\SIGA.Application.csproj" />
   </ItemGroup>

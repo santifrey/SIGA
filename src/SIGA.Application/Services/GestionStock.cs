@@ -12,6 +12,7 @@ public class GestionStock : IGestionStock
     private readonly IMovimientoBulbosRepository _movimientoBulbosRepository;
     private readonly IClienteRepository _clienteRepository;
     private readonly IRepository<ParticipanteComercial> _participanteRepository;
+    private readonly ICurrentUserService? _currentUserService;
 
     private static readonly ClaseBulbo[] TodasLasClases =
     {
@@ -25,37 +26,18 @@ public class GestionStock : IGestionStock
     public GestionStock(
         IMovimientoBulbosRepository movimientoBulbosRepository,
         IClienteRepository clienteRepository,
-        IRepository<ParticipanteComercial> participanteRepository)
+        IRepository<ParticipanteComercial> participanteRepository,
+        ICurrentUserService? currentUserService = null)
     {
         _movimientoBulbosRepository = movimientoBulbosRepository;
         _clienteRepository = clienteRepository;
         _participanteRepository = participanteRepository;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ApiResponse<StockClienteDto>> ConsultarStockPorClienteAsync(int clienteId, CancellationToken cancellationToken = default)
     {
-        var cliente = await _clienteRepository.GetByIdWithPersonaAsync(clienteId, cancellationToken);
-        string clienteNombre;
-        string codigoCliente;
-
-        if (cliente != null)
-        {
-            clienteNombre = cliente.Persona != null ? cliente.Persona.NombreCompleto : $"Cliente #{cliente.Id}";
-            codigoCliente = cliente.CodigoCliente;
-        }
-        else
-        {
-            var participante = await _participanteRepository.GetByIdAsync(clienteId, cancellationToken);
-            if (participante is Sucursal sucursal)
-            {
-                clienteNombre = sucursal.Nombre;
-                codigoCliente = "SUCURSAL";
-            }
-            else
-            {
-                throw new NotFoundException("Participante", clienteId);
-            }
-        }
+        var (clienteNombre, codigoCliente) = await ValidarAccesoStockYObtenerInfoAsync(clienteId, cancellationToken);
 
         var saldoPorClase = await ObtenerSaldoPorClaseAsync(clienteId, cancellationToken);
 
@@ -84,13 +66,7 @@ public class GestionStock : IGestionStock
         int cantidad, 
         CancellationToken cancellationToken = default)
     {
-        var cliente = await _clienteRepository.GetByIdWithPersonaAsync(clienteId, cancellationToken);
-        if (cliente == null)
-        {
-            var participante = await _participanteRepository.GetByIdAsync(clienteId, cancellationToken);
-            if (participante == null)
-                throw new NotFoundException("Participante", clienteId);
-        }
+        await ValidarAccesoStockYObtenerInfoAsync(clienteId, cancellationToken);
 
         var saldoPorClase = await ObtenerSaldoPorClaseAsync(clienteId, cancellationToken);
 
@@ -170,6 +146,71 @@ public class GestionStock : IGestionStock
         }
 
         return saldo;
+    }
+
+    private async Task<(string clienteNombre, string codigoCliente)> ValidarAccesoStockYObtenerInfoAsync(int clienteId, CancellationToken cancellationToken)
+    {
+        var cliente = await _clienteRepository.GetByIdWithPersonaAsync(clienteId, cancellationToken);
+        string clienteNombre;
+        string codigoCliente;
+
+        if (cliente != null)
+        {
+            if (_currentUserService != null)
+            {
+                var alcance = await _currentUserService.ObtenerAlcanceAsync("STOCK_VER", cancellationToken);
+                if (alcance == AlcancePermiso.Ninguno)
+                    throw new ForbiddenException("No posee permisos para consultar existencias de stock.");
+
+                if (alcance == AlcancePermiso.Propio)
+                {
+                    var userPersonaId = await _currentUserService.GetPersonaIdAsync(cancellationToken);
+                    if (userPersonaId == null || cliente.PersonaId != userPersonaId.Value)
+                        throw new ForbiddenException("Solo posee permisos para consultar el stock de sus propios bulbos en custodia.");
+                }
+                else if (alcance == AlcancePermiso.Sucursal)
+                {
+                    var userSucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+                    if (userSucursalId.HasValue && cliente.Persona?.SucursalId != null && cliente.Persona.SucursalId != userSucursalId.Value)
+                        throw new ForbiddenException("Solo posee permisos para consultar el stock de clientes de su propia sucursal.");
+                }
+            }
+
+            clienteNombre = cliente.Persona != null ? cliente.Persona.NombreCompleto : $"Cliente #{cliente.Id}";
+            codigoCliente = cliente.CodigoCliente;
+        }
+        else
+        {
+            var participante = await _participanteRepository.GetByIdAsync(clienteId, cancellationToken);
+            if (participante is Sucursal sucursal)
+            {
+                if (_currentUserService != null)
+                {
+                    var alcance = await _currentUserService.ObtenerAlcanceAsync("STOCK_VER", cancellationToken);
+                    if (alcance == AlcancePermiso.Ninguno)
+                        throw new ForbiddenException("No posee permisos para consultar existencias de stock.");
+
+                    if (alcance == AlcancePermiso.Propio)
+                        throw new ForbiddenException("No posee permisos para consultar existencias de sucursales de la empresa.");
+
+                    if (alcance == AlcancePermiso.Sucursal)
+                    {
+                        var userSucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+                        if (userSucursalId.HasValue && sucursal.Id != userSucursalId.Value)
+                            throw new ForbiddenException("Solo posee permisos para consultar el stock de su propia sucursal.");
+                    }
+                }
+
+                clienteNombre = sucursal.Nombre;
+                codigoCliente = "SUCURSAL";
+            }
+            else
+            {
+                throw new NotFoundException("Participante", clienteId);
+            }
+        }
+
+        return (clienteNombre, codigoCliente);
     }
 
     private static string FormatearNombreClase(ClaseBulbo clase)

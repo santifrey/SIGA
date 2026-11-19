@@ -37,13 +37,23 @@ public class ClienteRepository : Repository<Cliente>, IClienteRepository
             .FirstOrDefaultAsync(c => c.PersonaId == personaId, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Cliente>> GetAllWithPersonaAsync(string? busqueda = null, int? limit = null, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Cliente>> GetAllWithPersonaAsync(string? busqueda = null, int? limit = null, int? sucursalId = null, int? personaId = null, CancellationToken cancellationToken = default)
     {
         var query = _dbSet
             .Include(c => c.Persona)
                 .ThenInclude(p => p.Sucursal)
             .Include(c => c.Contrato)
             .AsQueryable();
+
+        if (sucursalId.HasValue)
+        {
+            query = query.Where(c => c.Persona.SucursalId == sucursalId.Value);
+        }
+
+        if (personaId.HasValue)
+        {
+            query = query.Where(c => c.PersonaId == personaId.Value);
+        }
 
         if (!string.IsNullOrWhiteSpace(busqueda))
         {

@@ -18,6 +18,7 @@ public class GestionPlantaciones : IGestionPlantaciones
     private readonly ISucursalRepository _sucursalRepository;
     private readonly IGestionStock _gestionStock;
     private readonly IMovimientoBulbosRepository _movimientoRepository;
+    private readonly ICurrentUserService? _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
 
     public GestionPlantaciones(
@@ -29,7 +30,8 @@ public class GestionPlantaciones : IGestionPlantaciones
         ISucursalRepository sucursalRepository,
         IGestionStock gestionStock,
         IMovimientoBulbosRepository movimientoRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUserService? currentUserService = null)
     {
         _temporadaRepository = temporadaRepository;
         _filaRepository = filaRepository;
@@ -40,6 +42,7 @@ public class GestionPlantaciones : IGestionPlantaciones
         _gestionStock = gestionStock;
         _movimientoRepository = movimientoRepository;
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ApiResponse<PlantacionDto>> CrearPlantacionAsync(
@@ -119,6 +122,20 @@ public class GestionPlantaciones : IGestionPlantaciones
         var sucursal = await _sucursalRepository.GetByIdAsync(dto.SucursalId, cancellationToken);
         if (sucursal == null)
             throw new NotFoundException(nameof(Sucursal), dto.SucursalId);
+
+        if (_currentUserService != null)
+        {
+            var alcance = await _currentUserService.ObtenerAlcanceAsync("PLANTACIONES_GESTIONAR", cancellationToken);
+            if (alcance == AlcancePermiso.Ninguno)
+                throw new ForbiddenException("No posee permisos para registrar plantaciones.");
+
+            if (alcance == AlcancePermiso.Sucursal)
+            {
+                var userSucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+                if (userSucursalId.HasValue && dto.SucursalId != userSucursalId.Value)
+                    throw new ForbiddenException("Solo posee permisos para registrar plantaciones en su propia sucursal.");
+            }
+        }
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
@@ -299,6 +316,35 @@ public class GestionPlantaciones : IGestionPlantaciones
         var plantacion = await _plantacionRepository.GetByTemporadaIdAsync(temporadaId, cancellationToken);
         if (plantacion == null)
             throw new NotFoundException($"No existe plantación para la temporada con ID {temporadaId}.");
+
+        if (_currentUserService != null)
+        {
+            var alcance = await _currentUserService.ObtenerAlcanceAsync("PLANTACIONES_VER", cancellationToken);
+            if (alcance == AlcancePermiso.Ninguno)
+                throw new ForbiddenException("No posee permisos para consultar plantaciones.");
+
+            if (alcance == AlcancePermiso.Propio)
+            {
+                var userPersonaId = await _currentUserService.GetPersonaIdAsync(cancellationToken);
+                var cliente = userPersonaId.HasValue ? await _clienteRepository.GetByPersonaIdAsync(userPersonaId.Value, cancellationToken) : null;
+                var clienteId = cliente?.Id;
+
+                var dto = MapToDto(plantacion);
+                if (clienteId.HasValue && dto.Detalles != null)
+                {
+                    var lotesCliente = await _loteRepository.GetByClienteAsync(clienteId.Value, cancellationToken);
+                    var loteIdsValidos = lotesCliente.Select(l => l.Id).ToHashSet();
+                    dto.Detalles = dto.Detalles.Where(d => loteIdsValidos.Contains(d.LoteId)).ToList();
+                    dto.TotalBulbos = dto.Detalles.Sum(d => d.Cantidad);
+                }
+                else if (!clienteId.HasValue && dto.Detalles != null)
+                {
+                    dto.Detalles = new List<DetallePlantacionDto>();
+                    dto.TotalBulbos = 0;
+                }
+                return ApiResponse<PlantacionDto>.Ok(dto);
+            }
+        }
 
         return ApiResponse<PlantacionDto>.Ok(MapToDto(plantacion));
     }

@@ -13,6 +13,8 @@ public interface IMovimientoComercialRepository : IRepository<MovimientoComercia
         int? temporadaId = null,
         DateTime? fechaDesde = null,
         DateTime? fechaHasta = null,
+        int? usuarioRegistroId = null,
+        int? sucursalId = null,
         CancellationToken cancellationToken = default);
     Task<MovimientoComercial?> GetByIdWithDetailsAsync(int id, CancellationToken cancellationToken = default);
     Task<bool> HasFinalizedMovementsForClientAsync(int clienteId, int? excludeId = null, CancellationToken cancellationToken = default);

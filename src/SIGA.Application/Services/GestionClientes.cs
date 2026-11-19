@@ -15,6 +15,7 @@ public class GestionClientes : IGestionClientes
     private readonly IRolRepository _rolRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService? _currentUserService;
 
     public GestionClientes(
         IClienteRepository clienteRepository,
@@ -22,7 +23,8 @@ public class GestionClientes : IGestionClientes
         IUsuarioRepository usuarioRepository,
         IRolRepository rolRepository,
         IPasswordHasher passwordHasher,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUserService? currentUserService = null)
     {
         _clienteRepository = clienteRepository;
         _personaRepository = personaRepository;
@@ -30,6 +32,7 @@ public class GestionClientes : IGestionClientes
         _rolRepository = rolRepository;
         _passwordHasher = passwordHasher;
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ApiResponse<ClienteDto>> GetByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -52,7 +55,27 @@ public class GestionClientes : IGestionClientes
 
     public async Task<ApiResponse<IEnumerable<ClienteDto>>> GetAllAsync(string? busqueda = null, int? limit = null, CancellationToken cancellationToken = default)
     {
-        var clientes = await _clienteRepository.GetAllWithPersonaAsync(busqueda, limit, cancellationToken);
+        int? sucursalId = null;
+        int? personaId = null;
+
+        if (_currentUserService != null)
+        {
+            var alcanceVer = await _currentUserService.ObtenerAlcanceAsync("CLIENTES_VER", cancellationToken);
+            if (alcanceVer == AlcancePermiso.Ninguno)
+            {
+                return ApiResponse<IEnumerable<ClienteDto>>.Ok(Enumerable.Empty<ClienteDto>());
+            }
+            if (alcanceVer == AlcancePermiso.Propio)
+            {
+                personaId = await _currentUserService.GetPersonaIdAsync(cancellationToken);
+            }
+            else if (alcanceVer == AlcancePermiso.Sucursal)
+            {
+                sucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+            }
+        }
+
+        var clientes = await _clienteRepository.GetAllWithPersonaAsync(busqueda, limit, sucursalId, personaId, cancellationToken);
         var dtos = clientes.Select(MapToDto);
         return ApiResponse<IEnumerable<ClienteDto>>.Ok(dtos);
     }
@@ -60,6 +83,25 @@ public class GestionClientes : IGestionClientes
     public async Task<ApiResponse<ClienteDto>> CreateAsync(CreateClienteDto dto, CancellationToken cancellationToken = default)
     {
         ValidatePersonaData(dto.Email, dto.Documento, dto.Telefono);
+
+        if (_currentUserService != null)
+        {
+            var alcanceGestionar = await _currentUserService.ObtenerAlcanceAsync("CLIENTES_GESTIONAR", cancellationToken);
+            if (alcanceGestionar == AlcancePermiso.Ninguno)
+                throw new ForbiddenException("No posee permisos para registrar clientes.");
+
+            if (alcanceGestionar == AlcancePermiso.Sucursal)
+            {
+                var userSucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+                if (userSucursalId.HasValue)
+                {
+                    if (dto.SucursalId.HasValue && dto.SucursalId.Value > 0 && dto.SucursalId.Value != userSucursalId.Value)
+                        throw new ForbiddenException("Solo posee permisos para registrar clientes asignados a su propia sucursal.");
+
+                    dto.SucursalId = userSucursalId.Value;
+                }
+            }
+        }
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try

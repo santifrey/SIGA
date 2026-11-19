@@ -7,5 +7,5 @@ public interface IClienteRepository : IRepository<Cliente>
     Task<Cliente?> GetByIdWithPersonaAsync(int id, CancellationToken cancellationToken = default);
     Task<Cliente?> GetByCodigoWithPersonaAsync(string codigo, CancellationToken cancellationToken = default);
     Task<Cliente?> GetByPersonaIdAsync(int personaId, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<Cliente>> GetAllWithPersonaAsync(string? busqueda = null, int? limit = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Cliente>> GetAllWithPersonaAsync(string? busqueda = null, int? limit = null, int? sucursalId = null, int? personaId = null, CancellationToken cancellationToken = default);
 }

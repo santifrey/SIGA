@@ -7,7 +7,8 @@
     </div>
     <div>
       <button class="btn btn-secondary btn-sm" id="btn-refresh-stock">
-        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          style="margin-right: 0.25rem;">
           <polyline points="23 4 23 10 17 10"></polyline>
           <polyline points="1 20 1 14 7 14"></polyline>
           <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
@@ -17,16 +18,42 @@
     </div>
   </div>
 
-  <!-- Selector simple de Sucursal o Cliente -->
-  <div class="table-card mb-4" style="padding: 1rem 1.25rem;">
-    <div class="d-flex align-center gap-md flex-wrap">
-      <label for="select-cliente-stock" class="form-label" style="margin: 0; min-width: 130px;">
-        <strong>Titular del Stock:</strong>
+  <!-- Selector de Sucursal o Búsqueda de Cliente -->
+  <div class="table-card mb-4" style="padding: 1.25rem;">
+    <!-- Selector de Modo (Sucursal vs Cliente) -->
+    <div class="d-flex align-center gap-md flex-wrap mb-3" id="modo-titular-container">
+      <span class="text-sm font-semibold text-muted" style="min-width: 140px;">Consultar stock de:</span>
+      <div class="d-flex gap-sm">
+        <button type="button" class="btn btn-sm btn-primary" id="btn-modo-sucursal">
+          🏢 Depósito de Sucursal
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary" id="btn-modo-cliente">
+          👤 Cliente / Productor
+        </button>
+      </div>
+    </div>
+
+    <!-- Opción A: Desplegable de Sucursales -->
+    <div id="panel-sucursal" class="d-flex align-center gap-md flex-wrap">
+      <label for="select-sucursal-stock" class="form-label font-semibold" style="margin: 0; min-width: 140px;">
+        Sucursal:
       </label>
-      <div style="flex: 1; max-width: 440px;">
-        <select id="select-cliente-stock" class="form-control">
-          <option value="">Cargando opciones...</option>
+      <div style="flex: 1; max-width: 480px;">
+        <select id="select-sucursal-stock" class="form-control">
+          <option value="">Cargando sucursales...</option>
         </select>
+      </div>
+    </div>
+
+    <!-- Opción B: Búsqueda Rápida de Cliente -->
+    <div id="panel-cliente" class="hidden">
+      <div class="d-flex align-start gap-md flex-wrap">
+        <label class="form-label font-semibold" style="margin-top: 0.5rem; min-width: 140px;">
+          Buscar Cliente:
+        </label>
+        <div style="flex: 1; max-width: 520px;">
+          <div id="stock-cliente-autocomplete"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -50,7 +77,8 @@
         <tfoot id="stock-table-foot" style="background: var(--surface-alt); font-weight: 700;">
           <tr>
             <td colspan="2" style="padding: 1rem; text-align: right;">TOTAL BULBOS DISPONIBLES:</td>
-            <td id="stock-total-cell" style="padding: 1rem; text-align: right; color: var(--primary); font-size: 1.1rem;">0</td>
+            <td id="stock-total-cell"
+              style="padding: 1rem; text-align: right; color: var(--primary); font-size: 1.1rem;">0</td>
           </tr>
         </tfoot>
       </table>

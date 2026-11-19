@@ -17,6 +17,7 @@ public class GestionCosechas : IGestionCosechas
     private readonly IClienteRepository _clienteRepository;
     private readonly IRepository<ParticipanteComercial> _participanteRepository;
     private readonly IMovimientoBulbosRepository _movimientoRepository;
+    private readonly ICurrentUserService? _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
 
     public GestionCosechas(
@@ -28,7 +29,8 @@ public class GestionCosechas : IGestionCosechas
         IClienteRepository clienteRepository,
         IRepository<ParticipanteComercial> participanteRepository,
         IMovimientoBulbosRepository movimientoRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUserService? currentUserService = null)
     {
         _cosechaRepository = cosechaRepository;
         _temporadaRepository = temporadaRepository;
@@ -39,6 +41,7 @@ public class GestionCosechas : IGestionCosechas
         _participanteRepository = participanteRepository;
         _movimientoRepository = movimientoRepository;
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ApiResponse<CosechaDto>> CrearCosechaAsync(
@@ -56,6 +59,20 @@ public class GestionCosechas : IGestionCosechas
         var sucursal = await _sucursalRepository.GetByIdAsync(dto.SucursalId, cancellationToken);
         if (sucursal == null)
             throw new NotFoundException(nameof(Sucursal), dto.SucursalId);
+
+        if (_currentUserService != null)
+        {
+            var alcanceGestionar = await _currentUserService.ObtenerAlcanceAsync("COSECHAS_GESTIONAR", cancellationToken);
+            if (alcanceGestionar == AlcancePermiso.Ninguno)
+                throw new ForbiddenException("No posee permisos para registrar cosechas.");
+
+            if (alcanceGestionar == AlcancePermiso.Sucursal)
+            {
+                var userSucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+                if (userSucursalId.HasValue && dto.SucursalId != userSucursalId.Value)
+                    throw new ForbiddenException("Solo posee permisos para registrar cosechas de su propia sucursal.");
+            }
+        }
 
         // Regla DP-7: Una sola cosecha por sucursal en cada temporada
         var existente = await _cosechaRepository.GetByTemporadaAndSucursalAsync(dto.TemporadaId, dto.SucursalId, cancellationToken);
@@ -276,6 +293,28 @@ public class GestionCosechas : IGestionCosechas
             throw new NotFoundException(nameof(Temporada), temporadaId);
 
         var cosechas = await _cosechaRepository.GetByTemporadaAsync(temporadaId, cancellationToken);
+
+        if (_currentUserService != null)
+        {
+            var alcanceVer = await _currentUserService.ObtenerAlcanceAsync("COSECHAS_VER", cancellationToken);
+            if (alcanceVer == AlcancePermiso.Ninguno)
+            {
+                return ApiResponse<IEnumerable<CosechaDto>>.Ok(Enumerable.Empty<CosechaDto>());
+            }
+            if (alcanceVer == AlcancePermiso.Propio)
+            {
+                cosechas = cosechas.Where(c => c.UsuarioCreadorId == _currentUserService.UsuarioId).ToList();
+            }
+            else if (alcanceVer == AlcancePermiso.Sucursal)
+            {
+                var sucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+                if (sucursalId.HasValue)
+                {
+                    cosechas = cosechas.Where(c => c.SucursalId == sucursalId.Value).ToList();
+                }
+            }
+        }
+
         var dtos = new List<CosechaDto>();
         foreach (var c in cosechas)
         {

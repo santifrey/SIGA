@@ -34,9 +34,11 @@ public static class DependencyInjection
             options.UseMySql(mySqlConnection, serverVersion);
         });
 
-        // 2. Servicios de Seguridad
+        // 2. Servicios de Seguridad y Contexto
+        services.AddHttpContextAccessor();
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<ITokenService, JwtTokenService>();
+        services.AddScoped<ICurrentUserService, SIGA.Infrastructure.Services.CurrentUserService>();
 
         // 3. Repositorios y Unit of Work
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));

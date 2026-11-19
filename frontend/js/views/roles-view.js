@@ -227,11 +227,20 @@ export class RolesView {
           <div class="grid-two-cols" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.5rem;">
             ${perms.map(p => {
               const checked = selectedSet.has(p.codigo.toUpperCase());
+              let scopeBadge = '';
+              if (p.codigo.endsWith('_PROPIO')) {
+                scopeBadge = '<span class="badge badge-secondary" style="font-size:0.65rem; padding: 1px 5px; margin-left: 4px;">Propio</span>';
+              } else if (p.codigo.endsWith('_SUCURSAL')) {
+                scopeBadge = '<span class="badge badge-primary" style="font-size:0.65rem; padding: 1px 5px; margin-left: 4px;">Sucursal</span>';
+              } else if (p.codigo.endsWith('_TODOS')) {
+                scopeBadge = '<span class="badge badge-accent font-bold" style="font-size:0.65rem; padding: 1px 5px; margin-left: 4px;">Todos</span>';
+              }
+
               return `
                 <label class="d-flex align-start gap-xs text-sm" style="cursor: pointer; padding: 4px; border-radius: var(--radius-sm); transition: background 0.15s;" title="${escapeHtml(p.descripcion || p.nombre)}">
                   <input type="checkbox" class="permiso-checkbox modulo-${escapeHtml(moduloId)}" value="${escapeHtml(p.codigo)}" ${checked ? 'checked' : ''} style="margin-top: 3px;" />
                   <div>
-                    <span class="font-medium" style="font-family: monospace; font-size: 0.8rem;">${escapeHtml(p.codigo)}</span>
+                    <span class="font-medium" style="font-family: monospace; font-size: 0.8rem;">${escapeHtml(p.codigo)}</span>${scopeBadge}
                     <div class="text-xs text-muted" style="line-height: 1.2;">${escapeHtml(p.nombre)}</div>
                   </div>
                 </label>

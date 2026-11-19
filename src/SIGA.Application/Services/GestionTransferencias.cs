@@ -13,18 +13,24 @@ public class GestionTransferencias : IGestionTransferencias
     private readonly ITransferenciaLoteRepository _transferenciaRepo;
     private readonly ILoteRepository _loteRepository;
     private readonly IRepository<ParticipanteComercial> _participanteRepo;
+    private readonly ICurrentUserService? _currentUserService;
+    private readonly IClienteRepository? _clienteRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public GestionTransferencias(
         ITransferenciaLoteRepository transferenciaRepo,
         ILoteRepository loteRepository,
         IRepository<ParticipanteComercial> participanteRepo,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUserService? currentUserService = null,
+        IClienteRepository? clienteRepository = null)
     {
         _transferenciaRepo = transferenciaRepo;
         _loteRepository = loteRepository;
         _participanteRepo = participanteRepo;
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+        _clienteRepository = clienteRepository;
     }
 
     public async Task<ApiResponse<TransferenciaLoteDto>> TransferirLoteAsync(
@@ -199,6 +205,35 @@ public class GestionTransferencias : IGestionTransferencias
             list = await _transferenciaRepo.GetAllWithDetailsAsync(estado, cancellationToken);
         }
 
+        if (_currentUserService != null)
+        {
+            var alcance = await _currentUserService.ObtenerAlcanceAsync("TRANSFERENCIAS_VER", cancellationToken);
+            if (alcance == AlcancePermiso.Ninguno)
+                throw new ForbiddenException("No posee permisos para consultar transferencias.");
+
+            if (alcance == AlcancePermiso.Propio)
+            {
+                var userPersonaId = await _currentUserService.GetPersonaIdAsync(cancellationToken);
+                var currentUserId = _currentUserService.UsuarioId;
+                var cliente = (userPersonaId.HasValue && _clienteRepository != null)
+                    ? await _clienteRepository.GetByPersonaIdAsync(userPersonaId.Value, cancellationToken)
+                    : null;
+                var clienteId = cliente?.Id;
+
+                list = list.Where(t =>
+                    (clienteId.HasValue && (t.TitularAnteriorId == clienteId.Value || t.NuevoTitularId == clienteId.Value)) ||
+                    (currentUserId > 0 && t.UsuarioCreadorId == currentUserId));
+            }
+            else if (alcance == AlcancePermiso.Sucursal)
+            {
+                var userSucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+                if (userSucursalId.HasValue)
+                {
+                    list = list.Where(t => t.Lote?.Fila?.SucursalId == userSucursalId.Value);
+                }
+            }
+        }
+
         var dtos = list.Select(MapToDto);
         return ApiResponse<IEnumerable<TransferenciaLoteDto>>.Ok(dtos);
     }
@@ -210,6 +245,35 @@ public class GestionTransferencias : IGestionTransferencias
         var transferencia = await _transferenciaRepo.GetByIdWithDetailsAsync(id, cancellationToken);
         if (transferencia == null)
             throw new NotFoundException(nameof(TransferenciaLote), id);
+
+        if (_currentUserService != null)
+        {
+            var alcance = await _currentUserService.ObtenerAlcanceAsync("TRANSFERENCIAS_VER", cancellationToken);
+            if (alcance == AlcancePermiso.Ninguno)
+                throw new ForbiddenException("No posee permisos para consultar transferencias.");
+
+            if (alcance == AlcancePermiso.Propio)
+            {
+                var userPersonaId = await _currentUserService.GetPersonaIdAsync(cancellationToken);
+                var currentUserId = _currentUserService.UsuarioId;
+                var cliente = (userPersonaId.HasValue && _clienteRepository != null)
+                    ? await _clienteRepository.GetByPersonaIdAsync(userPersonaId.Value, cancellationToken)
+                    : null;
+                var clienteId = cliente?.Id;
+
+                var esPropio = (clienteId.HasValue && (transferencia.TitularAnteriorId == clienteId.Value || transferencia.NuevoTitularId == clienteId.Value))
+                    || (currentUserId > 0 && transferencia.UsuarioCreadorId == currentUserId);
+
+                if (!esPropio)
+                    throw new ForbiddenException("Solo posee permisos para consultar transferencias propias.");
+            }
+            else if (alcance == AlcancePermiso.Sucursal)
+            {
+                var userSucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+                if (userSucursalId.HasValue && transferencia.Lote?.Fila?.SucursalId != null && transferencia.Lote.Fila.SucursalId != userSucursalId.Value)
+                    throw new ForbiddenException("Solo posee permisos para consultar transferencias de su sucursal.");
+            }
+        }
 
         return ApiResponse<TransferenciaLoteDto>.Ok(MapToDto(transferencia));
     }

@@ -14,6 +14,7 @@ public class GestionMovimientos : IGestionMovimientos
     private readonly IClienteRepository _clienteRepository;
     private readonly IRepository<ParticipanteComercial> _participanteRepository;
     private readonly IGestionStock _gestionStock;
+    private readonly ICurrentUserService? _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
 
     public GestionMovimientos(
@@ -21,13 +22,15 @@ public class GestionMovimientos : IGestionMovimientos
         IClienteRepository clienteRepository,
         IRepository<ParticipanteComercial> participanteRepository,
         IGestionStock gestionStock,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUserService? currentUserService = null)
     {
         _movimientoRepository = movimientoRepository;
         _clienteRepository = clienteRepository;
         _participanteRepository = participanteRepository;
         _gestionStock = gestionStock;
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ApiResponse<MovimientoBulbosDto>> CrearMovimientoAsync(
@@ -40,6 +43,23 @@ public class GestionMovimientos : IGestionMovimientos
 
         if (dto.Cantidades.Any(c => c.Cantidad <= 0))
             throw new ValidationException("Todas las cantidades de bulbos deben ser mayores a cero.");
+
+        if (_currentUserService != null)
+        {
+            var alcanceAjustar = await _currentUserService.ObtenerAlcanceAsync("STOCK_AJUSTAR", cancellationToken);
+            if (alcanceAjustar == AlcancePermiso.Ninguno)
+                throw new ForbiddenException("No posee permisos para registrar ajustes de stock.");
+
+            if (alcanceAjustar == AlcancePermiso.Sucursal)
+            {
+                var userSucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+                if (userSucursalId.HasValue && dto.OrigenId > 0 && dto.DestinoId > 0 &&
+                    dto.OrigenId != userSucursalId.Value && dto.DestinoId != userSucursalId.Value)
+                {
+                    throw new ForbiddenException("Solo posee permisos para registrar ajustes de stock en su propia sucursal.");
+                }
+            }
+        }
 
         // Si el origen o destino es 0 (contraparte técnica de ajuste), resolver el participante "Ajustes de Inventario"
         if (dto.OrigenId <= 0 || dto.DestinoId <= 0)

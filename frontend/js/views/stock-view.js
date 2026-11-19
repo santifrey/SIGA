@@ -1,11 +1,13 @@
 /**
  * SIGA - views/stock-view.js
- * Vista Funcional de Consulta de Stock por Cliente (Feature 32)
+ * Vista Funcional de Consulta de Stock con Búsqueda Rápida de Clientes y Selector de Sucursal
  */
 
 import { stockService, CLASES_BULBO } from '../services/stock-service.js';
 import { clientesService } from '../services/clientes-service.js';
 import { sucursalesService } from '../services/sucursales-service.js';
+import { authService } from '../services/auth-service.js';
+import { ClienteAutocomplete } from '../components/cliente-autocomplete.js';
 import { loadTemplate } from '../utils/template-loader.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/escape-html.js';
@@ -14,83 +16,212 @@ export class StockView {
   constructor(router) {
     this.router = router;
     this.container = null;
-    this.selectedClienteId = '1';
+    this.selectedClienteId = null;
+    this.modo = 'sucursal'; // 'sucursal' | 'cliente'
+    this.clienteAutocomplete = null;
   }
 
   async render(rootElement) {
     this.container = rootElement;
     this.container.innerHTML = await loadTemplate('stock.html');
 
+    this._initAutocomplete();
     this._bindEvents();
-    await this._loadTitularesSelect();
-    await this._loadStock();
+    await this._initModo();
+  }
+
+  _initAutocomplete() {
+    const acEl = this.container.querySelector('#stock-cliente-autocomplete');
+    if (!acEl) return;
+
+    this.clienteAutocomplete = new ClienteAutocomplete({
+      container: acEl,
+      name: 'stock-cliente-id',
+      placeholder: 'Escriba DNI, Nombre, Apellido o Código (ej: CLI-0001)...',
+      onSelect: (cliente) => {
+        if (cliente && cliente.id) {
+          this.selectedClienteId = String(cliente.id);
+          this._loadStock();
+        }
+      },
+      onClear: () => {
+        this.selectedClienteId = null;
+        this._showPromptSelectCliente();
+      }
+    });
   }
 
   _bindEvents() {
-    const select = this.container.querySelector('#select-cliente-stock');
-    if (select) {
-      select.addEventListener('change', (e) => {
-        this.selectedClienteId = e.target.value;
-        this._loadStock();
+    const btnRefresh = this.container.querySelector('#btn-refresh-stock');
+    if (btnRefresh) {
+      btnRefresh.addEventListener('click', () => {
+        if (this.selectedClienteId) {
+          this._loadStock();
+        } else if (this.modo === 'cliente') {
+          this._showPromptSelectCliente();
+        }
       });
     }
 
-    const refreshBtn = this.container.querySelector('#btn-refresh-stock');
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', () => {
-        this._loadStock();
+    const btnModoSucursal = this.container.querySelector('#btn-modo-sucursal');
+    const btnModoCliente = this.container.querySelector('#btn-modo-cliente');
+
+    if (btnModoSucursal) {
+      btnModoSucursal.addEventListener('click', () => {
+        this._cambiarModo('sucursal');
+      });
+    }
+
+    if (btnModoCliente) {
+      btnModoCliente.addEventListener('click', () => {
+        this._cambiarModo('cliente');
+      });
+    }
+
+    const selectSucursal = this.container.querySelector('#select-sucursal-stock');
+    if (selectSucursal) {
+      selectSucursal.addEventListener('change', (e) => {
+        this.selectedClienteId = e.target.value;
+        if (this.selectedClienteId) {
+          this._loadStock();
+        }
       });
     }
   }
 
-  async _loadTitularesSelect() {
-    const select = this.container.querySelector('#select-cliente-stock');
+  async _initModo() {
+    const alcanceStock = authService.obtenerAlcance('STOCK_VER');
+
+    if (alcanceStock === 'PROPIO') {
+      // Modo exclusivo Cliente: no tiene acceso a depósitos de sucursal
+      const modoContainer = this.container.querySelector('#modo-titular-container');
+      const panelSucursal = this.container.querySelector('#panel-sucursal');
+      const panelCliente = this.container.querySelector('#panel-cliente');
+
+      if (modoContainer) modoContainer.classList.add('hidden');
+      if (panelSucursal) panelSucursal.classList.add('hidden');
+      if (panelCliente) panelCliente.classList.remove('hidden');
+
+      this.modo = 'cliente';
+
+      // Cargar automáticamente su propio perfil de cliente
+      try {
+        const res = await clientesService.listar({ page: 1, pageSize: 1 });
+        const propio = res?.items?.[0];
+        if (propio && propio.id) {
+          this.selectedClienteId = String(propio.id);
+          this.clienteAutocomplete?.setValue(propio);
+
+          // Ocultar botón de cambiar para usuarios con alcance estrictamente propio
+          const btnChange = this.container.querySelector('#ac-btn-change-stock-cliente-id');
+          if (btnChange) btnChange.classList.add('hidden');
+
+          await this._loadStock();
+        } else {
+          this._showPromptSelectCliente();
+        }
+      } catch (err) {
+        console.warn('[StockView] No se pudo cargar cliente propio:', err);
+        this._showPromptSelectCliente();
+      }
+    } else {
+      // Personal interno / Administradores: pueden consultar depósitos de sucursales o buscar clientes
+      await this._loadSucursales();
+      this._cambiarModo('sucursal');
+    }
+  }
+
+  _cambiarModo(nuevoModo) {
+    this.modo = nuevoModo;
+    const btnModoSucursal = this.container.querySelector('#btn-modo-sucursal');
+    const btnModoCliente = this.container.querySelector('#btn-modo-cliente');
+    const panelSucursal = this.container.querySelector('#panel-sucursal');
+    const panelCliente = this.container.querySelector('#panel-cliente');
+
+    if (nuevoModo === 'sucursal') {
+      btnModoSucursal?.classList.add('btn-primary');
+      btnModoSucursal?.classList.remove('btn-secondary');
+      btnModoCliente?.classList.add('btn-secondary');
+      btnModoCliente?.classList.remove('btn-primary');
+
+      panelSucursal?.classList.remove('hidden');
+      panelCliente?.classList.add('hidden');
+
+      const selectSucursal = this.container.querySelector('#select-sucursal-stock');
+      if (selectSucursal && selectSucursal.value) {
+        this.selectedClienteId = selectSucursal.value;
+        this._loadStock();
+      }
+    } else {
+      btnModoCliente?.classList.add('btn-primary');
+      btnModoCliente?.classList.remove('btn-secondary');
+      btnModoSucursal?.classList.add('btn-secondary');
+      btnModoSucursal?.classList.remove('btn-primary');
+
+      panelCliente?.classList.remove('hidden');
+      panelSucursal?.classList.add('hidden');
+
+      const clienteSel = this.clienteAutocomplete?.getValue();
+      if (clienteSel) {
+        this.selectedClienteId = String(clienteSel);
+        this._loadStock();
+      } else {
+        this.selectedClienteId = null;
+        this._showPromptSelectCliente();
+      }
+    }
+  }
+
+  async _loadSucursales() {
+    const select = this.container.querySelector('#select-sucursal-stock');
     if (!select) return;
-    select.innerHTML = '';
+    select.innerHTML = '<option value="">Cargando sucursales...</option>';
 
     try {
-      // 1. Cargar Sucursales activas
       const sucursales = await sucursalesService.listar({ estado: 'activas' });
+      select.innerHTML = '';
+
       if (sucursales && sucursales.length > 0) {
-        const groupSuc = document.createElement('optgroup');
-        groupSuc.label = '🏢 Sucursales';
-        sucursales.forEach(s => {
+        sucursales.forEach((s) => {
           const opt = document.createElement('option');
           const partId = s.participanteComercialId || s.id;
           opt.value = String(partId);
-          opt.textContent = `🏢 ${s.nombre} (${s.codigo || 'SUC-' + s.id})`;
-          groupSuc.appendChild(opt);
+          opt.textContent = `🏢 ${s.nombre} (${s.codigo || 'SUC-' + s.id})${s.esCasaMatriz ? ' [Sede Central]' : ''}`;
+          select.appendChild(opt);
         });
-        select.appendChild(groupSuc);
-        this.selectedClienteId = String(sucursales[0].participanteComercialId || sucursales[0].id);
+        select.value = String(sucursales[0].participanteComercialId || sucursales[0].id);
+        this.selectedClienteId = select.value;
       } else {
         const opt = document.createElement('option');
         opt.value = '1';
-        opt.textContent = '🏢 Sede Central (Depósito Central)';
+        opt.textContent = '🏢 Sede Central (Depósito Principal)';
         select.appendChild(opt);
         this.selectedClienteId = '1';
       }
-
-      // 2. Cargar Clientes activos
-      const data = await clientesService.listar({ page: 1, pageSize: 200, estado: 'activos' });
-      const clientes = data?.items || [];
-      if (clientes && clientes.length > 0) {
-        const groupCli = document.createElement('optgroup');
-        groupCli.label = '👤 Clientes';
-        clientes.forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = String(c.id);
-          const nombreCompleto = `${c.nombre || ''} ${c.apellido || ''}`.trim() || c.nombreCompleto || `Cliente #${c.id}`;
-          const docInfo = c.documento ? ` - DNI ${c.documento}` : '';
-          opt.textContent = `👤 ${nombreCompleto}${docInfo} (${c.codigo || 'CLI-' + c.id})`;
-          groupCli.appendChild(opt);
-        });
-        select.appendChild(groupCli);
-      }
-
-      select.value = this.selectedClienteId;
     } catch (err) {
-      console.warn('[StockView] No se pudo cargar titulares de stock:', err);
+      console.warn('[StockView] Error al cargar sucursales:', err);
+      select.innerHTML = '<option value="1">🏢 Sede Central (Depósito Principal)</option>';
+      this.selectedClienteId = '1';
+    }
+  }
+
+  _showPromptSelectCliente() {
+    const tbody = this.container.querySelector('#stock-table-body');
+    const totalCell = this.container.querySelector('#stock-total-cell');
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="3" class="text-center text-muted" style="padding: 3rem 1.5rem;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
+            <p class="font-semibold text-main mb-1">Búsqueda rápida de clientes</p>
+            <p class="text-sm text-muted" style="max-width: 420px; margin: 0 auto;">
+              Escriba en la caja de búsqueda superior el <strong>DNI, Nombre o Código</strong> del cliente para consultar al instante sus existencias de bulbos en custodia.
+            </p>
+          </td>
+        </tr>`;
+    }
+    if (totalCell) {
+      totalCell.textContent = '0';
     }
   }
 
@@ -99,12 +230,16 @@ export class StockView {
     const totalCell = this.container.querySelector('#stock-total-cell');
     if (!tbody || !totalCell) return;
 
-    tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted" style="padding: 1.5rem;">Consultando stock...</td></tr>`;
+    if (!this.selectedClienteId) {
+      this._showPromptSelectCliente();
+      return;
+    }
+
+    tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted" style="padding: 1.5rem;">Consultando existencias de stock...</td></tr>`;
 
     try {
       const rawResult = await stockService.obtenerStockPorCliente(this.selectedClienteId);
 
-      // Defensive: unwrap array regardless of wrapper structure
       let items = [];
       if (Array.isArray(rawResult)) {
         items = rawResult;

@@ -40,6 +40,8 @@ public class MovimientoComercialRepository : Repository<MovimientoComercial>, IM
         int? temporadaId = null,
         DateTime? fechaDesde = null,
         DateTime? fechaHasta = null,
+        int? usuarioRegistroId = null,
+        int? sucursalId = null,
         CancellationToken cancellationToken = default)
     {
         var query = _dbSet
@@ -76,6 +78,12 @@ public class MovimientoComercialRepository : Repository<MovimientoComercial>, IM
 
         if (fechaHasta.HasValue)
             query = query.Where(m => m.Fecha <= fechaHasta.Value);
+
+        if (usuarioRegistroId.HasValue)
+            query = query.Where(m => m.UsuarioRegistroId == usuarioRegistroId.Value);
+
+        if (sucursalId.HasValue)
+            query = query.Where(m => m.OrigenParticipanteId == sucursalId.Value || m.DestinoParticipanteId == sucursalId.Value);
 
         return await query
             .OrderByDescending(m => m.Fecha)

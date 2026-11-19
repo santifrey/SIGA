@@ -146,7 +146,46 @@ class AuthService {
 
     const normalizedCode = codigo.trim().toUpperCase();
     const set = this._obtenerPermisosSet();
-    return set.has(normalizedCode);
+    if (set.has(normalizedCode)) return true;
+
+    // Jerarquía de alcance
+    if (normalizedCode.endsWith('_PROPIO')) {
+      const base = normalizedCode.slice(0, -'_PROPIO'.length);
+      return set.has(base) || set.has(`${base}_TODOS`) || set.has(`${base}_SUCURSAL`);
+    }
+    if (normalizedCode.endsWith('_SUCURSAL')) {
+      const base = normalizedCode.slice(0, -'_SUCURSAL'.length);
+      return set.has(base) || set.has(`${base}_TODOS`);
+    }
+    if (normalizedCode.endsWith('_TODOS')) {
+      const base = normalizedCode.slice(0, -'_TODOS'.length);
+      return set.has(base);
+    }
+
+    // Permiso base sin sufijo (ej: MOVCOM_VER): cualquier nivel lo satisface
+    return set.has(`${normalizedCode}_TODOS`) ||
+           set.has(`${normalizedCode}_SUCURSAL`) ||
+           set.has(`${normalizedCode}_PROPIO`);
+  }
+
+  /**
+   * Obtiene el nivel de alcance efectivo del usuario para un módulo/acción base.
+   * @param {string} permisoBase - ej: 'MOVCOM_VER', 'CLIENTES_VER', 'STOCK_VER'
+   * @returns {'TODOS'|'SUCURSAL'|'PROPIO'|'NINGUNO'}
+   */
+  obtenerAlcance(permisoBase) {
+    if (!this.estaAutenticado() || !permisoBase) return 'NINGUNO';
+    const user = this.getUsuarioActual();
+    if (user && (user.rol === 'ADMINISTRADOR' || (Array.isArray(user.roles) && user.roles.includes('ADMINISTRADOR')) || user.rol === 'Administrador')) {
+      return 'TODOS';
+    }
+
+    const set = this._obtenerPermisosSet();
+    const base = permisoBase.trim().toUpperCase();
+    if (set.has(`${base}_TODOS`) || set.has(base)) return 'TODOS';
+    if (set.has(`${base}_SUCURSAL`)) return 'SUCURSAL';
+    if (set.has(`${base}_PROPIO`)) return 'PROPIO';
+    return 'NINGUNO';
   }
 
   /**

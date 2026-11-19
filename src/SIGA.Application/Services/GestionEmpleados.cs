@@ -15,6 +15,7 @@ public class GestionEmpleados : IGestionEmpleados
     private readonly ISucursalRepository? _sucursalRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService? _currentUserService;
 
     public GestionEmpleados(
         IUsuarioRepository usuarioRepository,
@@ -22,7 +23,7 @@ public class GestionEmpleados : IGestionEmpleados
         IRolRepository rolRepository,
         IPasswordHasher passwordHasher,
         IUnitOfWork unitOfWork)
-        : this(usuarioRepository, personaRepository, rolRepository, null, passwordHasher, unitOfWork)
+        : this(usuarioRepository, personaRepository, rolRepository, null, passwordHasher, unitOfWork, null)
     {
     }
 
@@ -32,7 +33,8 @@ public class GestionEmpleados : IGestionEmpleados
         IRolRepository rolRepository,
         ISucursalRepository? sucursalRepository,
         IPasswordHasher passwordHasher,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUserService? currentUserService = null)
     {
         _usuarioRepository = usuarioRepository;
         _personaRepository = personaRepository;
@@ -40,17 +42,37 @@ public class GestionEmpleados : IGestionEmpleados
         _sucursalRepository = sucursalRepository;
         _passwordHasher = passwordHasher;
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ApiResponse<List<EmpleadoDto>>> GetEmpleadosAsync(CancellationToken cancellationToken = default)
     {
         var usuarios = await _usuarioRepository.GetAllWithRolesAndPersonaAsync(cancellationToken);
 
+        int? sucursalId = null;
+        if (_currentUserService != null)
+        {
+            var alcance = await _currentUserService.ObtenerAlcanceAsync("EMPLEADOS_VER", cancellationToken);
+            if (alcance == AlcancePermiso.Ninguno)
+            {
+                return ApiResponse<List<EmpleadoDto>>.Ok(new List<EmpleadoDto>());
+            }
+            if (alcance == AlcancePermiso.Sucursal)
+            {
+                sucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+            }
+        }
+
         // Filtrar personal interno (excluir rol CLIENTE y usuarios eliminados)
-        var empleados = usuarios
-            .Where(u => !u.IsDeleted && u.Rol != null && !string.Equals(u.Rol.Nombre, "CLIENTE", StringComparison.OrdinalIgnoreCase))
-            .Select(MapToEmpleadoDto)
-            .ToList();
+        var query = usuarios
+            .Where(u => !u.IsDeleted && u.Rol != null && !string.Equals(u.Rol.Nombre, "CLIENTE", StringComparison.OrdinalIgnoreCase));
+
+        if (sucursalId.HasValue)
+        {
+            query = query.Where(u => u.Persona != null && u.Persona.SucursalId == sucursalId.Value);
+        }
+
+        var empleados = query.Select(MapToEmpleadoDto).ToList();
 
         return ApiResponse<List<EmpleadoDto>>.Ok(empleados);
     }

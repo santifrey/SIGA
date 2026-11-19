@@ -18,6 +18,7 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
     private readonly IGestionStock _gestionStock;
     private readonly IMovimientoBulbosRepository _movimientoBulbosRepository;
     private readonly ISucursalRepository? _sucursalRepository;
+    private readonly ICurrentUserService? _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
 
     public GestionMovimientosComerciales(
@@ -29,7 +30,8 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         IGestionStock gestionStock,
         IMovimientoBulbosRepository movimientoBulbosRepository,
         IUnitOfWork unitOfWork,
-        ISucursalRepository? sucursalRepository = null)
+        ISucursalRepository? sucursalRepository = null,
+        ICurrentUserService? currentUserService = null)
     {
         _movimientoRepository = movimientoRepository;
         _precioClaseRepository = precioClaseRepository;
@@ -40,6 +42,7 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         _movimientoBulbosRepository = movimientoBulbosRepository;
         _unitOfWork = unitOfWork;
         _sucursalRepository = sucursalRepository;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ApiResponse<MovimientoComercialDto>> CrearMovimientoAsync(
@@ -59,6 +62,20 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
 
         await ValidarParticipanteActivoAsync(dto.OrigenParticipanteId, "origen", cancellationToken);
         await ValidarParticipanteActivoAsync(dto.DestinoParticipanteId, "destino", cancellationToken);
+
+        if (_currentUserService != null)
+        {
+            var alcanceCrear = await _currentUserService.ObtenerAlcanceAsync("MOVCOM_CREAR", cancellationToken);
+            if (alcanceCrear == AlcancePermiso.Ninguno)
+                throw new ForbiddenException("No posee permisos para registrar movimientos comerciales.");
+
+            if (alcanceCrear == AlcancePermiso.Sucursal)
+            {
+                var userSucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+                if (userSucursalId.HasValue && dto.OrigenParticipanteId != userSucursalId.Value && dto.DestinoParticipanteId != userSucursalId.Value)
+                    throw new ForbiddenException("Solo posee permisos para registrar operaciones comerciales que involucren a su propia sucursal.");
+            }
+        }
 
         if (dto.Tipo == TipoMovimientoComercial.CompraACliente && (dto.PorcentajeComision < 0 || dto.PorcentajeComision > 100))
             throw new ValidationException("El porcentaje de comisión debe estar entre 0 y 100.");
@@ -406,6 +423,20 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         await ValidarParticipanteActivoAsync(dto.OrigenParticipanteId, "origen", cancellationToken);
         await ValidarParticipanteActivoAsync(dto.DestinoParticipanteId, "destino", cancellationToken);
 
+        if (_currentUserService != null)
+        {
+            var alcanceCrear = await _currentUserService.ObtenerAlcanceAsync("MOVCOM_CREAR", cancellationToken);
+            if (alcanceCrear == AlcancePermiso.Ninguno)
+                throw new ForbiddenException("No posee permisos para registrar movimientos comerciales.");
+
+            if (alcanceCrear == AlcancePermiso.Sucursal)
+            {
+                var userSucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+                if (userSucursalId.HasValue && dto.OrigenParticipanteId != userSucursalId.Value && dto.DestinoParticipanteId != userSucursalId.Value)
+                    throw new ForbiddenException("Solo posee permisos para registrar operaciones comerciales que involucren a su propia sucursal.");
+            }
+        }
+
         mov.OrigenParticipanteId = dto.OrigenParticipanteId;
         mov.DestinoParticipanteId = dto.DestinoParticipanteId;
         mov.ClienteId = dto.ClienteId;
@@ -474,6 +505,26 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         FiltroMovimientosComercialesDto filtro,
         CancellationToken cancellationToken = default)
     {
+        int? usuarioRegistroId = filtro?.UsuarioRegistroId;
+        int? sucursalId = filtro?.SucursalId;
+
+        if (_currentUserService != null)
+        {
+            var alcanceVer = await _currentUserService.ObtenerAlcanceAsync("MOVCOM_VER", cancellationToken);
+            if (alcanceVer == AlcancePermiso.Ninguno)
+            {
+                return ApiResponse<IEnumerable<MovimientoComercialDto>>.Ok(Enumerable.Empty<MovimientoComercialDto>());
+            }
+            if (alcanceVer == AlcancePermiso.Propio)
+            {
+                usuarioRegistroId = _currentUserService.UsuarioId;
+            }
+            else if (alcanceVer == AlcancePermiso.Sucursal)
+            {
+                sucursalId = await _currentUserService.GetSucursalIdAsync(cancellationToken);
+            }
+        }
+
         var movimientos = await _movimientoRepository.GetByFiltersAsync(
             filtro?.Tipo,
             filtro?.Estado,
@@ -481,6 +532,8 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
             filtro?.TemporadaId,
             filtro?.FechaDesde,
             filtro?.FechaHasta,
+            usuarioRegistroId,
+            sucursalId,
             cancellationToken);
 
         var dtos = movimientos.Select(m => MapToDto(m));

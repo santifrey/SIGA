@@ -215,6 +215,8 @@ public class FiltroMovimientosComercialesDto
     public int? TemporadaId { get; set; }
     public DateTime? FechaDesde { get; set; }
     public DateTime? FechaHasta { get; set; }
+    public int? UsuarioRegistroId { get; set; }
+    public int? SucursalId { get; set; }
 }
 
 public class RechazarMovimientoDto : RechazarDto { }
