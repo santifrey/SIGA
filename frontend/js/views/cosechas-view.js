@@ -7,6 +7,8 @@ import { cosechasService } from '../services/cosechas-service.js';
 import { temporadasService } from '../services/temporadas-service.js';
 import { sucursalesService } from '../services/sucursales-service.js';
 import { plantacionesService } from '../services/plantaciones-service.js';
+import { BulbosCalibresGrid } from '../components/bulbos-calibres-grid.js';
+import { loadTemplate } from '../utils/template-loader.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/escape-html.js';
 
@@ -21,89 +23,12 @@ export class CosechasView {
     this.selectedSucursalId = null;
     this.currentCosecha = null;
     this.lotesDisponibles = [];
+    this.calibresGrid = null;
   }
 
   async render(rootElement) {
     this.container = rootElement;
-    this.container.innerHTML = `
-      <div class="fade-in">
-        <!-- Encabezado de la Vista -->
-        <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
-          <div>
-            <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Gestión de Cosechas por Sucursal</h1>
-            <p class="text-muted text-sm">Control de recolección de bulbos por lote y acreditación automática a titulares vigentes.</p>
-          </div>
-          <div>
-            <button class="btn btn-secondary" id="btn-refresh-cosechas" title="Actualizar datos">
-              <svg class="icon-svg sm" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              <span>Refrescar</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Filtros y Selectores Principales -->
-        <div class="card mb-4" style="background: var(--surface);">
-          <div class="card-body p-3">
-            <div class="form-row two-cols" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
-              <div class="form-group mb-0">
-                <label for="select-cosecha-temporada" class="form-label font-bold text-xs uppercase" style="color: var(--primary);">
-                  1. Temporada Productiva:
-                </label>
-                <select id="select-cosecha-temporada" class="form-control" style="font-weight: 600;">
-                  <option value="">Cargando temporadas...</option>
-                </select>
-              </div>
-
-              <div class="form-group mb-0">
-                <label for="select-cosecha-sucursal" class="form-label font-bold text-xs uppercase" style="color: var(--accent);">
-                  2. Sucursal / Campo:
-                </label>
-                <select id="select-cosecha-sucursal" class="form-control">
-                  <option value="">Cargando sucursales...</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Panel Dinámico: Cosecha de la Sucursal Seleccionada -->
-        <div id="panel-cosecha-sucursal">
-          <div class="text-center p-4 text-muted">Seleccione una temporada y sucursal para gestionar la cosecha.</div>
-        </div>
-
-        <!-- Tabla Histórica de Cosechas en la Temporada -->
-        <div class="card mt-4">
-          <div class="card-header d-flex justify-between align-center p-3 border-bottom">
-            <h3 class="card-title text-base m-0">Todas las Cosechas Registradas en la Temporada</h3>
-            <span class="text-xs text-muted" id="total-cosechas-badge">0 sucursales</span>
-          </div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="table table-hover mb-0">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Sucursal</th>
-                    <th>Estado</th>
-                    <th>Fecha Inicio</th>
-                    <th>Fecha Cierre</th>
-                    <th style="text-align: right;">Total Bulbos Cosechados</th>
-                    <th style="text-align: center;">Acción</th>
-                  </tr>
-                </thead>
-                <tbody id="tbody-cosechas-temporada">
-                  <tr><td colspan="7" class="text-center p-3 text-muted">Cargando cosechas...</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
+    this.container.innerHTML = await loadTemplate('cosechas.html');
 
     await this.cargarDatosIniciales();
     this.bindEvents();
@@ -381,28 +306,7 @@ export class CosechasView {
               <!-- Desglose de Cantidades por Clase (Clase 0 a Clase 4) -->
               <div class="mb-3">
                 <label class="form-label text-xs font-bold uppercase mb-2">Cantidades Cosechadas por Calibre (Clases 0 a 4):</label>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem;">
-                  <div class="form-group mb-0">
-                    <label for="input-cant-c0" class="text-xs text-muted" title="Grande > 12cm">Clase 0 (>12cm)</label>
-                    <input type="number" id="input-cant-c0" class="form-control input-cosecha-clase" min="0" value="0" />
-                  </div>
-                  <div class="form-group mb-0">
-                    <label for="input-cant-c1" class="text-xs text-muted" title="10 - 12cm">Clase 1 (10-12cm)</label>
-                    <input type="number" id="input-cant-c1" class="form-control input-cosecha-clase" min="0" value="0" />
-                  </div>
-                  <div class="form-group mb-0">
-                    <label for="input-cant-c2" class="text-xs text-muted" title="8 - 10cm">Clase 2 (8-10cm)</label>
-                    <input type="number" id="input-cant-c2" class="form-control input-cosecha-clase" min="0" value="0" />
-                  </div>
-                  <div class="form-group mb-0">
-                    <label for="input-cant-c3" class="text-xs text-muted" title="6 - 8cm">Clase 3 (6-8cm)</label>
-                    <input type="number" id="input-cant-c3" class="form-control input-cosecha-clase" min="0" value="0" />
-                  </div>
-                  <div class="form-group mb-0">
-                    <label for="input-cant-c4" class="text-xs text-muted" title="Semillero < 6cm">Clase 4 (&lt;6cm)</label>
-                    <input type="number" id="input-cant-c4" class="form-control input-cosecha-clase" min="0" value="0" />
-                  </div>
-                </div>
+                <div id="cosecha-calibres-grid"></div>
               </div>
 
               <div class="d-flex justify-between align-center flex-wrap gap-sm pt-2 border-top">
@@ -456,11 +360,13 @@ export class CosechasView {
 
     // Vincular eventos del panel activo
     if (!isCerrada) {
-      // Evento inputs para calcular suma en vivo
-      const inputs = panel.querySelectorAll('.input-cosecha-clase');
-      inputs.forEach(inp => {
-        inp.addEventListener('input', () => this.actualizarPreviewDetalle());
+      this.calibresGrid = new BulbosCalibresGrid({
+        root: panel,
+        inputIdPrefix: 'input-cant-c',
+        totalSelector: '#preview-total-lote',
+        gridContainerSelector: '#cosecha-calibres-grid'
       });
+      this.calibresGrid.init();
 
       // Evento submit de registrar detalle
       const formDetalle = document.getElementById('form-registrar-detalle');
@@ -511,16 +417,6 @@ export class CosechasView {
         </tr>
       `;
     }).join('');
-  }
-
-  actualizarPreviewDetalle() {
-    let sum = 0;
-    for (let c = 0; c <= 4; c++) {
-      const el = document.getElementById(`input-cant-c${c}`);
-      sum += Number(el?.value) || 0;
-    }
-    const preview = document.getElementById('preview-total-lote');
-    if (preview) preview.textContent = sum.toLocaleString();
   }
 
   renderTablaCosechasTemporada() {
@@ -607,22 +503,8 @@ export class CosechasView {
       return;
     }
 
-    const cantidades = [];
-    let sumaTotal = 0;
-
-    for (let c = 0; c <= 4; c++) {
-      const inp = document.getElementById(`input-cant-c${c}`);
-      const cant = Number(inp?.value) || 0;
-      if (cant < 0) {
-        toast.warning('Las cantidades cosechadas no pueden ser negativas.');
-        return;
-      }
-      cantidades.push({
-        claseBulbo: c,
-        cantidad: cant
-      });
-      sumaTotal += cant;
-    }
+    const cantidades = this.calibresGrid.getItemsArray(true);
+    const sumaTotal = this.calibresGrid.getTotal();
 
     if (sumaTotal === 0) {
       toast.warning('Debe ingresar al menos una cantidad mayor a 0 para el lote seleccionado.');

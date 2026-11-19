@@ -30,7 +30,10 @@ public class GestionSucursales : IGestionSucursales
     public async Task<ApiResponse<IEnumerable<SucursalDto>>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var sucursales = await _sucursalRepository.GetAllAsync(cancellationToken);
-        var dtos = sucursales.Select(MapToDto);
+        // Excluir la contraparte técnica 'Ajustes de Inventario' para que no figure como sucursal física operativa
+        var dtos = sucursales
+            .Where(s => !string.Equals(s.Nombre, "Ajustes de Inventario", StringComparison.OrdinalIgnoreCase))
+            .Select(MapToDto);
         return ApiResponse<IEnumerable<SucursalDto>>.Ok(dtos);
     }
 
@@ -51,7 +54,14 @@ public class GestionSucursales : IGestionSucursales
             Nombre = dto.Nombre.Trim(),
             Ubicacion = dto.Ubicacion.Trim(),
             CapacidadTotal = dto.CapacidadTotal,
-            Estado = EstadoSucursal.Activo
+            Activo = dto.Activo,
+            RazonSocial = $"Sucursal {dto.Nombre.Trim()}",
+            DireccionFiscal = dto.Ubicacion.Trim(),
+            CUIT = "00-00000000-0",
+            TipoParticipante = TipoParticipante.Sucursal,
+            Estado = dto.Activo ? EstadoParticipante.Activo : EstadoParticipante.Inactivo,
+            FechaRegistro = DateTime.UtcNow,
+            FechaCreacion = DateTime.UtcNow
         };
 
         await _sucursalRepository.AddAsync(sucursal, cancellationToken);
@@ -79,7 +89,15 @@ public class GestionSucursales : IGestionSucursales
         sucursal.Nombre = dto.Nombre.Trim();
         sucursal.Ubicacion = dto.Ubicacion.Trim();
         sucursal.CapacidadTotal = dto.CapacidadTotal;
-        sucursal.Estado = dto.Estado;
+        sucursal.Activo = dto.Activo;
+        sucursal.Estado = dto.Activo ? EstadoParticipante.Activo : EstadoParticipante.Inactivo;
+        sucursal.FechaModificacion = DateTime.UtcNow;
+
+        if (!sucursal.EsCasaMatriz)
+        {
+            sucursal.RazonSocial = $"Sucursal {sucursal.Nombre}";
+            sucursal.DireccionFiscal = sucursal.Ubicacion;
+        }
 
         await _sucursalRepository.UpdateAsync(sucursal, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -106,8 +124,10 @@ public class GestionSucursales : IGestionSucursales
             Id = sucursal.Id,
             Nombre = sucursal.Nombre,
             Ubicacion = sucursal.Ubicacion,
-            Estado = sucursal.Estado,
+            Activo = sucursal.Activo,
             CapacidadTotal = sucursal.CapacidadTotal,
+            ParticipanteComercialId = sucursal.Id, // El ID de la sucursal es su ID de participante comercial
+            ParticipanteRazonSocial = sucursal.RazonSocial ?? sucursal.Nombre,
             FechaCreacion = sucursal.FechaCreacion,
             FechaModificacion = sucursal.FechaModificacion
         };

@@ -14,6 +14,8 @@ public class ClienteDto
     public string Documento { get; set; } = string.Empty;
     public string? Telefono { get; set; }
     public string? Email { get; set; }
+    public int? SucursalId { get; set; }
+    public string? SucursalNombre { get; set; }
     public string CodigoCliente { get; set; } = string.Empty;
     public string? Observaciones { get; set; }
     public EstadoCliente EstadoCliente { get; set; }
@@ -30,6 +32,7 @@ public class CreateClienteDto
     public string? Documento { get; set; }
     public string? Telefono { get; set; }
     public string? Email { get; set; }
+    public int? SucursalId { get; set; }
 
     public string? CodigoCliente { get; set; } // Si es null, se genera automáticamente
     public int? ContratoId { get; set; }
@@ -44,6 +47,7 @@ public class UpdateClienteDto
     public string? Documento { get; set; }
     public string? Telefono { get; set; }
     public string? Email { get; set; }
+    public int? SucursalId { get; set; }
     public string? CodigoCliente { get; set; }
     public int? ContratoId { get; set; }
     public string? Observaciones { get; set; }

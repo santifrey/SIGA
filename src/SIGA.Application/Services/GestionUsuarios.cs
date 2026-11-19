@@ -110,6 +110,8 @@ public class GestionUsuarios : IGestionUsuarios
             Legajo = empleado?.Legajo,
             Posicion = empleado?.Posicion,
             Telefono = usuario.Persona?.Telefono,
+            SucursalId = usuario.Persona?.SucursalId,
+            SucursalNombre = usuario.Persona?.Sucursal?.Nombre,
             RolId = usuario.RolId,
             Rol = rolNombre,
             Activado = usuario.Activado,

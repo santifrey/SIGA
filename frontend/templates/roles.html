@@ -1,0 +1,98 @@
+<div class="fade-in">
+  <!-- Encabezado -->
+  <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
+    <div>
+      <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Roles y Permisos del Sistema</h1>
+      <p class="text-muted text-sm">Definición de perfiles de seguridad, niveles de acceso y matriz de permisos por módulo</p>
+    </div>
+    <div class="d-flex gap-sm">
+      <button class="btn btn-secondary" id="btn-refresh-roles" title="Recargar lista">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>Refrescar</span>
+      </button>
+      <button class="btn btn-primary" id="btn-nuevo-rol">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Nuevo Rol</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabla de Roles -->
+  <div class="card mb-4">
+    <div class="table-responsive">
+      <table class="table" id="tabla-roles">
+        <thead>
+          <tr>
+            <th>Rol</th>
+            <th>Descripción</th>
+            <th>Tipo</th>
+            <th>Usuarios Asignados</th>
+            <th>Permisos</th>
+            <th style="text-align: right;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-roles">
+          <tr>
+            <td colspan="6" class="text-center text-muted" style="padding: 2.5rem;">
+              <div class="btn-spinner" style="display:inline-block; width:24px; height:24px; border-width:2px;"></div>
+              <p class="mt-2">Cargando roles del sistema...</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal Crear / Editar Rol con Matriz de Permisos -->
+  <div class="modal-backdrop" id="modal-rol">
+    <div class="modal-dialog" style="max-width: 850px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-rol-title">Nuevo Rol</h3>
+        <button type="button" class="modal-close-btn btn-close" id="btn-close-modal-rol">&times;</button>
+      </div>
+      <form id="form-rol">
+        <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+          <input type="hidden" id="rol-id" value="" />
+
+          <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 2fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="rol-nombre">Nombre del Rol <span class="text-danger">*</span></label>
+              <input type="text" id="rol-nombre" class="form-control" placeholder="ej. SUPERVISOR_PLANTA" required />
+              <span class="text-xs text-muted" id="help-rol-nombre">En mayúsculas sin espacios recomendados.</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="rol-descripcion">Descripción Funcional</label>
+              <input type="text" id="rol-descripcion" class="form-control" placeholder="Propósito y alcance del rol..." />
+            </div>
+          </div>
+
+          <div class="d-flex justify-between align-center mb-2 flex-wrap gap-xs">
+            <h4 class="text-xs text-muted font-bold text-uppercase m-0">Matriz de Permisos por Módulo</h4>
+            <div class="d-flex gap-xs">
+              <button type="button" class="btn btn-xs btn-outline" id="btn-select-all-permisos">Seleccionar Todos</button>
+              <button type="button" class="btn btn-xs btn-outline" id="btn-deselect-all-permisos">Deseleccionar Todos</button>
+            </div>
+          </div>
+
+          <!-- Contenedor Matriz de Permisos -->
+          <div id="contenedor-matriz-permisos" class="d-flex flex-column gap-md mt-2">
+            <!-- Inyectado dinámicamente -->
+          </div>
+
+          <div id="form-rol-error" class="alert alert-danger hidden mt-3"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-rol">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-rol">Guardar Rol</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

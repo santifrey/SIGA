@@ -14,4 +14,24 @@ public class SucursalRepository : Repository<Sucursal>, ISucursalRepository
     {
         return await _dbSet.FirstOrDefaultAsync(s => s.Nombre.ToLower() == nombre.ToLower(), cancellationToken);
     }
+
+    public async Task<Sucursal?> GetCasaMatrizAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.FirstOrDefaultAsync(s => s.EsCasaMatriz && !s.IsDeleted, cancellationToken);
+    }
+
+    public async Task<Sucursal?> GetByIdWithParticipanteAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+    }
+
+    public async Task<Sucursal?> GetByParticipanteComercialIdAsync(int participanteId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.FirstOrDefaultAsync(s => s.Id == participanteId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Sucursal>> GetAllWithParticipanteAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.ToListAsync(cancellationToken);
+    }
 }

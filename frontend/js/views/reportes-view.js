@@ -6,6 +6,7 @@
 import { reportesService } from '../services/reportes-service.js';
 import { clientesService } from '../services/clientes-service.js';
 import { temporadasService } from '../services/temporadas-service.js';
+import { loadTemplate } from '../utils/template-loader.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/html.js';
 
@@ -24,76 +25,7 @@ export class ReportesView {
 
   async render(rootElement) {
     this.container = rootElement;
-    this.container.innerHTML = `
-      <div class="fade-in">
-        <!-- Encabezado de la Vista -->
-        <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
-          <div>
-            <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Reportes Ejecutivos y Trazabilidad</h1>
-            <p class="text-muted text-sm">Tablero general de control, estado 360° de clientes y rendimiento productivo por temporada.</p>
-          </div>
-          <div>
-            <button class="btn btn-secondary" id="btn-refresh-reportes" title="Actualizar todos los reportes">
-              <svg class="icon-svg sm" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              <span>Refrescar Reportes</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- ===================================================================
-             SECCIÓN 1: RESUMEN EJECUTIVO GENERAL
-             =================================================================== -->
-        <div class="mb-4" id="contenedor-resumen-ejecutivo">
-          <div class="card p-4 text-center text-muted">Cargando métricas ejecutivas...</div>
-        </div>
-
-        <!-- ===================================================================
-             SECCIÓN 2: FICHA / ESTADO INTEGRAL DE CLIENTE (360°)
-             =================================================================== -->
-        <div class="card mb-4">
-          <div class="card-header d-flex justify-between align-center p-3 border-bottom flex-wrap gap-sm">
-            <div>
-              <h3 class="card-title text-base m-0">2. Ficha y Estado Integral de Cliente (Visión 360°)</h3>
-              <span class="text-xs text-muted">Stock actual en custodia, derechos sobre lotes plantados e historial de cosechas</span>
-            </div>
-            <div class="d-flex align-center gap-sm">
-              <label for="select-reporte-cliente" class="text-xs font-bold uppercase text-muted mb-0">Cliente:</label>
-              <select id="select-reporte-cliente" class="form-control" style="min-width: 260px;">
-                <option value="">Cargando clientes...</option>
-              </select>
-            </div>
-          </div>
-          <div class="card-body p-4" id="contenedor-reporte-cliente">
-            <div class="text-center p-4 text-muted">Seleccione un cliente para ver su ficha integral.</div>
-          </div>
-        </div>
-
-        <!-- ===================================================================
-             SECCIÓN 3: RENDIMIENTO Y TRAZABILIDAD PRODUCTIVA POR TEMPORADA
-             =================================================================== -->
-        <div class="card mb-4">
-          <div class="card-header d-flex justify-between align-center p-3 border-bottom flex-wrap gap-sm">
-            <div>
-              <h3 class="card-title text-base m-0">3. Rendimiento y Trazabilidad Productiva por Temporada</h3>
-              <span class="text-xs text-muted">Comparativa siembra vs cosecha por clase de bulbo, rendimiento por campo y trazabilidad por lote</span>
-            </div>
-            <div class="d-flex align-center gap-sm">
-              <label for="select-reporte-temporada" class="text-xs font-bold uppercase text-muted mb-0">Temporada:</label>
-              <select id="select-reporte-temporada" class="form-control" style="min-width: 220px;">
-                <option value="">Cargando temporadas...</option>
-              </select>
-            </div>
-          </div>
-          <div class="card-body p-4" id="contenedor-reporte-temporada">
-            <div class="text-center p-4 text-muted">Seleccione una temporada para ver su rendimiento productivo.</div>
-          </div>
-        </div>
-      </div>
-    `;
+    this.container.innerHTML = await loadTemplate('reportes.html');
 
     await this.cargarDatosIniciales();
     this.bindEvents();

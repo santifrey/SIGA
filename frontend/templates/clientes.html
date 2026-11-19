@@ -1,0 +1,96 @@
+<div class="fade-in">
+  <!-- Encabezado de Sección -->
+  <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
+    <div>
+      <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Gestión de Clientes</h1>
+      <p class="text-muted text-sm">Administración de legajos de clientes, personas y cuentas</p>
+    </div>
+    <div class="d-flex gap-sm">
+      <button class="btn btn-secondary" id="btn-refresh-clientes" title="Actualizar listado">
+        <svg class="icon-svg sm" viewBox="0 0 24 24">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>Refrescar</span>
+      </button>
+      <button class="btn btn-primary" id="btn-new-cliente">
+        <svg class="icon-svg sm" viewBox="0 0 24 24">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Nuevo Cliente</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tarjeta de Contenido / Tabla -->
+  <div class="table-card">
+    <!-- Barra de herramientas (Búsqueda y Filtros) -->
+    <div class="table-toolbar">
+      <div class="toolbar-search">
+        <div class="input-group">
+          <span class="input-icon-left">
+            <svg class="icon-svg sm" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
+          <input
+            type="text"
+            id="search-input"
+            class="form-control has-icon-left"
+            placeholder="Buscar por nombre, documento, código o email..."
+          />
+        </div>
+      </div>
+
+      <div class="toolbar-actions">
+        <label class="text-xs text-muted font-semibold">Estado:</label>
+        <select id="filter-estado" class="form-control" style="width: 140px; padding: 0.45rem 2rem 0.45rem 0.75rem;">
+          <option value="todos">Todos</option>
+          <option value="activos">Solo Activos</option>
+          <option value="inactivos">Solo Inactivos</option>
+        </select>
+
+        <label class="text-xs text-muted font-semibold ml-2">Mostrar:</label>
+        <select id="select-page-size" class="form-control" style="width: 90px; padding: 0.45rem 1.8rem 0.45rem 0.75rem;">
+        </select>
+      </div>
+    </div>
+
+    <!-- Tabla de Datos -->
+    <div class="table-responsive">
+      <table class="table" id="clientes-table">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Cliente (Persona)</th>
+            <th>Identificación</th>
+            <th>Contacto</th>
+            <th>Sucursal</th>
+            <th>Contrato</th>
+            <th>Estado</th>
+            <th style="text-align: right;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="clientes-table-body">
+          <tr class="table-loading-row">
+            <td colspan="7">
+              <div class="d-flex align-center justify-center gap-sm">
+                <div class="btn-spinner" style="position: static; border-top-color: var(--primary);"></div>
+                <span>Cargando clientes...</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación -->
+    <div class="table-pagination" id="clientes-pagination">
+      <div class="pagination-info" id="pagination-info">Mostrando 0 de 0 registros</div>
+      <div class="pagination-controls" id="pagination-controls"></div>
+    </div>
+  </div>
+</div>

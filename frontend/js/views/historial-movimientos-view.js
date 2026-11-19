@@ -1,11 +1,14 @@
 /**
  * SIGA - views/historial-movimientos-view.js
- * Vista del Historial de Movimientos de Bulbos
+ * Vista de Movimiento de Bulbos
  * Vista exclusiva para consultar el historial completo y trazabilidad física
  * de todos los movimientos de bulbos (Ventas, Compras, Traspasos, Cosechas, Plantaciones y Ajustes).
  */
 
 import { movimientosService } from '../services/movimientos-service.js';
+import { clientesService } from '../services/clientes-service.js';
+import { sucursalesService } from '../services/sucursales-service.js';
+import { loadTemplate } from '../utils/template-loader.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/escape-html.js';
 
@@ -13,6 +16,8 @@ export class HistorialMovimientosView {
   constructor(router) {
     this.router = router;
     this.container = null;
+    this.clientesList = [];
+    this.sucursalesList = [];
     this.filterBusqueda = '';
     this.filterTipo = 'todos';
     this.filterEstado = 'todos';
@@ -22,198 +27,7 @@ export class HistorialMovimientosView {
 
   async render(rootElement) {
     this.container = rootElement;
-
-    this.container.innerHTML = `
-      <div class="fade-in">
-        <!-- Encabezado Principal del Historial -->
-        <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
-          <div>
-            <div class="d-flex align-center gap-sm">
-              <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Historial de Movimientos</h1>
-              <span class="badge badge-primary text-xs" style="text-transform: uppercase; font-weight: 700;">Trazabilidad Física</span>
-            </div>
-            <p class="text-muted text-sm">Registro cronológico de todas las entradas, salidas y transferencias de bulbos en el sistema</p>
-          </div>
-          <div class="d-flex gap-sm">
-            <button class="btn btn-secondary btn-sm" id="btn-refresh-historial" title="Actualizar lista desde el servidor">
-              <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              <span>Refrescar</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Tarjetas de Resumen KPI -->
-        <div class="metric-grid mb-4">
-          <div class="metric-card primary">
-            <div class="metric-icon-wrap">
-              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="17 1 21 5 17 9"></polyline>
-                <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
-                <polyline points="7 23 3 19 7 15"></polyline>
-                <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
-              </svg>
-            </div>
-            <div class="metric-content">
-              <span class="metric-label">Total Movimientos</span>
-              <div class="metric-value" id="kpi-hist-total">0</div>
-              <span class="metric-subtext">Registros en historial</span>
-            </div>
-          </div>
-
-          <div class="metric-card accent">
-            <div class="metric-icon-wrap">
-              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-              </svg>
-            </div>
-            <div class="metric-content">
-              <span class="metric-label">Bulbos Movilizados</span>
-              <div class="metric-value" id="kpi-hist-bulbos">0</div>
-              <span class="metric-subtext">Unidades físicas totales</span>
-            </div>
-          </div>
-
-          <div class="metric-card success">
-            <div class="metric-icon-wrap">
-              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-            </div>
-            <div class="metric-content">
-              <span class="metric-label">Confirmados</span>
-              <div class="metric-value" id="kpi-hist-confirmados">0</div>
-              <span class="metric-subtext">Impacto en stock asentado</span>
-            </div>
-          </div>
-
-          <div class="metric-card warning">
-            <div class="metric-icon-wrap">
-              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
-            </div>
-            <div class="metric-content">
-              <span class="metric-label">Pendientes</span>
-              <div class="metric-value" id="kpi-hist-pendientes">0</div>
-              <span class="metric-subtext">Por revisar o confirmar</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Filtros y Buscador en Vivo -->
-        <div class="table-card mb-4" style="padding: 1rem 1.25rem;">
-          <div class="d-flex align-center gap-md flex-wrap justify-between">
-            <!-- Buscador -->
-            <div style="flex: 1; min-width: 240px;">
-              <input 
-                type="text" 
-                id="filter-hist-busqueda" 
-                class="form-control" 
-                placeholder="🔍 Buscar por comprobante, participante u observaciones..." 
-                style="padding: 0.5rem 0.85rem;"
-              />
-            </div>
-
-            <div class="d-flex align-center gap-md flex-wrap">
-              <!-- Filtro por Tipo de Operación -->
-              <div class="d-flex align-center gap-xs">
-                <label class="text-xs text-muted font-bold text-uppercase">Tipo:</label>
-                <select id="filter-hist-tipo" class="form-control" style="width: 175px; padding: 0.45rem 0.65rem;">
-                  <option value="todos">Todos los Tipos</option>
-                  <option value="Venta">🛒 Ventas a Clientes</option>
-                  <option value="Compra">📥 Compras a Clientes</option>
-                  <option value="Traspaso">🔄 Traspasos</option>
-                  <option value="Cosecha">🌾 Cosechas</option>
-                  <option value="Plantacion">🌱 Plantaciones</option>
-                  <option value="AjusteStock">⚖️ Ajustes de Stock</option>
-                </select>
-              </div>
-
-              <!-- Filtro por Estado -->
-              <div class="d-flex align-center gap-xs">
-                <label class="text-xs text-muted font-bold text-uppercase">Estado:</label>
-                <select id="filter-hist-estado" class="form-control" style="width: 160px; padding: 0.45rem 0.65rem;">
-                  <option value="todos">Todos los Estados</option>
-                  <option value="Confirmado">Solo Confirmados</option>
-                  <option value="Pendiente">Solo Pendientes</option>
-                  <option value="Anulado">Solo Anulados</option>
-                </select>
-              </div>
-
-              <!-- Filtro por Titular -->
-              <div class="d-flex align-center gap-xs">
-                <label class="text-xs text-muted font-bold text-uppercase">Titular:</label>
-                <select id="filter-hist-entidad" class="form-control" style="width: 190px; padding: 0.45rem 0.65rem;">
-                  <option value="todos">Todos los Titulares</option>
-                  <option value="empresa">🏢 Depósito Central</option>
-                  <option value="clientes">👤 Solo Clientes</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tabla Histórica de Movimientos -->
-        <div class="table-card">
-          <div class="table-responsive">
-            <table class="table" id="historial-table">
-              <thead>
-                <tr>
-                  <th style="width: 130px;">Comprobante</th>
-                  <th style="width: 135px;">Fecha</th>
-                  <th style="width: 145px;">Tipo de Operación</th>
-                  <th>Origen</th>
-                  <th>Destino</th>
-                  <th style="text-align: right; width: 115px;">Total Bulbos</th>
-                  <th style="width: 110px;">Estado</th>
-                  <th>Observaciones / Motivo</th>
-                  <th style="text-align: right; width: 130px;">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="historial-table-body">
-                <tr>
-                  <td colspan="9" class="text-center text-muted" style="padding: 2.5rem;">Cargando historial de movimientos...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Modal de Detalle de Movimiento -->
-        <div id="modal-detalle-mov" class="modal-backdrop" role="dialog" aria-modal="true">
-          <div class="modal-dialog modal-lg" style="max-width: 620px;">
-            <div class="modal-header">
-              <div>
-                <div class="d-flex align-center gap-sm">
-                  <h3 class="modal-title font-bold text-primary" id="det-mov-titulo" style="margin-bottom: 0;">Detalle de Movimiento</h3>
-                  <span id="det-mov-badge-tipo"></span>
-                  <span id="det-mov-badge-estado"></span>
-                </div>
-                <p class="text-xs text-muted mt-1" style="margin-bottom: 0;" id="det-mov-subtitulo">Comprobante y trazabilidad de inventario</p>
-              </div>
-              <button type="button" class="modal-close-btn" id="btn-close-det-mov">✕</button>
-            </div>
-            <div class="modal-body" id="det-mov-cuerpo" style="padding: 1.5rem;">
-              <!-- Cargado dinámicamente -->
-            </div>
-            <div class="modal-footer d-flex justify-between align-center">
-              <div id="det-mov-acciones-extra" class="d-flex gap-xs"></div>
-              <button type="button" class="btn btn-outline" id="btn-cerrar-det-mov">Cerrar</button>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    `;
-
+    this.container.innerHTML = await loadTemplate('historial-movimientos.html');
     this._bindEvents();
     await this._loadHistorial();
   }
@@ -254,17 +68,119 @@ export class HistorialMovimientosView {
 
   async _loadHistorial() {
     const tbody = this.container.querySelector('#historial-table-body');
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted" style="padding: 2.5rem;">Cargando historial de movimientos...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted" style="padding: 2.5rem;">Cargando movimientos de bulbos...</td></tr>`;
 
     try {
-      const result = await movimientosService.listar({ estado: 'todos' });
-      this.movimientosCache = result.items || [];
+      const [movResult, cliResult, sucResult] = await Promise.all([
+        movimientosService.listar({ pageSize: 500, estado: 'todos' }),
+        clientesService.listar({ page: 1, pageSize: 500, estado: 'todos' }).catch(() => ({ items: [] })),
+        sucursalesService.listar({ estado: 'todas' }).catch(() => [])
+      ]);
+      this.clientesList = cliResult.items || [];
+      this.sucursalesList = Array.isArray(sucResult) ? sucResult : (sucResult?.items || []);
+      this.movimientosCache = movResult.items || [];
+      this._populateTitularFilter();
       this._updateKpis();
       this._renderTable();
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger" style="padding: 2.5rem;">${escapeHtml(err.message || 'Error al cargar el historial de movimientos')}</td></tr>`;
-      toast.error('No se pudo cargar el historial de movimientos de bulbos.');
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger" style="padding: 2.5rem;">${escapeHtml(err.message || 'Error al cargar movimientos de bulbos')}</td></tr>`;
+      toast.error('No se pudo cargar el listado de movimientos de bulbos.');
     }
+  }
+
+  _populateTitularFilter() {
+    const select = this.container.querySelector('#filter-hist-entidad');
+    if (!select) return;
+
+    const currentValue = this.filterEntidad;
+    select.innerHTML = '';
+
+    // 1. Opciones Generales
+    select.add(new Option('Todos los Titulares', 'todos'));
+    select.add(new Option('🏢 Todas las Sucursales', 'todas_sucursales'));
+    select.add(new Option('👤 Todos los Clientes', 'todos_clientes'));
+
+    // 2. Optgroup Sucursales
+    if (this.sucursalesList && this.sucursalesList.length > 0) {
+      const groupSuc = document.createElement('optgroup');
+      groupSuc.label = '🏢 Por Sucursal';
+      this.sucursalesList.forEach(s => {
+        const partId = s.participanteComercialId || s.id;
+        const text = `🏢 ${s.nombre} (${s.codigo || 'SUC-' + s.id})`;
+        groupSuc.appendChild(new Option(text, `sucursal:${partId}`));
+      });
+      select.appendChild(groupSuc);
+    } else {
+      const groupSuc = document.createElement('optgroup');
+      groupSuc.label = '🏢 Por Sucursal';
+      groupSuc.appendChild(new Option('🏢 Sede Central (Depósito Central)', 'sucursal:1'));
+      select.appendChild(groupSuc);
+    }
+
+    // 3. Optgroup Clientes
+    if (this.clientesList && this.clientesList.length > 0) {
+      const groupCli = document.createElement('optgroup');
+      groupCli.label = '👤 Por Cliente';
+      this.clientesList.forEach(c => {
+        const nombreCompleto = `${c.nombre || ''} ${c.apellido || ''}`.trim() || c.nombreCompleto || `Cliente #${c.id}`;
+        const docInfo = c.documento ? ` - DNI ${c.documento}` : '';
+        const text = `👤 ${nombreCompleto}${docInfo} (${c.codigo || 'CLI-' + c.id})`;
+        groupCli.appendChild(new Option(text, `cliente:${c.id}`));
+      });
+      select.appendChild(groupCli);
+    }
+
+    if (currentValue && Array.from(select.options).some(o => o.value === currentValue)) {
+      select.value = currentValue;
+    } else {
+      select.value = 'todos';
+      this.filterEntidad = 'todos';
+    }
+  }
+
+  _resolverNombreParticipante(participanteId, rawNombre) {
+    const idNum = Number(participanteId);
+    if (idNum === 1) return '🏢 Sede Central (Depósito Central)';
+
+    if (this.sucursalesList.length > 0) {
+      const foundSuc = this.sucursalesList.find(s => Number(s.participanteComercialId) === idNum || Number(s.id) === idNum);
+      if (foundSuc) {
+        return `🏢 ${foundSuc.nombre}`;
+      }
+    }
+
+    return this._resolverNombreCliente(participanteId, rawNombre);
+  }
+
+  _resolverNombreCliente(participanteId, rawNombre) {
+    const idNum = Number(participanteId);
+    const raw = String(rawNombre || '').trim();
+
+    if (idNum > 1 && this.clientesList.length > 0) {
+      const foundById = this.clientesList.find(c => Number(c.id) === idNum);
+      if (foundById) {
+        const full = `${foundById.nombre || ''} ${foundById.apellido || ''}`.trim() || foundById.nombreCompleto;
+        if (full) return full;
+      }
+    }
+
+    if (raw && this.clientesList.length > 0) {
+      const foundByCode = this.clientesList.find(c => {
+        const cod = String(c.codigoCliente || c.codigo || '').toLowerCase();
+        return cod && raw.toLowerCase().includes(cod);
+      });
+      if (foundByCode) {
+        const full = `${foundByCode.nombre || ''} ${foundByCode.apellido || ''}`.trim() || foundByCode.nombreCompleto;
+        if (full) return full;
+      }
+    }
+
+    const sinCodigoParentesis = raw.replace(/\s*\(CLI-[^)]+\)/i, '').trim();
+    if (sinCodigoParentesis && !/^cliente\s+cli-/i.test(sinCodigoParentesis)) {
+      return sinCodigoParentesis;
+    }
+
+    return raw || `Cliente #${participanteId}`;
   }
 
   _updateKpis() {
@@ -285,83 +201,135 @@ export class HistorialMovimientosView {
   }
 
   _getTipoOperacionInfo(m) {
-    const tipo = String(m.tipoOperacion || '').toLowerCase();
-    const obs = (m.observaciones || '').toLowerCase();
+    const origId = Number(m.origenId);
+    const destId = Number(m.destinoId);
+    const origRaw = String(m.origenNombre || '').trim();
+    const destRaw = String(m.destinoNombre || '').trim();
 
-    // Movimiento Comercial
-    if (m.movimientoComercialId || tipo.includes('venta') || tipo.includes('compra') || tipo.includes('traspaso')) {
-      if (tipo.includes('compra')) {
-        return {
-          categoria: 'Compra',
-          nombre: 'Compra a Cliente',
-          badgeClass: 'badge-info',
-          icon: '📥',
-          origenText: m.origenNombre || `Cliente #${m.origenId}`,
-          destinoText: '🏢 Depósito Central',
-          refId: m.movimientoComercialId ? `#${m.movimientoComercialId}` : null
-        };
-      }
-      if (tipo.includes('traspaso')) {
-        return {
-          categoria: 'Traspaso',
-          nombre: 'Traspaso entre Clientes',
-          badgeClass: 'badge-accent',
-          icon: '🔄',
-          origenText: m.origenNombre || `Cliente #${m.origenId}`,
-          destinoText: m.destinoNombre || `Cliente #${m.destinoId}`,
-          refId: m.movimientoComercialId ? `#${m.movimientoComercialId}` : null
-        };
-      }
-      return {
-        categoria: 'Venta',
-        nombre: 'Venta a Cliente',
-        badgeClass: 'badge-primary',
-        icon: '🛒',
-        origenText: '🏢 Depósito Central',
-        destinoText: m.destinoNombre || `Cliente #${m.destinoId}`,
-        refId: m.movimientoComercialId ? `#${m.movimientoComercialId}` : null
-      };
-    }
-
-    // Cosecha
-    if (m.cosechaId || tipo.includes('cosecha')) {
-      return {
-        categoria: 'Cosecha',
-        nombre: 'Cosecha',
-        badgeClass: 'badge-warning',
-        icon: '🌾',
-        origenText: '🌱 Campo / Fila',
-        destinoText: m.destinoNombre || (m.destinoId === 1 ? '🏢 Depósito Central' : `Cliente #${m.destinoId}`),
-        refId: m.cosechaId ? `#${m.cosechaId}` : null
-      };
-    }
-
-    // Plantación
-    if (m.plantacionId || tipo.includes('planta')) {
+    // 1. FK a Plantación (m.plantacionId)
+    if (m.plantacionId) {
+      const esEmpresa = origId === 1 || this.sucursalesList.some(s => Number(s.participanteComercialId) === origId || Number(s.id) === origId);
+      const titular = this._resolverNombreParticipante(origId, origRaw);
       return {
         categoria: 'Plantacion',
         nombre: 'Plantación',
         badgeClass: 'badge-success',
         icon: '🌱',
-        origenText: m.origenNombre || (m.origenId === 1 ? '🏢 Depósito Central' : `Cliente #${m.origenId}`),
-        destinoText: '🌱 Fila / Lote',
-        refId: m.plantacionId ? `#${m.plantacionId}` : null
+        origenText: '🌱 Campo / Fila Plantada',
+        origenImpacto: null,
+        destinoText: titular,
+        destinoImpacto: { texto: '- Egreso a Campo', clase: 'badge-danger' },
+        afectaEmpresa: esEmpresa,
+        afectaCliente: !esEmpresa,
+        refId: `PLT #${m.plantacionId}`
       };
     }
 
-    // Ajuste de stock
-    let esIngreso = false;
-    if (obs.includes('[ingreso') || obs.includes('(+)') || m.origenId === 0 || (m.origenNombre || '').toLowerCase().includes('ajuste')) {
-      esIngreso = true;
+    // 2. FK a Cosecha (m.cosechaId)
+    if (m.cosechaId) {
+      const esEmpresa = destId === 1 || this.sucursalesList.some(s => Number(s.participanteComercialId) === destId || Number(s.id) === destId);
+      const titular = this._resolverNombreParticipante(destId, destRaw);
+      return {
+        categoria: 'Cosecha',
+        nombre: 'Cosecha',
+        badgeClass: 'badge-warning',
+        icon: '🌾',
+        origenText: '🌾 Campo / Cosecha',
+        origenImpacto: null,
+        destinoText: titular,
+        destinoImpacto: { texto: '+ Ingreso', clase: 'badge-success' },
+        afectaEmpresa: esEmpresa,
+        afectaCliente: !esEmpresa,
+        refId: `COS #${m.cosechaId}`
+      };
     }
+
+    // 3. FK a Movimiento Comercial (m.movimientoComercialId)
+    if (m.movimientoComercialId) {
+      const obs = String(m.observaciones || '');
+      const tipoMc = String(m.tipoMovimientoComercialNombre || m.tipoMovimientoComercial || '').toLowerCase();
+      const esTraspaso = tipoMc.includes('traspaso') || obs.includes('TraspasoEntreClientes') || obs.toLowerCase().includes('traspaso');
+      const esCompra = tipoMc.includes('compra') || obs.includes('CompraACliente') || obs.toLowerCase().includes('compra a cliente');
+      const esVenta = tipoMc.includes('venta') || obs.includes('VentaACliente') || obs.toLowerCase().includes('venta a cliente');
+
+      const origenText = this._resolverNombreParticipante(origId, origRaw);
+      const destinoText = this._resolverNombreParticipante(destId, destRaw);
+
+      const origenIsSucursal = origId === 1 || this.sucursalesList.some(s => Number(s.participanteComercialId) === origId || Number(s.id) === origId);
+      const destinoIsSucursal = destId === 1 || this.sucursalesList.some(s => Number(s.participanteComercialId) === destId || Number(s.id) === destId);
+      const entreSucursales = origenIsSucursal && destinoIsSucursal;
+
+      if (esTraspaso || (!esCompra && !esVenta && ((origId > 1 && destId > 1) || (origenIsSucursal && destinoIsSucursal)))) {
+        return {
+          categoria: 'Traspaso',
+          nombre: entreSucursales ? 'Traspaso entre Sucursales' : 'Traspaso entre Clientes',
+          badgeClass: 'badge-accent',
+          icon: '🔄',
+          origenText,
+          origenImpacto: { texto: '- Egreso', clase: 'badge-danger' },
+          destinoText,
+          destinoImpacto: { texto: '+ Ingreso', clase: 'badge-success' },
+          afectaEmpresa: origenIsSucursal || destinoIsSucursal,
+          afectaCliente: !origenIsSucursal || !destinoIsSucursal,
+          refId: `OP #${m.movimientoComercialId}`
+        };
+      }
+
+      if (esCompra || (!esVenta && !origenIsSucursal && destinoIsSucursal)) {
+        return {
+          categoria: 'Compra',
+          nombre: 'Compra a Cliente',
+          badgeClass: 'badge-info',
+          icon: '📥',
+          origenText,
+          origenImpacto: { texto: '- Egreso', clase: 'badge-danger' },
+          destinoText,
+          destinoImpacto: { texto: '+ Ingreso', clase: 'badge-success' },
+          afectaEmpresa: true,
+          afectaCliente: true,
+          refId: `OP #${m.movimientoComercialId}`
+        };
+      }
+
+      // Venta a Cliente
+      return {
+        categoria: 'Venta',
+        nombre: 'Venta a Cliente',
+        badgeClass: 'badge-primary',
+        icon: '🛒',
+        origenText,
+        origenImpacto: { texto: '- Egreso', clase: 'badge-danger' },
+        destinoText,
+        destinoImpacto: { texto: '+ Ingreso', clase: 'badge-success' },
+        afectaEmpresa: true,
+        afectaCliente: true,
+        refId: `OP #${m.movimientoComercialId}`
+      };
+    }
+
+    // 4. Sin ninguna FK -> Ajuste de Stock
+    const obs = String(m.observaciones || '');
+    const esEgreso = destRaw.toLowerCase().includes('ajuste') || destId === 0 || obs.includes('[Egreso');
+    const esIngreso = !esEgreso;
+    const titularId = esIngreso ? destId : origId;
+    const titularRaw = esIngreso ? destRaw : origRaw;
+    const titular = this._resolverNombreParticipante(titularId, titularRaw);
+    const esEmpresa = titularId === 1 || this.sucursalesList.some(s => Number(s.participanteComercialId) === titularId || Number(s.id) === titularId);
 
     return {
       categoria: 'AjusteStock',
       nombre: esIngreso ? 'Ajuste Stock (+)' : 'Ajuste Stock (-)',
       badgeClass: esIngreso ? 'badge-success' : 'badge-danger',
       icon: esIngreso ? '➕' : '➖',
-      origenText: m.origenNombre || (m.origenId === 1 ? '🏢 Depósito Central' : (m.origenId === 0 ? '⚖️ Ajustes' : `Cliente #${m.origenId}`)),
-      destinoText: m.destinoNombre || (m.destinoId === 1 ? '🏢 Depósito Central' : (m.destinoId === 0 ? '⚖️ Ajustes' : `Cliente #${m.destinoId}`)),
+      origenText: '⚖️ Ajuste de Inventario',
+      origenImpacto: null,
+      destinoText: titular,
+      destinoImpacto: {
+        texto: esIngreso ? '+ Ingreso' : '- Egreso',
+        clase: esIngreso ? 'badge-success' : 'badge-danger'
+      },
+      afectaEmpresa: esEmpresa,
+      afectaCliente: !esEmpresa,
       refId: null
     };
   }
@@ -370,19 +338,22 @@ export class HistorialMovimientosView {
     const tbody = this.container.querySelector('#historial-table-body');
     let items = [...this.movimientosCache];
 
-    // 1. Filtro de búsqueda
+    // 1. Filtro de búsqueda (comprobante, nombre y apellido del cliente, tipo u observaciones)
     if (this.filterBusqueda) {
       items = items.filter(m => {
+        const opInfo = this._getTipoOperacionInfo(m);
         const idStr = String(m.id || '');
-        const compStr = String(m.numeroComprobante || '').toLowerCase();
+        const compStr = String(m.numeroComprobante || `MOV-${m.id}`).toLowerCase();
         const obsStr = String(m.observaciones || '').toLowerCase();
-        const origStr = String(m.origenNombre || '').toLowerCase();
-        const destStr = String(m.destinoNombre || '').toLowerCase();
+        const origStr = String(opInfo.origenText || '').toLowerCase();
+        const destStr = String(opInfo.destinoText || '').toLowerCase();
+        const tipoStr = String(opInfo.nombre || '').toLowerCase();
         return idStr.includes(this.filterBusqueda) ||
           compStr.includes(this.filterBusqueda) ||
           obsStr.includes(this.filterBusqueda) ||
           origStr.includes(this.filterBusqueda) ||
-          destStr.includes(this.filterBusqueda);
+          destStr.includes(this.filterBusqueda) ||
+          tipoStr.includes(this.filterBusqueda);
       });
     }
 
@@ -400,23 +371,26 @@ export class HistorialMovimientosView {
     }
 
     // 4. Filtro por titular
-    if (this.filterEntidad === 'empresa') {
-      items = items.filter(m => {
-        const orig = (m.origenNombre || '').toLowerCase();
-        const dest = (m.destinoNombre || '').toLowerCase();
-        const obs = (m.observaciones || '').toLowerCase();
-        return m.origenId === 1 || m.destinoId === 1 ||
-          orig.includes('empresa') || orig.includes('central') ||
-          dest.includes('empresa') || dest.includes('central') ||
-          obs.includes('empresa');
-      });
-    } else if (this.filterEntidad === 'clientes') {
-      items = items.filter(m => {
-        const orig = (m.origenNombre || '').toLowerCase();
-        const dest = (m.destinoNombre || '').toLowerCase();
-        return (m.origenId > 1 && !orig.includes('ajuste')) ||
-          (m.destinoId > 1 && !dest.includes('ajuste'));
-      });
+    if (this.filterEntidad === 'todas_sucursales' || this.filterEntidad === 'empresa') {
+      items = items.filter(m => this._getTipoOperacionInfo(m).afectaEmpresa);
+    } else if (this.filterEntidad === 'todos_clientes' || this.filterEntidad === 'clientes') {
+      items = items.filter(m => this._getTipoOperacionInfo(m).afectaCliente);
+    } else if (this.filterEntidad.startsWith('sucursal:')) {
+      const targetPartId = Number(this.filterEntidad.replace('sucursal:', ''));
+      const foundSuc = this.sucursalesList.find(s => Number(s.participanteComercialId) === targetPartId || Number(s.id) === targetPartId);
+      const possibleIds = new Set([targetPartId]);
+      if (foundSuc) {
+        if (foundSuc.id) possibleIds.add(Number(foundSuc.id));
+        if (foundSuc.participanteComercialId) possibleIds.add(Number(foundSuc.participanteComercialId));
+      }
+      items = items.filter(m => possibleIds.has(Number(m.origenId)) || possibleIds.has(Number(m.destinoId)));
+    } else if (this.filterEntidad.startsWith('cliente:')) {
+      const targetCliId = Number(this.filterEntidad.replace('cliente:', ''));
+      items = items.filter(m =>
+        Number(m.origenId) === targetCliId ||
+        Number(m.destinoId) === targetCliId ||
+        Number(m.clienteId) === targetCliId
+      );
     }
 
     if (items.length === 0) {
@@ -442,14 +416,27 @@ export class HistorialMovimientosView {
       const isPendiente = m.estado === 'Pendiente';
 
       let motivoLimpio = (m.observaciones || '')
+        .replace(/\[Ingreso a Sucursal:[^\]]+\]\s*/i, '')
+        .replace(/\[Egreso de Sucursal:[^\]]+\]\s*/i, '')
         .replace(/\[Ingreso a Empresa\]\s*/i, '')
         .replace(/\[Egreso de Empresa\]\s*/i, '')
         .replace(/\[Ingreso a Cliente\]\s*/i, '')
         .replace(/\[Egreso de Cliente\]\s*/i, '')
         .replace(/\[Ajuste de Stock Empresa \([+-]\)\]\s*/i, '')
+        .replace(/\(VentaACliente\)/i, '(Venta a Cliente)')
+        .replace(/\(CompraACliente\)/i, '(Compra a Cliente)')
+        .replace(/\(TraspasoEntreClientes\)/i, '(Traspaso)')
         .trim();
 
       if (!motivoLimpio) motivoLimpio = opInfo.nombre;
+
+      const origenImpactoHtml = opInfo.origenImpacto
+        ? `<span class="badge ${opInfo.origenImpacto.clase}" style="font-size: 0.65rem; padding: 0.1rem 0.35rem; margin-left: 0.25rem;">${escapeHtml(opInfo.origenImpacto.texto)}</span>`
+        : '';
+
+      const destinoImpactoHtml = opInfo.destinoImpacto
+        ? `<span class="badge ${opInfo.destinoImpacto.clase}" style="font-size: 0.65rem; padding: 0.1rem 0.35rem; margin-left: 0.25rem;">${escapeHtml(opInfo.destinoImpacto.texto)}</span>`
+        : '';
 
       return `
         <tr>
@@ -465,11 +452,17 @@ export class HistorialMovimientosView {
               ${opInfo.icon} ${escapeHtml(opInfo.nombre)}
             </span>
           </td>
-          <td class="text-xs text-main font-medium" style="max-width: 150px; word-break: break-word;">
-            ${escapeHtml(opInfo.origenText)}
+          <td class="text-xs text-main font-medium" style="max-width: 175px; word-break: break-word;">
+            <div class="d-flex align-center flex-wrap gap-xs">
+              <span>${escapeHtml(opInfo.origenText)}</span>
+              ${origenImpactoHtml}
+            </div>
           </td>
-          <td class="text-xs text-main font-medium" style="max-width: 150px; word-break: break-word;">
-            ${escapeHtml(opInfo.destinoText)}
+          <td class="text-xs text-main font-medium" style="max-width: 185px; word-break: break-word;">
+            <div class="d-flex align-center flex-wrap gap-xs">
+              <span>${escapeHtml(opInfo.destinoText)}</span>
+              ${destinoImpactoHtml}
+            </div>
           </td>
           <td style="text-align: right; font-weight: 800; color: var(--primary);">
             ${(m.totalBulbos || 0).toLocaleString('es-AR')}
@@ -613,11 +606,17 @@ export class HistorialMovimientosView {
         </div>
         <div>
           <label class="text-xs text-muted font-bold text-uppercase">Origen:</label>
-          <div class="font-medium text-main text-sm">${escapeHtml(opInfo.origenText)}</div>
+          <div class="font-medium text-main text-sm d-flex align-center flex-wrap gap-xs mt-1">
+            <span>${escapeHtml(opInfo.origenText)}</span>
+            ${opInfo.origenImpacto ? `<span class="badge ${opInfo.origenImpacto.clase}" style="font-size: 0.7rem;">${escapeHtml(opInfo.origenImpacto.texto)}</span>` : ''}
+          </div>
         </div>
         <div>
-          <label class="text-xs text-muted font-bold text-uppercase">Destino:</label>
-          <div class="font-medium text-main text-sm">${escapeHtml(opInfo.destinoText)}</div>
+          <label class="text-xs text-muted font-bold text-uppercase">Destino / Titular Afectado:</label>
+          <div class="font-medium text-main text-sm d-flex align-center flex-wrap gap-xs mt-1">
+            <span>${escapeHtml(opInfo.destinoText)}</span>
+            ${opInfo.destinoImpacto ? `<span class="badge ${opInfo.destinoImpacto.clase}" style="font-size: 0.7rem;">${escapeHtml(opInfo.destinoImpacto.texto)}</span>` : ''}
+          </div>
         </div>
       </div>
 

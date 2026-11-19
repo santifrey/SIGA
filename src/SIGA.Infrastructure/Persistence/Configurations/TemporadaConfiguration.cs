@@ -25,6 +25,10 @@ public class TemporadaConfiguration : IEntityTypeConfiguration<Temporada>
         builder.Property(t => t.Estado)
             .IsRequired();
 
+        builder.Property(t => t.PorcentajeComisionCompra)
+            .HasPrecision(5, 2)
+            .HasDefaultValue(0m);
+
         builder.Property(t => t.FechaCreacion)
             .IsRequired();
 

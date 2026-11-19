@@ -16,7 +16,9 @@ public class MovimientoBulbosRepository : Repository<MovimientoBulbos>, IMovimie
         return await _dbSet
             .Include(m => m.Cantidades)
             .Include(m => m.Origen)
+            .Include(m => (m.Origen as Cliente)!.Persona)
             .Include(m => m.Destino)
+            .Include(m => (m.Destino as Cliente)!.Persona)
             .Include(m => m.MovimientoComercial)
             .Include(m => m.UsuarioCreador)
                 .ThenInclude(u => u!.Persona)
@@ -29,7 +31,9 @@ public class MovimientoBulbosRepository : Repository<MovimientoBulbos>, IMovimie
             .AsNoTracking()
             .Include(m => m.Cantidades)
             .Include(m => m.Origen)
+            .Include(m => (m.Origen as Cliente)!.Persona)
             .Include(m => m.Destino)
+            .Include(m => (m.Destino as Cliente)!.Persona)
             .Include(m => m.MovimientoComercial)
             .Include(m => m.UsuarioCreador)
                 .ThenInclude(u => u!.Persona)
@@ -49,7 +53,9 @@ public class MovimientoBulbosRepository : Repository<MovimientoBulbos>, IMovimie
             .AsNoTracking()
             .Include(m => m.Cantidades)
             .Include(m => m.Origen)
+            .Include(m => (m.Origen as Cliente)!.Persona)
             .Include(m => m.Destino)
+            .Include(m => (m.Destino as Cliente)!.Persona)
             .Where(m => m.OrigenId == participanteId || m.DestinoId == participanteId)
             .OrderByDescending(m => m.Fecha)
             .ToListAsync(cancellationToken);
@@ -61,7 +67,9 @@ public class MovimientoBulbosRepository : Repository<MovimientoBulbos>, IMovimie
             .AsNoTracking()
             .Include(m => m.Cantidades)
             .Include(m => m.Origen)
+            .Include(m => (m.Origen as Cliente)!.Persona)
             .Include(m => m.Destino)
+            .Include(m => (m.Destino as Cliente)!.Persona)
             .Where(m => m.Estado == EstadoMovimiento.Confirmado && 
                        (m.OrigenId == participanteId || m.DestinoId == participanteId))
             .OrderBy(m => m.Fecha)
@@ -74,7 +82,9 @@ public class MovimientoBulbosRepository : Repository<MovimientoBulbos>, IMovimie
             .AsNoTracking()
             .Include(m => m.Cantidades)
             .Include(m => m.Origen)
+            .Include(m => (m.Origen as Cliente)!.Persona)
             .Include(m => m.Destino)
+            .Include(m => (m.Destino as Cliente)!.Persona)
             .Where(m => m.MovimientoComercialId == movimientoComercialId)
             .ToListAsync(cancellationToken);
     }

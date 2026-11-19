@@ -1,0 +1,133 @@
+<!-- ===================================================================
+     MODAL REUTILIZABLE DE CREACIÓN / EDICIÓN DE CLIENTE
+     =================================================================== -->
+<div id="modal-cliente" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-cliente-title" style="z-index: 100010 !important;">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-cliente-title">Nuevo Cliente</h3>
+      <button type="button" class="modal-close-btn" id="btn-close-modal-cliente" aria-label="Cerrar modal">
+        <svg class="icon-svg sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <form id="form-cliente" novalidate>
+      <div class="modal-body" style="max-height: calc(85vh - 130px); overflow-y: auto;">
+        <input type="hidden" id="cliente-id" />
+
+        <!-- Sección 1: Datos de Persona -->
+        <div class="form-section">
+          <div class="form-section-title">
+            <svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <span>1. Datos de la Persona</span>
+          </div>
+
+          <div class="form-row two-cols">
+            <div class="form-group">
+              <label for="cliente-nombre" class="form-label">
+                Nombre <span class="required-mark">*</span>
+              </label>
+              <input type="text" id="cliente-nombre" class="form-control" placeholder="ej. Martín" required />
+              <div class="invalid-feedback" id="val-nombre">El nombre es obligatorio.</div>
+            </div>
+
+            <div class="form-group">
+              <label for="cliente-apellido" class="form-label">
+                Apellido <span class="required-mark">*</span>
+              </label>
+              <input type="text" id="cliente-apellido" class="form-control" placeholder="ej. Gómez" required />
+              <div class="invalid-feedback" id="val-apellido">El apellido es obligatorio.</div>
+            </div>
+          </div>
+
+          <div class="form-row two-cols">
+            <div class="form-group">
+              <label for="cliente-tipo-doc" class="form-label">Tipo Documento</label>
+              <select id="cliente-tipo-doc" class="form-control">
+                <option value="DNI">DNI - Documento Nacional</option>
+                <option value="CUIT">CUIT / CUIL</option>
+                <option value="PASAPORTE">Pasaporte</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="cliente-doc" class="form-label">
+                Número de Documento <span class="required-mark">*</span>
+              </label>
+              <input type="text" id="cliente-doc" class="form-control" placeholder="ej. 32456789" required />
+              <div class="invalid-feedback" id="val-doc">El número de documento es obligatorio.</div>
+            </div>
+          </div>
+
+          <div class="form-row two-cols">
+            <div class="form-group">
+              <label for="cliente-email" class="form-label">
+                Correo Electrónico <span class="required-mark">*</span>
+              </label>
+              <input type="email" id="cliente-email" class="form-control" placeholder="ej. cliente@correo.com" required />
+              <div class="invalid-feedback" id="val-email">Ingrese un correo electrónico válido.</div>
+            </div>
+
+            <div class="form-group">
+              <label for="cliente-telefono" class="form-label">Teléfono / WhatsApp</label>
+              <input type="text" id="cliente-telefono" class="form-control" placeholder="ej. +54 351 456-7890" />
+              <div class="invalid-feedback" id="val-telefono">El teléfono solo debe contener números y símbolos válidos (+, -, espacios).</div>
+            </div>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="cliente-sucursal" class="form-label">Sucursal Asignada</label>
+            <select id="cliente-sucursal" class="form-control">
+              <option value="">Sin sucursal asignada (Central / No definida)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Sección 2: Datos Comerciales de Cliente -->
+        <div>
+          <div class="form-section-title">
+            <svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+            <span>2. Información Comercial</span>
+          </div>
+
+          <div class="form-row two-cols">
+            <div class="form-group">
+              <label for="cliente-codigo" class="form-label">
+                Código de Cliente
+                <span class="label-hint">(Autogenerado si está vacío)</span>
+              </label>
+              <input type="text" id="cliente-codigo" class="form-control" placeholder="ej. CLI-00101" />
+            </div>
+
+            <div class="form-group d-flex justify-center" style="margin-top: 1.5rem;">
+              <label class="form-switch">
+                <input type="checkbox" id="cliente-activo" class="switch-input" checked />
+                <span class="switch-slider"></span>
+                <span class="form-check-label font-semibold">Cliente Habilitado / Activo</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="cliente-contrato-id" class="form-label">
+              ID de Contrato Vinculado
+              <span class="label-hint">(Opcional / Clave foránea al contrato asociado)</span>
+            </label>
+            <input type="number" id="cliente-contrato-id" class="form-control" placeholder="ej. 1, 2, ..." min="1" />
+          </div>
+
+          <div class="form-group">
+            <label for="cliente-observaciones" class="form-label">Observaciones y Notas</label>
+            <textarea id="cliente-observaciones" class="form-control" rows="3" placeholder="Información crediticia, preferencias o datos de facturación..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-modal-cliente">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-cliente">
+          <span class="btn-text">Guardar Cliente</span>
+          <span class="btn-spinner"></span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

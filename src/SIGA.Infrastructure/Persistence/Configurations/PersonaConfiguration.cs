@@ -39,6 +39,11 @@ public class PersonaConfiguration : IEntityTypeConfiguration<Persona>
         builder.Property(p => p.IsDeleted)
             .HasDefaultValue(false);
 
+        builder.HasOne(p => p.Sucursal)
+            .WithMany()
+            .HasForeignKey(p => p.SucursalId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.Ignore(p => p.NombreCompleto);
     }
 }
@@ -47,7 +52,10 @@ public class EmpleadoConfiguration : IEntityTypeConfiguration<Empleado>
 {
     public void Configure(EntityTypeBuilder<Empleado> builder)
     {
-        builder.ToTable("Empleados");
+        builder.ToTable("Empleados", tb =>
+        {
+            tb.Property(e => e.Id).HasColumnName("IdPersona");
+        });
 
         builder.Property(e => e.Legajo)
             .HasMaxLength(50);

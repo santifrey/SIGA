@@ -1,0 +1,311 @@
+<div class="fade-in">
+  <!-- Encabezado de la Vista -->
+  <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
+    <div>
+      <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Movimientos Comerciales</h1>
+      <p class="text-muted text-sm">Gestión unificada de ventas, compras a clientes y traspasos de bulbos con circuito formal de aprobación y entrega</p>
+    </div>
+    <div class="d-flex align-center gap-sm">
+      <button class="btn btn-secondary btn-sm" id="btn-refresh-movimientos" title="Actualizar datos">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>Actualizar</span>
+      </button>
+      <button class="btn btn-primary btn-sm" id="btn-nuevo-movimiento">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Nuevo Movimiento Comercial</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       KPI COUNTERS CON FILTRADO RÁPIDO
+       =================================================================== -->
+  <div class="grid grid-cols-2 md:grid-cols-6 gap-sm mb-4" id="kpi-counters-container" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--spacing-sm);">
+    <div class="card metric-card p-3 cursor-pointer" data-kpi-estado="todos" style="cursor: pointer; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.875rem 1rem; transition: transform var(--transition-fast);">
+      <div class="metric-label">Total Registrados</div>
+      <div class="metric-value" id="kpi-total" style="font-size: 1.6rem;">0</div>
+      <div class="text-xs text-muted">Todos los estados</div>
+    </div>
+    <div class="card metric-card warning p-3 cursor-pointer" data-kpi-estado="0" style="cursor: pointer; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.875rem 1rem; border-left: 4px solid var(--warning);">
+      <div class="metric-label" style="color: var(--warning);">Pendientes</div>
+      <div class="metric-value" id="kpi-pendientes" style="font-size: 1.6rem; color: var(--warning);">0</div>
+      <div class="text-xs text-muted">En revisión</div>
+    </div>
+    <div class="card metric-card info p-3 cursor-pointer" data-kpi-estado="1" style="cursor: pointer; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.875rem 1rem; border-left: 4px solid var(--info);">
+      <div class="metric-label" style="color: var(--info);">Aprobados</div>
+      <div class="metric-value" id="kpi-aprobados" style="font-size: 1.6rem; color: var(--info);">0</div>
+      <div class="text-xs text-muted">Aprobación Admin</div>
+    </div>
+    <div class="card metric-card primary p-3 cursor-pointer" data-kpi-estado="2" style="cursor: pointer; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.875rem 1rem; border-left: 4px solid var(--primary);">
+      <div class="metric-label" style="color: var(--primary);">Facturados</div>
+      <div class="metric-value" id="kpi-facturados" style="font-size: 1.6rem; color: var(--primary);">0</div>
+      <div class="text-xs text-muted">Con comprobante</div>
+    </div>
+    <div class="card metric-card success p-3 cursor-pointer" data-kpi-estado="3" style="cursor: pointer; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.875rem 1rem; border-left: 4px solid var(--success);">
+      <div class="metric-label" style="color: var(--success);">Finalizados</div>
+      <div class="metric-value" id="kpi-finalizados" style="font-size: 1.6rem; color: var(--success);">0</div>
+      <div class="text-xs text-muted">Stock impactado</div>
+    </div>
+    <div class="card metric-card danger p-3 cursor-pointer" data-kpi-estado="4" style="cursor: pointer; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.875rem 1rem; border-left: 4px solid var(--danger);">
+      <div class="metric-label" style="color: var(--danger);">Rechazados</div>
+      <div class="metric-value" id="kpi-rechazados" style="font-size: 1.6rem; color: var(--danger);">0</div>
+      <div class="text-xs text-muted">Observados</div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       BARRA DE FILTROS AVANZADOS
+       =================================================================== -->
+  <div class="card mb-4" style="padding: 1.25rem;">
+    <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-sm align-center" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--spacing-sm);">
+      <div>
+        <label for="filtro-tipo" class="form-label text-xs font-bold uppercase text-muted mb-1">Tipo:</label>
+        <select id="filtro-tipo" class="form-control form-control-sm">
+          <option value="todos">Todos los Tipos</option>
+          <option value="1">Venta a Cliente</option>
+          <option value="2">Compra a Cliente</option>
+          <option value="3">Traspaso entre Clientes</option>
+        </select>
+      </div>
+      <div>
+        <label for="filtro-estado" class="form-label text-xs font-bold uppercase text-muted mb-1">Estado:</label>
+        <select id="filtro-estado" class="form-control form-control-sm">
+          <option value="todos">Todos los Estados</option>
+          <option value="0">Pendiente Revisión</option>
+          <option value="1">Aprobado Admin</option>
+          <option value="2">Facturado</option>
+          <option value="3">Finalizado</option>
+          <option value="4">Rechazado</option>
+        </select>
+      </div>
+      <div>
+        <label for="filtro-cliente" class="form-label text-xs font-bold uppercase text-muted mb-1">Cliente:</label>
+        <select id="filtro-cliente" class="form-control form-control-sm">
+          <option value="todos">Todos los Clientes</option>
+        </select>
+      </div>
+      <div>
+        <label for="filtro-temporada" class="form-label text-xs font-bold uppercase text-muted mb-1">Temporada:</label>
+        <select id="filtro-temporada" class="form-control form-control-sm">
+          <option value="todos">Todas las Temporadas</option>
+        </select>
+      </div>
+      <div>
+        <label for="filtro-fecha-desde" class="form-label text-xs font-bold uppercase text-muted mb-1">Desde:</label>
+        <input type="date" id="filtro-fecha-desde" class="form-control form-control-sm" />
+      </div>
+      <div>
+        <label for="filtro-fecha-hasta" class="form-label text-xs font-bold uppercase text-muted mb-1">Hasta:</label>
+        <input type="date" id="filtro-fecha-hasta" class="form-control form-control-sm" />
+      </div>
+      <div class="d-flex align-end gap-xs" style="height: 100%; padding-top: 1.25rem;">
+        <button class="btn btn-secondary btn-sm" id="btn-limpiar-filtros" style="flex: 1;" title="Restablecer filtros">
+          Limpiar
+        </button>
+      </div>
+    </div>
+    <div class="mt-2">
+      <input type="text" id="filtro-search" class="form-control form-control-sm" placeholder="Buscar por #ID, nombre de cliente, código o motivo..." />
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       TABLA DE MOVIMIENTOS COMERCIALES
+       =================================================================== -->
+  <div class="table-card">
+    <div class="table-responsive">
+      <table class="table table-hover" id="tabla-movimientos">
+        <thead>
+          <tr>
+            <th style="width: 7%;"># ID</th>
+            <th style="width: 10%;">Fecha</th>
+            <th style="width: 14%;">Tipo Operación</th>
+            <th style="width: 20%;">Participantes</th>
+            <th style="width: 9%; text-align: right;">Bulbos</th>
+            <th style="width: 13%; text-align: right;">Total / Neto</th>
+            <th style="width: 11%;">Estado Circuito</th>
+            <th style="width: 8%; text-align: center;">Doc</th>
+            <th style="width: 8%; text-align: center;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-movimientos">
+          <tr>
+            <td colspan="9" class="text-center text-muted" style="padding: 2.5rem;">Cargando movimientos comerciales...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       MODAL DINÁMICO: CREACIÓN / EDICIÓN DE MOVIMIENTO
+       =================================================================== -->
+  <div id="modal-movimiento" class="modal-backdrop">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-movimiento-title">Nuevo Movimiento Comercial</h3>
+        <button type="button" class="btn-icon modal-close" id="btn-close-modal-movimiento">&times;</button>
+      </div>
+      <div class="modal-body p-4" style="max-height: calc(85vh - 120px); overflow-y: auto;">
+        <form id="form-movimiento">
+          <!-- Selector de Tipo -->
+          <div class="mb-4">
+            <label class="form-label font-bold text-xs uppercase text-muted mb-2">Tipo de Movimiento Comercial *</label>
+            <div class="d-flex gap-sm flex-wrap" id="tipo-movimiento-radios">
+              <label class="card p-2 d-flex align-center gap-xs cursor-pointer" style="flex: 1; min-width: 180px; border-radius: var(--radius-md);">
+                <input type="radio" name="radio-tipo-movimiento" value="1" checked />
+                <div>
+                  <strong class="d-block text-sm text-primary">Venta a Cliente</strong>
+                  <span class="text-xs text-muted">Empresa Central &rarr; Cliente</span>
+                </div>
+              </label>
+              <label class="card p-2 d-flex align-center gap-xs cursor-pointer" style="flex: 1; min-width: 180px; border-radius: var(--radius-md);">
+                <input type="radio" name="radio-tipo-movimiento" value="2" />
+                <div>
+                  <strong class="d-block text-sm text-accent">Compra a Cliente</strong>
+                  <span class="text-xs text-muted">Cliente &rarr; Empresa (con comisión)</span>
+                </div>
+              </label>
+              <label class="card p-2 d-flex align-center gap-xs cursor-pointer" style="flex: 1; min-width: 180px; border-radius: var(--radius-md);">
+                <input type="radio" name="radio-tipo-movimiento" value="3" />
+                <div>
+                  <strong class="d-block text-sm text-info">Traspaso entre Clientes</strong>
+                  <span class="text-xs text-muted">Logístico ($0.00)</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Temporada Agrícola -->
+          <div class="form-group mb-3">
+            <label for="mov-temporada" class="form-label text-xs font-bold uppercase text-muted">Temporada Agrícola *</label>
+            <select id="mov-temporada" class="form-control" required>
+              <option value="">Seleccione temporada...</option>
+            </select>
+          </div>
+
+          <!-- Participantes Dinámicos -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-md mb-3" id="participantes-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--spacing-md);">
+            <!-- Inyectado dinámicamente según selectedTipo -->
+          </div>
+
+          <!-- Aviso de Cliente Nuevo (solo Tipo 1) -->
+          <div id="aviso-cliente-nuevo" class="mb-3" style="display: none;"></div>
+
+          <!-- Aviso de Comisión (solo Tipo 2) -->
+          <div id="container-comision" class="mb-3" style="display: none;"></div>
+
+          <!-- Aviso de Traspaso (solo Tipo 3) -->
+          <div id="aviso-traspaso" class="mb-3" style="display: none;">
+            <div class="alert alert-info d-flex align-center gap-sm p-3" style="background: rgba(14, 165, 233, 0.1); border-left: 4px solid var(--info); border-radius: var(--radius-sm);">
+              <span style="font-size: 1.1rem;">ℹ️</span>
+              <div class="text-sm">
+                <strong>Operación Logística:</strong> El traspaso directo entre productores no genera impacto económico comercial ($0.00) y se transfiere de forma directa tras la aprobación administrativa (sin emisión de factura).
+              </div>
+            </div>
+          </div>
+
+          <!-- Advertencia de Stock de Origen en tiempo real -->
+          <div id="alerta-stock-origen" class="mb-3" style="display: none;"></div>
+
+          <!-- Grilla de Ítems (Clases 0 a 4 + MIX) -->
+          <div class="mb-3">
+            <label class="form-label font-bold text-xs uppercase text-muted mb-2">Desglose de Bulbos por Calibre y MIX *</label>
+            <div class="table-responsive">
+              <table class="table table-bordered mb-0" id="tabla-items-movimiento">
+                <thead style="background: var(--surface-alt);">
+                  <tr>
+                    <th style="width: 25%;">Clase Comercial</th>
+                    <th style="width: 25%;">Cantidad (Bulbos)</th>
+                    <th style="width: 25%;">Precio Unit. Pactado ($)</th>
+                    <th style="width: 25%; text-align: right;">Subtotal ($)</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-items-movimiento">
+                  <!-- Inyectado dinámicamente para las 6 clases -->
+                </tbody>
+                <tfoot style="background: var(--surface-alt); font-weight: 700;">
+                  <tr>
+                    <td>TOTAL BULBOS:</td>
+                    <td id="mov-total-bulbos-cell" class="font-bold text-primary">0 unidades</td>
+                    <td id="mov-label-tipo-total" style="text-align: right;">MONTO TOTAL:</td>
+                    <td id="mov-total-monto-cell" style="text-align: right; color: var(--success); font-size: 1.15rem;">$ 0,00</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <!-- Desglose de Comisión en vivo (solo Tipo 2) -->
+          <div id="resumen-comision-compra" class="card p-3 mb-3" style="display: none; background: rgba(229, 142, 38, 0.08); border-left: 4px solid var(--accent);">
+            <div class="d-flex justify-between align-center text-sm mb-1">
+              <span>Monto Bruto de Compra:</span>
+              <strong id="label-bruto-compra">$ 0,00</strong>
+            </div>
+            <div class="d-flex justify-between align-center text-sm mb-1 text-danger">
+              <span>Comisión Administrativa (<span id="label-pct-comision">5</span>%):</span>
+              <strong id="label-monto-comision">- $ 0,00</strong>
+            </div>
+            <div class="d-flex justify-between align-center font-bold text-base border-top pt-2 mt-1">
+              <span>Monto Neto a Liquidar al Cliente:</span>
+              <strong class="text-success" id="label-neto-compra">$ 0,00</strong>
+            </div>
+          </div>
+
+          <!-- Observaciones -->
+          <div class="form-group mb-4">
+            <label for="mov-observaciones" class="form-label text-xs font-bold uppercase text-muted">Observaciones Generales</label>
+            <textarea id="mov-observaciones" class="form-control" rows="2" placeholder="Notas adicionales sobre la operación, condición de entrega o acuerdos comerciales..."></textarea>
+          </div>
+
+          <div class="d-flex justify-end gap-sm">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-modal-movimiento">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="btn-submit-movimiento">
+              <span>Guardar y Registrar</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       MODAL DINÁMICO: DETALLE Y AUDITORÍA DE MOVIMIENTO
+       =================================================================== -->
+  <div id="modal-detalle-movimiento" class="modal-backdrop">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-detalle-title">Detalle de Operación Comercial</h3>
+        <button type="button" class="btn-icon modal-close" id="btn-close-modal-detalle">&times;</button>
+      </div>
+      <div class="modal-body p-4" id="modal-detalle-body" style="max-height: calc(85vh - 140px); overflow-y: auto;">
+        <!-- Inyectado dinámicamente -->
+      </div>
+      <div class="modal-footer" id="modal-detalle-footer">
+        <!-- Botones de acción dinámicos -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       MODAL DINÁMICO: ACCIÓN DE CIRCUITO (CONTRATO / FACTURA / RECHAZO / FINALIZAR)
+       =================================================================== -->
+  <div id="modal-accion-circuito" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-accion-title">Acción del Circuito</h3>
+        <button type="button" class="btn-icon modal-close" id="btn-close-modal-accion">&times;</button>
+      </div>
+      <div class="modal-body p-4" id="modal-accion-body">
+        <!-- Inyectado dinámicamente -->
+      </div>
+    </div>
+  </div>
+</div>

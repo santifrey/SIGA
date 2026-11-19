@@ -55,14 +55,14 @@ public class GestionPreciosReferencia : IGestionPreciosReferencia
             await _precioClaseRepository.UpdateAsync(existente, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            return ApiResponse<PrecioReferenciaDto>.Ok(MapPrecioToDto(existente, temporada.Nombre), "Precio de referencia actualizado exitosamente.");
+            return ApiResponse<PrecioReferenciaDto>.Ok(MapPrecioToDto(existente, temporada.Nombre, temporada.PorcentajeComisionCompra), "Precio de referencia actualizado exitosamente.");
         }
 
         var nuevo = new PrecioClase(dto.TemporadaId, dto.ClaseBulbo, dto.PrecioReferencia);
         await _precioClaseRepository.AddAsync(nuevo, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return ApiResponse<PrecioReferenciaDto>.Created(MapPrecioToDto(nuevo, temporada.Nombre), "Precio de referencia registrado exitosamente.");
+        return ApiResponse<PrecioReferenciaDto>.Created(MapPrecioToDto(nuevo, temporada.Nombre, temporada.PorcentajeComisionCompra), "Precio de referencia registrado exitosamente.");
     }
 
     public async Task<ApiResponse<IEnumerable<PrecioReferenciaDto>>> ConfigurarPreciosTemporadaAsync(
@@ -72,6 +72,12 @@ public class GestionPreciosReferencia : IGestionPreciosReferencia
         var temporada = await _temporadaRepository.GetByIdAsync(dto.TemporadaId, cancellationToken);
         if (temporada == null)
             throw new NotFoundException(nameof(Temporada), dto.TemporadaId);
+
+        if (dto.PorcentajeComisionCompra.HasValue)
+        {
+            temporada.ActualizarComisionCompra(dto.PorcentajeComisionCompra.Value);
+            await _temporadaRepository.UpdateAsync(temporada, cancellationToken);
+        }
 
         var existentes = (await _precioClaseRepository.GetByTemporadaAsync(dto.TemporadaId, cancellationToken))
             .ToDictionary(p => p.ClaseBulbo, p => p);
@@ -115,7 +121,7 @@ public class GestionPreciosReferencia : IGestionPreciosReferencia
         {
             if (preciosDict.TryGetValue(clase, out var precio))
             {
-                return MapPrecioToDto(precio, temporada.Nombre);
+                return MapPrecioToDto(precio, temporada.Nombre, temporada.PorcentajeComisionCompra);
             }
 
             return new PrecioReferenciaDto
@@ -125,6 +131,7 @@ public class GestionPreciosReferencia : IGestionPreciosReferencia
                 NombreTemporada = temporada.Nombre,
                 ClaseBulbo = clase,
                 PrecioReferencia = 0m,
+                PorcentajeComisionCompra = temporada.PorcentajeComisionCompra,
                 FechaVigencia = DateTime.UtcNow
             };
         }).ToList();
@@ -147,7 +154,7 @@ public class GestionPreciosReferencia : IGestionPreciosReferencia
         var precio = await _precioClaseRepository.GetByTemporadaAndClaseAsync(temporadaId, clase, cancellationToken);
         if (precio != null)
         {
-            return ApiResponse<PrecioReferenciaDto>.Ok(MapPrecioToDto(precio, temporada.Nombre));
+            return ApiResponse<PrecioReferenciaDto>.Ok(MapPrecioToDto(precio, temporada.Nombre, temporada.PorcentajeComisionCompra));
         }
 
         return ApiResponse<PrecioReferenciaDto>.Ok(new PrecioReferenciaDto
@@ -157,6 +164,7 @@ public class GestionPreciosReferencia : IGestionPreciosReferencia
             NombreTemporada = temporada.Nombre,
             ClaseBulbo = clase,
             PrecioReferencia = 0m,
+            PorcentajeComisionCompra = temporada.PorcentajeComisionCompra,
             FechaVigencia = DateTime.UtcNow
         });
     }
@@ -169,7 +177,7 @@ public class GestionPreciosReferencia : IGestionPreciosReferencia
         return ObtenerPrecioVigenteAsync(temporadaId, clase, cancellationToken);
     }
 
-    private static PrecioReferenciaDto MapPrecioToDto(PrecioClase precio, string nombreTemporada)
+    private static PrecioReferenciaDto MapPrecioToDto(PrecioClase precio, string nombreTemporada, decimal porcentajeComision = 0m)
     {
         return new PrecioReferenciaDto
         {
@@ -178,6 +186,7 @@ public class GestionPreciosReferencia : IGestionPreciosReferencia
             NombreTemporada = nombreTemporada,
             ClaseBulbo = precio.ClaseBulbo,
             PrecioReferencia = precio.PrecioReferencia,
+            PorcentajeComisionCompra = porcentajeComision,
             FechaVigencia = precio.FechaVigencia
         };
     }

@@ -1,0 +1,155 @@
+<div class="fade-in">
+  <!-- Encabezado de Sección -->
+  <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
+    <div>
+      <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Gestión de Sucursales</h1>
+      <p class="text-muted text-sm">Control de sedes operativas, capacidades instaladas y responsables</p>
+    </div>
+    <div class="d-flex gap-sm">
+      <button class="btn btn-secondary" id="btn-refresh-sucursales" title="Refrescar">
+        <svg class="icon-svg sm" viewBox="0 0 24 24">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>Refrescar</span>
+      </button>
+      <button class="btn btn-primary" id="btn-new-sucursal">
+        <svg class="icon-svg sm" viewBox="0 0 24 24">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Nueva Sucursal</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Barra de herramientas (Búsqueda y Modo de vista) -->
+  <div class="table-card mb-4" style="border-radius: var(--radius-lg);">
+    <div class="table-toolbar">
+      <div class="toolbar-search">
+        <div class="input-group">
+          <span class="input-icon-left">
+            <svg class="icon-svg sm" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
+          <input
+            type="text"
+            id="search-sucursales"
+            class="form-control has-icon-left"
+            placeholder="Buscar por nombre, código o ciudad..."
+          />
+        </div>
+      </div>
+
+      <div class="toolbar-actions">
+        <label class="text-xs text-muted font-semibold">Estado:</label>
+        <select id="filter-sucursales-estado" class="form-control" style="width: 140px; padding: 0.45rem 2rem 0.45rem 0.75rem;">
+          <option value="todas">Todas</option>
+          <option value="activas">Solo Activas</option>
+          <option value="inactivas">Solo Inactivas</option>
+        </select>
+
+        <div class="d-flex gap-xs" style="margin-left: 0.5rem;">
+          <button type="button" class="btn btn-sm btn-primary" id="btn-mode-cards" title="Vista en tarjetas">
+            <svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline" id="btn-mode-table" title="Vista en tabla">
+            <svg class="icon-svg sm" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor dinámico (Tarjetas o Tabla) -->
+  <div id="sucursales-container">
+    <div class="text-center text-muted" style="padding: 3rem;">Cargando sucursales...</div>
+  </div>
+</div>
+
+<!-- Modal Crear / Editar Sucursal -->
+<div id="modal-sucursal" class="modal-backdrop" role="dialog" aria-modal="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-sucursal-title">Nueva Sucursal</h3>
+      <button type="button" class="modal-close-btn" id="btn-close-modal-sucursal">
+        <svg class="icon-svg sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <form id="form-sucursal" novalidate>
+      <div class="modal-body">
+        <input type="hidden" id="sucursal-id" />
+
+        <div class="form-row two-cols">
+          <div class="form-group">
+            <label for="sucursal-nombre" class="form-label">
+              Nombre de la Sucursal <span class="required-mark">*</span>
+            </label>
+            <input type="text" id="sucursal-nombre" class="form-control" placeholder="ej. Sucursal Córdoba Centro" required />
+            <div class="invalid-feedback">El nombre es obligatorio.</div>
+          </div>
+
+          <div class="form-group">
+            <label for="sucursal-codigo" class="form-label">
+              Código Identificador <span class="label-hint">(ej. SUC-CBA-01)</span>
+            </label>
+            <input type="text" id="sucursal-codigo" class="form-control" placeholder="ej. SUC-01" />
+          </div>
+        </div>
+
+        <div class="form-row two-cols">
+          <div class="form-group">
+            <label for="sucursal-direccion" class="form-label">
+              Dirección / Calle y Número <span class="required-mark">*</span>
+            </label>
+            <input type="text" id="sucursal-direccion" class="form-control" placeholder="ej. Bv. Chacabuco 780" required />
+            <div class="invalid-feedback">La dirección es obligatoria.</div>
+          </div>
+
+          <div class="form-group">
+            <label for="sucursal-ciudad" class="form-label">Ciudad / Localidad</label>
+            <input type="text" id="sucursal-ciudad" class="form-control" placeholder="ej. Córdoba Capital" />
+          </div>
+        </div>
+
+        <div class="form-row three-cols">
+          <div class="form-group">
+            <label for="sucursal-telefono" class="form-label">Teléfono</label>
+            <input type="text" id="sucursal-telefono" class="form-control" placeholder="ej. +54 351 468-9000" />
+          </div>
+
+          <div class="form-group">
+            <label for="sucursal-capacidad" class="form-label">
+              Capacidad (Puestos) <span class="required-mark">*</span>
+            </label>
+            <input type="number" id="sucursal-capacidad" class="form-control" min="1" max="2000" value="50" required />
+          </div>
+
+          <div class="form-group">
+            <label for="sucursal-responsable" class="form-label">Responsable / Encargado</label>
+            <input type="text" id="sucursal-responsable" class="form-control" placeholder="ej. Lic. Mariano Valdéz" />
+          </div>
+        </div>
+
+        <div class="form-group mt-2">
+          <label class="form-switch">
+            <input type="checkbox" id="sucursal-activa" class="switch-input" checked />
+            <span class="switch-slider"></span>
+            <span class="form-check-label font-semibold">Sucursal Operativa / Activa</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-modal-sucursal">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-sucursal">
+          <span class="btn-text">Guardar Sucursal</span>
+          <span class="btn-spinner"></span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

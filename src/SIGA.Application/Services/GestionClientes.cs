@@ -50,15 +50,17 @@ public class GestionClientes : IGestionClientes
         return ApiResponse<ClienteDto>.Ok(MapToDto(cliente));
     }
 
-    public async Task<ApiResponse<IEnumerable<ClienteDto>>> GetAllAsync(string? busqueda = null, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<IEnumerable<ClienteDto>>> GetAllAsync(string? busqueda = null, int? limit = null, CancellationToken cancellationToken = default)
     {
-        var clientes = await _clienteRepository.GetAllWithPersonaAsync(busqueda, cancellationToken);
+        var clientes = await _clienteRepository.GetAllWithPersonaAsync(busqueda, limit, cancellationToken);
         var dtos = clientes.Select(MapToDto);
         return ApiResponse<IEnumerable<ClienteDto>>.Ok(dtos);
     }
 
     public async Task<ApiResponse<ClienteDto>> CreateAsync(CreateClienteDto dto, CancellationToken cancellationToken = default)
     {
+        ValidatePersonaData(dto.Email, dto.Documento, dto.Telefono);
+
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
@@ -76,9 +78,13 @@ public class GestionClientes : IGestionClientes
                 if (string.IsNullOrWhiteSpace(persona.Email) && !string.IsNullOrWhiteSpace(dto.Email))
                 {
                     persona.Email = dto.Email.Trim();
-                    await _personaRepository.UpdateAsync(persona, cancellationToken);
-                    await _unitOfWork.SaveChangesAsync(cancellationToken);
                 }
+                if (dto.SucursalId.HasValue)
+                {
+                    persona.SucursalId = dto.SucursalId.Value > 0 ? dto.SucursalId.Value : null;
+                }
+                await _personaRepository.UpdateAsync(persona, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
             else
             {
@@ -99,9 +105,13 @@ public class GestionClientes : IGestionClientes
                     if (string.IsNullOrWhiteSpace(persona.Email) && !string.IsNullOrWhiteSpace(dto.Email))
                     {
                         persona.Email = dto.Email.Trim();
-                        await _personaRepository.UpdateAsync(persona, cancellationToken);
-                        await _unitOfWork.SaveChangesAsync(cancellationToken);
                     }
+                    if (dto.SucursalId.HasValue)
+                    {
+                        persona.SucursalId = dto.SucursalId.Value > 0 ? dto.SucursalId.Value : null;
+                    }
+                    await _personaRepository.UpdateAsync(persona, cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
                 }
                 else
                 {
@@ -111,7 +121,8 @@ public class GestionClientes : IGestionClientes
                         Apellido = dto.Apellido.Trim(),
                         Documento = dto.Documento.Trim(),
                         Telefono = dto.Telefono?.Trim(),
-                        Email = dto.Email?.Trim()
+                        Email = dto.Email?.Trim(),
+                        SucursalId = dto.SucursalId.HasValue && dto.SucursalId.Value > 0 ? dto.SucursalId.Value : null
                     };
 
                     await _personaRepository.AddAsync(persona, cancellationToken);
@@ -200,6 +211,8 @@ public class GestionClientes : IGestionClientes
 
     public async Task<ApiResponse<ClienteDto>> UpdateAsync(int id, UpdateClienteDto dto, CancellationToken cancellationToken = default)
     {
+        ValidatePersonaData(dto.Email, dto.Documento, dto.Telefono);
+
         var cliente = await _clienteRepository.GetByIdWithPersonaAsync(id, cancellationToken);
         if (cliente == null)
             throw new NotFoundException(nameof(Cliente), id);
@@ -214,6 +227,8 @@ public class GestionClientes : IGestionClientes
                 cliente.Persona.Documento = dto.Documento.Trim();
             if (dto.Telefono != null)
                 cliente.Persona.Telefono = dto.Telefono.Trim();
+            if (dto.SucursalId.HasValue)
+                cliente.Persona.SucursalId = dto.SucursalId.Value > 0 ? dto.SucursalId.Value : null;
             if (!string.IsNullOrWhiteSpace(dto.Email))
             {
                 var newEmail = dto.Email.Trim();
@@ -277,6 +292,41 @@ public class GestionClientes : IGestionClientes
         return ApiResponse<bool>.Ok(true, "Cliente eliminado exitosamente.");
     }
 
+    private static void ValidatePersonaData(string? email, string? documento, string? telefono)
+    {
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(email.Trim());
+                if (addr.Address != email.Trim())
+                    throw new ValidationException("El formato del correo electrónico ingresado no es válido.");
+            }
+            catch
+            {
+                throw new ValidationException("El formato del correo electrónico ingresado no es válido.");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(documento))
+        {
+            var cleanDoc = documento.Trim().Replace(".", "");
+            if (!cleanDoc.All(char.IsDigit) || cleanDoc.Length < 7 || cleanDoc.Length > 11)
+            {
+                throw new ValidationException("El documento debe ser numérico y contener entre 7 y 11 dígitos.");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(telefono))
+        {
+            var cleanTel = telefono.Trim();
+            if (!cleanTel.All(c => char.IsDigit(c) || c == '+' || c == '-' || c == '(' || c == ')' || char.IsWhiteSpace(c)))
+            {
+                throw new ValidationException("El teléfono contiene caracteres no válidos (solo se permiten números y símbolos +, -).");
+            }
+        }
+    }
+
     private static ClienteDto MapToDto(Cliente cliente)
     {
         return new ClienteDto
@@ -291,6 +341,8 @@ public class GestionClientes : IGestionClientes
             Documento = cliente.Persona?.Documento ?? string.Empty,
             Telefono = cliente.Persona?.Telefono,
             Email = cliente.Persona?.Email,
+            SucursalId = cliente.Persona?.SucursalId,
+            SucursalNombre = cliente.Persona?.Sucursal?.Nombre,
             CodigoCliente = cliente.CodigoCliente,
             Observaciones = cliente.Observaciones,
             EstadoCliente = cliente.EstadoCliente,

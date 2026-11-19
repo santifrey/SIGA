@@ -253,16 +253,18 @@ public class GestionPlantaciones : IGestionPlantaciones
             fila.Estado = EstadoFila.Plantada;
             await _filaRepository.UpdateAsync(fila, cancellationToken);
 
-            // 11. Registrar movimiento de salida del cliente hacia Empresa (Id: 1) para balance de stock
-            int destinoId = dto.ClienteId == Empresa.SingletonId
-                ? (dto.SucursalId != Empresa.SingletonId && dto.SucursalId > 0 ? dto.SucursalId : 99998)
-                : Empresa.SingletonId;
+            var casaMatriz = await _sucursalRepository.GetCasaMatrizAsync(cancellationToken);
+            int casaMatrizId = casaMatriz?.Id ?? 1;
+
+            // 11. Registrar movimiento de salida del cliente hacia Sucursal Casa Matriz para balance de stock
+            int destinoId = dto.ClienteId == casaMatrizId
+                ? (dto.SucursalId != casaMatrizId && dto.SucursalId > 0 ? dto.SucursalId : 99998)
+                : casaMatrizId;
 
             var movimiento = new MovimientoBulbos(
                 dto.ClienteId, 
                 destinoId, 
                 usuarioId, 
-                TipoOperacionComercial.AjusteStock,
                 $"Salida por plantación en Fila {fila.Identificacion}, Lote #{lote.Id} (Orden {orden})",
                 plantacionId: plantacion.Id);
 

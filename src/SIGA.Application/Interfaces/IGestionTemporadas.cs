@@ -12,4 +12,5 @@ public interface IGestionTemporadas
     Task<ApiResponse<IEnumerable<TemporadaDto>>> ListarAsync(CancellationToken cancellationToken = default);
     Task<ApiResponse<TemporadaDto>> CambiarEstadoAsync(int id, EstadoTemporada nuevoEstado, CancellationToken cancellationToken = default);
     Task<ApiResponse<TemporadaDto>> CerrarAsync(int id, CancellationToken cancellationToken = default);
+    Task<ApiResponse<TemporadaDto>> ActualizarComisionCompraAsync(int id, decimal porcentaje, CancellationToken cancellationToken = default);
 }

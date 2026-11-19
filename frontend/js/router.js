@@ -86,13 +86,6 @@ export class Router {
         return;
       }
 
-      // Redirección limpia de #ventas a #movimientos-comerciales (Feature 34)
-      if (path === '#ventas') {
-        this._isNavigating = false;
-        this.navigate('#movimientos-comerciales');
-        return;
-      }
-
       // Ruta objetivo o por defecto
       let targetRoute = this.routes[path];
 

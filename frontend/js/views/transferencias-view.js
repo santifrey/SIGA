@@ -7,6 +7,7 @@ import { transferenciasService } from '../services/transferencias-service.js';
 import { plantacionesService } from '../services/plantaciones-service.js';
 import { temporadasService } from '../services/temporadas-service.js';
 import { clientesService } from '../services/clientes-service.js';
+import { loadTemplate } from '../utils/template-loader.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/escape-html.js';
 
@@ -22,88 +23,7 @@ export class TransferenciasView {
 
   async render(container) {
     this.container = container;
-    this.container.innerHTML = `
-      <div class="view-header">
-        <div>
-          <h2>Transferencias de Lotes Completos</h2>
-          <p class="text-muted">Cesión total de derechos productivos y de cosecha de lotes plantados.</p>
-        </div>
-      </div>
-
-      <!-- Panel de Registro de Transferencia -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h3 class="card-title">Registrar Transferencia de Lote</h3>
-        </div>
-        <div class="card-body">
-          <form id="form-transferir-lote">
-            <div class="grid grid-3 gap-3 mb-3">
-              <div class="form-group">
-                <label for="transf-temporada">1. Temporada</label>
-                <select id="transf-temporada" class="form-control" required>
-                  <option value="">Cargando temporadas...</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label for="transf-lote">2. Lote a Transferir</label>
-                <select id="transf-lote" class="form-control" required>
-                  <option value="">Seleccione temporada primero...</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label for="transf-nuevo-titular">3. Nuevo Titular (Comprador)</label>
-                <select id="transf-nuevo-titular" class="form-control" required>
-                  <option value="">Cargando participantes...</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="form-group mb-3">
-              <label for="transf-obs">Observaciones / Motivo de la Cesión</label>
-              <input type="text" id="transf-obs" class="form-control" placeholder="Ej: Venta de lote en etapa de crecimiento" />
-            </div>
-
-            <div class="d-flex justify-content-between align-items-center">
-              <div id="lote-info-preview" class="text-muted small"></div>
-              <button type="submit" class="btn btn-primary">
-                Confirmar Transferencia de Lote Completo
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <!-- Tabla de Transferencias Realizadas -->
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h3 class="card-title">Historial de Transferencias Realizadas</h3>
-          <button id="btn-refresh-transf" class="btn btn-outline-secondary btn-sm">Actualizar</button>
-        </div>
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-hover mb-0">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Lote</th>
-                  <th>Fila / Sucursal</th>
-                  <th>Titular Anterior</th>
-                  <th>Nuevo Titular</th>
-                  <th>Fecha</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tabla-transferencias-body">
-                <tr><td colspan="8" class="text-center p-3 text-muted">Cargando transferencias...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    `;
+    this.container.innerHTML = await loadTemplate('transferencias.html');
 
     await this.cargarDatosIniciales();
     this.bindEvents();
@@ -150,7 +70,7 @@ export class TransferenciasView {
     const select = document.getElementById('transf-nuevo-titular');
     if (!select) return;
     let html = '<option value="">-- Seleccione Nuevo Titular --</option>';
-    html += '<option value="1">🏢 Empresa (Azafrán Mediterráneo S.A.)</option>';
+    html += '<option value="1">🏢 Sede Central (Azafrán Mediterráneo S.A.)</option>';
     html += this.clientes.map(c => {
       const nom = c.persona ? `${c.persona.nombre} ${c.persona.apellido}` : (c.nombreCompleto || c.codigoCliente);
       return `<option value="${escapeHtml(c.id)}">👤 ${escapeHtml(nom)} (${escapeHtml(c.codigoCliente)})</option>`;

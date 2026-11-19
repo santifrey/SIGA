@@ -4,10 +4,8 @@
  */
 
 import { apiClient } from '../utils/api-client.js';
-import { storage } from '../utils/storage.js';
-import { CONFIG } from '../config.js';
 
-// Estados del ciclo productivo del azafrán
+// Estados del ciclo productivo del azafrán (Etiquetas de interfaz)
 export const ESTADOS_TEMPORADA = [
   'Planificada',
   'Plantación',
@@ -17,51 +15,20 @@ export const ESTADOS_TEMPORADA = [
   'Cerrada'
 ];
 
-// Semilla inicial de temporadas para desarrollo / modo mock
-const SEED_TEMPORADAS = [
-  {
-    id: 1,
-    nombre: 'Temporada 2024-2025',
-    fechaInicio: '2024-03-01',
-    fechaFin: '2024-11-30',
-    estado: 'Cerrada',
-    observaciones: 'Temporada histórica cerrada con 100% de cosecha y liquidación efectuada.',
-    fechaCreacion: '2024-02-15T09:00:00Z'
-  },
-  {
-    id: 2,
-    nombre: 'Temporada 2025-2026',
-    fechaInicio: '2025-03-01',
-    fechaFin: '2025-11-30',
-    estado: 'Plantación',
-    observaciones: 'Temporada activa en curso. Etapa de distribución y siembra en filas.',
-    fechaCreacion: '2025-02-10T10:30:00Z'
-  }
-];
+// Mapeo canónico hacia los valores del enum C# en el backend (EstadoTemporada)
+const MAPA_API_ESTADOS = {
+  'planificada': 'Planificada',
+  'plantacion': 'Plantacion',
+  'plantación': 'Plantacion',
+  'en crecimiento': 'EnCrecimiento',
+  'encrecimiento': 'EnCrecimiento',
+  'cosecha': 'Cosecha',
+  'comercializacion': 'Comercializacion',
+  'comercialización': 'Comercializacion',
+  'cerrada': 'Cerrada'
+};
 
 class TemporadasService {
-  constructor() {
-    this._initLocalStore();
-  }
-
-  _initLocalStore() {
-    if (!storage.get(CONFIG.STORAGE_KEYS.MOCK_TEMPORADAS)) {
-      storage.set(CONFIG.STORAGE_KEYS.MOCK_TEMPORADAS, SEED_TEMPORADAS);
-    }
-  }
-
-  _getLocalTemporadas() {
-    this._initLocalStore();
-    return storage.get(CONFIG.STORAGE_KEYS.MOCK_TEMPORADAS, SEED_TEMPORADAS);
-  }
-
-  _saveLocalTemporadas(list) {
-    storage.set(CONFIG.STORAGE_KEYS.MOCK_TEMPORADAS, list);
-  }
-
-  /**
-   * Helper para desempaquetar ApiResponse<T> si viene envuelto
-   */
   _unwrap(res) {
     if (res && typeof res === 'object' && 'data' in res && res.data !== null && res.data !== undefined) {
       return res.data;
@@ -74,18 +41,9 @@ class TemporadasService {
    * GET /api/v1/temporadas
    */
   async listar() {
-    try {
-      const response = await apiClient.get('/temporadas');
-      const data = this._unwrap(response);
-      return Array.isArray(data) ? data : (data.items || []);
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        console.info('[TemporadasService] Usando fallback local mock.');
-        const list = this._getLocalTemporadas();
-        return [...list].sort((a, b) => Number(b.id) - Number(a.id));
-      }
-      throw err;
-    }
+    const response = await apiClient.get('/temporadas');
+    const data = this._unwrap(response);
+    return Array.isArray(data) ? data : (data?.items || []);
   }
 
   /**
@@ -100,18 +58,8 @@ class TemporadasService {
    * GET /api/v1/temporadas/activa
    */
   async obtenerActiva() {
-    try {
-      const response = await apiClient.get('/temporadas/activa');
-      return this._unwrap(response);
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const list = this._getLocalTemporadas();
-        // Se considera activa la más reciente que no esté 'Cerrada'
-        const activa = list.find(t => t.estado !== 'Cerrada') || list[list.length - 1] || null;
-        return activa;
-      }
-      throw err;
-    }
+    const response = await apiClient.get('/temporadas/activa');
+    return this._unwrap(response);
   }
 
   /**
@@ -119,18 +67,8 @@ class TemporadasService {
    * GET /api/v1/temporadas/{id}
    */
   async obtenerPorId(id) {
-    try {
-      const response = await apiClient.get(`/temporadas/${id}`);
-      return this._unwrap(response);
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const list = this._getLocalTemporadas();
-        const found = list.find(t => String(t.id) === String(id));
-        if (!found) throw new Error('Temporada no encontrada');
-        return found;
-      }
-      throw err;
-    }
+    const response = await apiClient.get(`/temporadas/${id}`);
+    return this._unwrap(response);
   }
 
   /**
@@ -138,28 +76,8 @@ class TemporadasService {
    * POST /api/v1/temporadas (nombre, fechaInicio, fechaFin)
    */
   async crear(data) {
-    try {
-      const response = await apiClient.post('/temporadas', data);
-      return this._unwrap(response);
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const list = this._getLocalTemporadas();
-        const nextId = list.length > 0 ? Math.max(...list.map(t => Number(t.id) || 0)) + 1 : 1;
-        const nueva = {
-          id: nextId,
-          nombre: data.nombre,
-          fechaInicio: data.fechaInicio,
-          fechaFin: data.fechaFin,
-          estado: data.estado || 'Planificada',
-          observaciones: data.observaciones || '',
-          fechaCreacion: new Date().toISOString()
-        };
-        list.push(nueva);
-        this._saveLocalTemporadas(list);
-        return nueva;
-      }
-      throw err;
-    }
+    const response = await apiClient.post('/temporadas', data);
+    return this._unwrap(response);
   }
 
   /**
@@ -167,36 +85,49 @@ class TemporadasService {
    * POST /api/v1/temporadas/{id}/cambiar-estado
    */
   async cambiarEstado(id, nuevoEstado) {
-    try {
-      const payload = typeof nuevoEstado === 'object'
-        ? nuevoEstado
-        : { nuevoEstado, estado: nuevoEstado };
-      const response = await apiClient.post(`/temporadas/${id}/cambiar-estado`, payload);
-      return this._unwrap(response);
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const list = this._getLocalTemporadas();
-        const index = list.findIndex(t => String(t.id) === String(id));
-        if (index === -1) throw new Error('Temporada no encontrada');
+    const rawVal = typeof nuevoEstado === 'object'
+      ? (nuevoEstado.nuevoEstado || nuevoEstado.estado || '')
+      : (nuevoEstado || '');
 
-        const estadoNombre = typeof nuevoEstado === 'object'
-          ? (nuevoEstado.nuevoEstado || nuevoEstado.estado)
-          : nuevoEstado;
+    const key = rawVal.toString().trim().toLowerCase();
+    const estadoCanonico = MAPA_API_ESTADOS[key] || rawVal;
 
-        list[index].estado = estadoNombre;
-        list[index].fechaModificacion = new Date().toISOString();
-        this._saveLocalTemporadas(list);
-        return list[index];
-      }
-      throw err;
+    const payload = {
+      nuevoEstado: estadoCanonico
+    };
+    const response = await apiClient.post(`/temporadas/${id}/cambiar-estado`, payload);
+    return this._unwrap(response);
+  }
+
+  /**
+   * Actualizar el porcentaje de comisión de compra retenida a nivel temporada
+   * PUT /api/v1/temporadas/{id}/comision-compra
+   */
+  async actualizarComisionCompra(id, porcentaje) {
+    const comisionNum = Number(porcentaje);
+    if (isNaN(comisionNum) || comisionNum < 0 || comisionNum > 100) {
+      throw new Error('El porcentaje de comisión debe ser un valor numérico entre 0 y 100.');
     }
+    const payload = {
+      porcentajeComisionCompra: comisionNum
+    };
+    const response = await apiClient.put(`/temporadas/${id}/comision-compra`, payload);
+    return this._unwrap(response);
   }
 
   /**
    * Retorna el siguiente estado en el flujo productivo o null si ya está cerrada
    */
   obtenerSiguienteEstado(estadoActual) {
-    const idx = ESTADOS_TEMPORADA.findIndex(e => e.toLowerCase() === (estadoActual || '').toLowerCase());
+    if (!estadoActual) return null;
+    const normalizado = estadoActual.toString().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '');
+
+    const idx = ESTADOS_TEMPORADA.findIndex(e => {
+      const eNorm = e.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '');
+      return eNorm === normalizado;
+    });
+
     if (idx >= 0 && idx < ESTADOS_TEMPORADA.length - 1) {
       return ESTADOS_TEMPORADA[idx + 1];
     }

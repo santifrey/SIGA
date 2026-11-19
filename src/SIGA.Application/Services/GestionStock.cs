@@ -46,10 +46,10 @@ public class GestionStock : IGestionStock
         else
         {
             var participante = await _participanteRepository.GetByIdAsync(clienteId, cancellationToken);
-            if (participante is Empresa empresa)
+            if (participante is Sucursal sucursal)
             {
-                clienteNombre = empresa.RazonSocial;
-                codigoCliente = "EMPRESA";
+                clienteNombre = sucursal.Nombre;
+                codigoCliente = "SUCURSAL";
             }
             else
             {

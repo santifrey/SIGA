@@ -7,7 +7,11 @@
 
 import { empleadosService } from '../services/empleados-service.js';
 import { rolesService } from '../services/roles-service.js';
+import { sucursalesService } from '../services/sucursales-service.js';
 import { authService } from '../services/auth-service.js';
+import { ConfirmDeleteModal } from '../components/confirm-delete-modal.js';
+import { renderPagination } from '../components/pagination.js';
+import { loadTemplate } from '../utils/template-loader.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/escape-html.js';
 import { getProhibitionIcon } from '../utils/icons.js';
@@ -18,8 +22,9 @@ export class EmpleadosView {
     this.container = null;
     this.empleados = [];
     this.roles = [];
+    this.sucursales = [];
     this.selectedEmpleado = null;
-    this.selectedDeleteId = null;
+    this.deleteModal = null;
 
     // Filtros y paginación
     this.filterSearch = '';
@@ -33,205 +38,24 @@ export class EmpleadosView {
     this.container = rootElement;
     const canManage = authService.tienePermiso('EMPLEADOS_GESTIONAR');
 
-    this.container.innerHTML = `
-      <div class="fade-in">
-        <!-- Encabezado de Sección -->
-        <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
-          <div>
-            <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Gestión de Empleados</h1>
-            <p class="text-muted text-sm">Administración de usuarios internos, personal operativo y asignación de roles</p>
-          </div>
-          <div class="d-flex gap-sm">
-            <button class="btn btn-secondary" id="btn-refresh-empleados" title="Recargar lista">
-              <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              <span>Refrescar</span>
-            </button>
-            ${canManage ? `
-              <button class="btn btn-primary" id="btn-nuevo-empleado">
-                <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                <span>Nuevo Empleado</span>
-              </button>
-            ` : ''}
-          </div>
-        </div>
+    this.container.innerHTML = await loadTemplate('empleados.html');
 
-        <!-- Barra de Filtros -->
-        <div class="card mb-4" style="padding: 1rem 1.25rem;">
-          <div class="d-flex gap-md flex-wrap align-center">
-            <div style="flex: 2; min-width: 220px;">
-              <input type="text" id="filtro-buscar" class="form-control" placeholder="Buscar por nombre, usuario, documento o email..." />
-            </div>
-            <div style="flex: 1; min-width: 160px;">
-              <select id="filtro-rol" class="form-control">
-                <option value="">Todos los Roles</option>
-              </select>
-            </div>
-            <div style="flex: 1; min-width: 140px;">
-              <select id="filtro-estado" class="form-control">
-                <option value="TODOS">Todos los Estados</option>
-                <option value="ACTIVO">Solo Activos</option>
-                <option value="INACTIVO">Solo Inactivos</option>
-              </select>
-            </div>
-          </div>
-        </div>
+    if (!canManage) {
+      this.container.querySelector('#btn-nuevo-empleado')?.remove();
+    }
 
-        <!-- Tabla de Empleados -->
-        <div class="card">
-          <div class="table-responsive">
-            <table class="table" id="tabla-empleados">
-              <thead>
-                <tr>
-                  <th>Empleado</th>
-                  <th>Legajo</th>
-                  <th>Posición</th>
-                  <th>Documento</th>
-                  <th>Contacto</th>
-                  <th>Rol</th>
-                  <th>Estado</th>
-                  <th>Último Acceso</th>
-                  <th style="text-align: right;">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-empleados">
-                <tr>
-                  <td colspan="9" class="text-center text-muted" style="padding: 2.5rem;">
-                    <div class="btn-spinner" style="display:inline-block; width:24px; height:24px; border-width:2px;"></div>
-                    <p class="mt-2">Cargando nómina de empleados...</p>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Paginación y Contador -->
-          <div class="d-flex justify-between align-center p-3 border-top flex-wrap gap-sm">
-            <div class="text-sm text-muted" id="empleados-pagination-info">Mostrando 0 empleados</div>
-            <div class="d-flex gap-xs" id="empleados-pagination-controls"></div>
-          </div>
-        </div>
-
-        <!-- Modal Crear / Editar Empleado -->
-        <div class="modal-backdrop" id="modal-empleado">
-          <div class="modal-dialog" style="max-width: 650px;">
-            <div class="modal-header">
-              <h3 class="modal-title" id="modal-empleado-title">Nuevo Empleado</h3>
-              <button type="button" class="modal-close-btn btn-close" id="btn-close-modal-empleado">&times;</button>
-            </div>
-            <form id="form-empleado">
-              <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-                <input type="hidden" id="emp-id" value="" />
-                
-                <h4 class="text-xs text-muted font-bold text-uppercase mb-2">Datos Laborales</h4>
-                <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                  <div class="form-group">
-                    <label class="form-label" for="emp-legajo">Legajo</label>
-                    <input type="text" id="emp-legajo" class="form-control" placeholder="Ej: LEG-0012" />
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label" for="emp-posicion">Posición / Cargo</label>
-                    <input type="text" id="emp-posicion" class="form-control" placeholder="Ej: Encargado de Depósito" />
-                  </div>
-                </div>
-
-                <h4 class="text-xs text-muted font-bold text-uppercase mb-2">Datos Personales</h4>
-                <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                  <div class="form-group">
-                    <label class="form-label" for="emp-nombre">Nombre <span class="text-danger">*</span></label>
-                    <input type="text" id="emp-nombre" class="form-control" required />
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label" for="emp-apellido">Apellido <span class="text-danger">*</span></label>
-                    <input type="text" id="emp-apellido" class="form-control" required />
-                  </div>
-                </div>
-
-                <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                  <div class="form-group">
-                    <label class="form-label" for="emp-documento">Documento (DNI/CUIT) <span class="text-danger">*</span></label>
-                    <input type="text" id="emp-documento" class="form-control" required />
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label" for="emp-telefono">Teléfono</label>
-                    <input type="tel" id="emp-telefono" class="form-control" />
-                  </div>
-                </div>
-
-                <div class="form-group mb-3">
-                  <label class="form-label" for="emp-email">Correo Electrónico <span class="text-danger">*</span></label>
-                  <input type="email" id="emp-email" class="form-control" required />
-                </div>
-
-                <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                  <div class="form-group">
-                    <label class="form-label" for="emp-rol">Rol del Empleado <span class="text-danger">*</span></label>
-                    <select id="emp-rol" class="form-control" required>
-                      <option value="">Seleccione un Rol...</option>
-                    </select>
-                  </div>
-                  <div class="form-group" style="display:flex; align-items:center; margin-top: 1.5rem;">
-                    <label class="d-flex align-center gap-xs" style="cursor: pointer;">
-                      <input type="checkbox" id="emp-activo" checked />
-                      <span class="font-medium text-sm">Usuario Activo</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div class="alert alert-info d-flex align-center gap-sm mb-3" style="background: rgba(30, 58, 138, 0.06); border: 1px solid rgba(30, 58, 138, 0.2); border-radius: var(--radius-md); padding: 0.75rem 1rem;">
-                  <svg class="icon-svg sm text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="16" x2="12" y2="12"></line>
-                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                  </svg>
-                  <div class="text-xs text-muted">
-                    <strong class="text-main">Credenciales automáticas:</strong> El usuario de acceso será su <strong>correo electrónico</strong> y la contraseña inicial su <strong>DNI</strong>. En el primer inicio de sesión se le exigirá cambiar la contraseña para activar su cuenta.
-                  </div>
-                </div>
-
-                <div id="form-empleado-error" class="alert alert-danger hidden mt-2"></div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" id="btn-cancel-empleado">Cancelar</button>
-                <button type="submit" class="btn btn-primary" id="btn-save-empleado">Guardar Empleado</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- Modal Confirmación de Desactivación (Prohibition) -->
-        <div class="modal-backdrop" id="modal-delete-empleado">
-          <div class="modal-dialog" style="max-width: 480px;">
-            <div class="modal-header">
-              <h3 class="modal-title" style="color: var(--danger);">Desactivar Empleado</h3>
-              <button type="button" class="modal-close-btn btn-close" id="btn-close-modal-delete">&times;</button>
-            </div>
-            <div class="modal-body">
-              <div class="d-flex gap-md align-start">
-                <div style="flex-shrink: 0; margin-top: 2px;">
-                  ${getProhibitionIcon({ size: 'lg', title: 'Desactivar Empleado' })}
-                </div>
-                <div>
-                  <p id="delete-empleado-prompt" style="font-size: 0.95rem; line-height: 1.4; margin: 0;"></p>
-                  <p class="text-muted text-xs mt-2">El usuario perderá acceso inmediato a la plataforma pero se conservará su historial y trazabilidad.</p>
-                </div>
-              </div>
-              <div id="delete-empleado-error" class="alert alert-danger hidden mt-3"></div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" id="btn-cancel-delete">Cancelar</button>
-              <button type="button" class="btn btn-danger" id="btn-confirm-delete">Confirmar Baja</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
+    this.deleteModal = new ConfirmDeleteModal({
+      container: this.container,
+      title: 'Desactivar Empleado',
+      confirmText: 'Confirmar Baja',
+      hintText: 'El usuario perderá acceso inmediato a la plataforma pero se conservará su historial y trazabilidad.',
+      onConfirm: async (id) => {
+        await empleadosService.desactivar(id);
+        toast.success('Empleado desactivado exitosamente.');
+        await this.loadEmpleados();
+      }
+    });
+    await this.deleteModal.init();
 
     this._bindEvents();
     await this._loadInitialData();
@@ -268,21 +92,29 @@ export class EmpleadosView {
     this.container.querySelector('#btn-close-modal-empleado').addEventListener('click', () => this.closeModalEmpleado());
     this.container.querySelector('#btn-cancel-empleado').addEventListener('click', () => this.closeModalEmpleado());
     this.container.querySelector('#form-empleado').addEventListener('submit', (e) => this._handleSubmitEmpleado(e));
-
-    // Modal Delete / Desactivar
-    this.container.querySelector('#btn-close-modal-delete').addEventListener('click', () => this.closeModalDelete());
-    this.container.querySelector('#btn-cancel-delete').addEventListener('click', () => this.closeModalDelete());
-    this.container.querySelector('#btn-confirm-delete').addEventListener('click', () => this._handleConfirmDelete());
   }
 
   async _loadInitialData() {
     try {
-      this.roles = await rolesService.listar();
+      const [roles, sucursales] = await Promise.all([
+        rolesService.listar().catch(() => []),
+        sucursalesService.listar().catch(() => [])
+      ]);
+      this.roles = Array.isArray(roles) ? roles : [];
+      this.sucursales = Array.isArray(sucursales) ? sucursales : [];
       this._populateRolesDropdowns();
+      this._populateSucursalesDropdown();
     } catch (err) {
-      console.warn('[EmpleadosView] No se pudieron cargar los roles:', err);
+      console.warn('[EmpleadosView] No se pudieron cargar los datos iniciales:', err);
     }
     await this.loadEmpleados();
+  }
+
+  _populateSucursalesDropdown() {
+    const sucSelect = this.container.querySelector('#emp-sucursal');
+    if (!sucSelect) return;
+    sucSelect.innerHTML = '<option value="">Sin sucursal asignada (Central / Corporativo)</option>' +
+      this.sucursales.map(s => `<option value="${s.id}">🏢 ${escapeHtml(s.nombre)}</option>`).join('');
   }
 
   _populateRolesDropdowns() {
@@ -312,7 +144,7 @@ export class EmpleadosView {
     const tbody = this.container.querySelector('#tbody-empleados');
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" class="text-center text-muted" style="padding: 2.5rem;">
+        <td colspan="10" class="text-center text-muted" style="padding: 2.5rem;">
           <div class="btn-spinner" style="display:inline-block; width:24px; height:24px; border-width:2px;"></div>
           <p class="mt-2">Cargando nómina de empleados...</p>
         </td>
@@ -325,7 +157,7 @@ export class EmpleadosView {
     } catch (err) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="9" class="text-center" style="padding: 2.5rem; color: var(--danger);">
+          <td colspan="10" class="text-center" style="padding: 2.5rem; color: var(--danger);">
             ${escapeHtml(err.message || 'Error al cargar empleados.')}
           </td>
         </tr>
@@ -377,7 +209,7 @@ export class EmpleadosView {
     if (paginated.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="9" class="text-center text-muted" style="padding: 2.5rem;">
+          <td colspan="10" class="text-center text-muted" style="padding: 2.5rem;">
             No se encontraron empleados registrados que coincidan con los filtros.
           </td>
         </tr>
@@ -421,6 +253,15 @@ export class EmpleadosView {
           <td>
             <div class="text-sm">${escapeHtml(emp.email || '-')}</div>
             <div class="text-xs text-muted">${escapeHtml(emp.telefono || 'Sin teléfono')}</div>
+          </td>
+          <td>
+            ${emp.sucursalNombre ? `
+              <span class="badge badge-secondary text-xs font-semibold">
+                🏢 ${escapeHtml(emp.sucursalNombre)}
+              </span>
+            ` : `
+              <span class="text-xs text-muted">-</span>
+            `}
           </td>
           <td>
             <span class="badge badge-primary font-bold">${escapeHtml(emp.rol || 'Sin Rol')}</span>
@@ -471,34 +312,18 @@ export class EmpleadosView {
     });
 
     // Paginación
-    const startItem = total === 0 ? 0 : (this.currentPage - 1) * this.pageSize + 1;
-    const endItem = Math.min(this.currentPage * this.pageSize, total);
-    infoEl.textContent = `Mostrando ${startItem} a ${endItem} de ${total} empleados`;
-
-    this._renderPaginationControls(controlsEl, totalPages);
-  }
-
-  _renderPaginationControls(container, totalPages) {
-    if (totalPages <= 1) {
-      container.innerHTML = '';
-      return;
-    }
-
-    let html = '';
-    for (let p = 1; p <= totalPages; p++) {
-      html += `
-        <button class="btn btn-sm ${p === this.currentPage ? 'btn-primary' : 'btn-outline'}" data-page="${p}">
-          ${p}
-        </button>
-      `;
-    }
-    container.innerHTML = html;
-
-    container.querySelectorAll('button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.currentPage = parseInt(btn.getAttribute('data-page'), 10);
+    renderPagination({
+      infoEl,
+      controlsEl,
+      currentPage: this.currentPage,
+      pageSize: this.pageSize,
+      totalItems: total,
+      totalPages,
+      entityLabel: 'empleados',
+      onPageChange: (newPage) => {
+        this.currentPage = newPage;
         this._renderTable();
-      });
+      }
     });
   }
 
@@ -509,6 +334,9 @@ export class EmpleadosView {
     this.container.querySelector('#emp-id').value = '';
     this.container.querySelector('#emp-legajo').value = '';
     this.container.querySelector('#emp-posicion').value = '';
+    if (this.container.querySelector('#emp-sucursal')) {
+      this.container.querySelector('#emp-sucursal').value = '';
+    }
     this.container.querySelector('#modal-empleado-title').textContent = 'Nuevo Empleado';
     this.container.querySelector('#emp-activo').checked = true;
 
@@ -532,6 +360,9 @@ export class EmpleadosView {
       this.container.querySelector('#emp-id').value = emp.id;
       this.container.querySelector('#emp-legajo').value = emp.legajo || '';
       this.container.querySelector('#emp-posicion').value = emp.posicion || '';
+      if (this.container.querySelector('#emp-sucursal')) {
+        this.container.querySelector('#emp-sucursal').value = emp.sucursalId || '';
+      }
       this.container.querySelector('#emp-nombre').value = emp.nombre || '';
       this.container.querySelector('#emp-apellido').value = emp.apellido || '';
       this.container.querySelector('#emp-documento').value = emp.documento || '';
@@ -564,6 +395,7 @@ export class EmpleadosView {
     const id = this.container.querySelector('#emp-id').value;
     const legajo = this.container.querySelector('#emp-legajo').value.trim();
     const posicion = this.container.querySelector('#emp-posicion').value.trim();
+    const sucursalIdVal = this.container.querySelector('#emp-sucursal')?.value || '';
     const nombre = this.container.querySelector('#emp-nombre').value.trim();
     const apellido = this.container.querySelector('#emp-apellido').value.trim();
     const documento = this.container.querySelector('#emp-documento').value.trim();
@@ -583,8 +415,8 @@ export class EmpleadosView {
       const selectedRolObj = this.roles.find(r => String(r.id) === String(rolIdVal));
       const willBeActiveAdmin = activo && selectedRolObj && (selectedRolObj.nombre === 'ADMINISTRADOR' || selectedRolObj.nombre === 'Administrador');
       if (!willBeActiveAdmin) {
-        const activeAdmins = this.empleados.filter(e => 
-          (e.rol === 'ADMINISTRADOR' || e.rol === 'Administrador') && 
+        const activeAdmins = this.empleados.filter(e =>
+          (e.rol === 'ADMINISTRADOR' || e.rol === 'Administrador') &&
           (e.estado === 'Activo' || e.activo === true)
         );
         if (activeAdmins.length <= 1) {
@@ -602,6 +434,7 @@ export class EmpleadosView {
       legajo: legajo || null,
       posicion: posicion || null,
       telefono: telefono || null,
+      sucursalId: sucursalIdVal ? parseInt(sucursalIdVal, 10) : null,
       email,
       username: email.toLowerCase(),
       rolId: parseInt(rolIdVal, 10),
@@ -640,63 +473,22 @@ export class EmpleadosView {
   }
 
   openModalDelete(id, name) {
-    this.selectedDeleteId = id;
-    const prompt = this.container.querySelector('#delete-empleado-prompt');
-    const errBox = this.container.querySelector('#delete-empleado-error');
-    const confirmBtn = this.container.querySelector('#btn-confirm-delete');
-    errBox.classList.add('hidden');
-    errBox.textContent = '';
-    if (confirmBtn) confirmBtn.disabled = false;
-
-    // Salvaguarda UI: comprobar si es el único administrador activo
+    let blockingError = null;
     const targetEmp = this.empleados.find(e => String(e.id) === String(id));
     if (targetEmp && (targetEmp.rol === 'ADMINISTRADOR' || targetEmp.rol === 'Administrador')) {
-      const activeAdmins = this.empleados.filter(e => 
-        (e.rol === 'ADMINISTRADOR' || e.rol === 'Administrador') && 
+      const activeAdmins = this.empleados.filter(e =>
+        (e.rol === 'ADMINISTRADOR' || e.rol === 'Administrador') &&
         (e.estado === 'Activo' || e.activo === true)
       );
       if (activeAdmins.length <= 1) {
-        errBox.textContent = 'No se puede desactivar el único administrador activo.';
-        errBox.classList.remove('hidden');
-        if (confirmBtn) confirmBtn.disabled = true;
+        blockingError = 'No se puede desactivar el único administrador activo.';
       }
     }
 
-    prompt.innerHTML = `¿Está seguro de que desea dar de baja al empleado <strong>${escapeHtml(name)}</strong>?`;
-    const modal = this.container.querySelector('#modal-delete-empleado');
-    modal.classList.add('is-active');
-  }
-
-  closeModalDelete() {
-    const modal = this.container.querySelector('#modal-delete-empleado');
-    modal.classList.remove('is-active');
-    this.selectedDeleteId = null;
-  }
-
-  async _handleConfirmDelete() {
-    if (!this.selectedDeleteId) return;
-
-    const confirmBtn = this.container.querySelector('#btn-confirm-delete');
-    const errBox = this.container.querySelector('#delete-empleado-error');
-    errBox.classList.add('hidden');
-    errBox.textContent = '';
-
-    confirmBtn.disabled = true;
-    confirmBtn.classList.add('is-loading');
-
-    try {
-      await empleadosService.desactivar(this.selectedDeleteId);
-      toast.success('Empleado desactivado exitosamente.');
-      this.closeModalDelete();
-      await this.loadEmpleados();
-    } catch (err) {
-      const msg = err.message || 'Error al desactivar empleado';
-      errBox.textContent = msg;
-      errBox.classList.remove('hidden');
-      toast.error(msg);
-    } finally {
-      confirmBtn.disabled = false;
-      confirmBtn.classList.remove('is-loading');
-    }
+    this.deleteModal.open({
+      id,
+      promptHtml: `¿Está seguro de que desea dar de baja al empleado <strong>${escapeHtml(name)}</strong>?`,
+      blockingError
+    });
   }
 }

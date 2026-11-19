@@ -242,9 +242,9 @@ public class GestionTransferencias : IGestionTransferencias
             return $"{nombre} ({c.CodigoCliente})".Trim();
         }
 
-        if (p is Empresa e)
+        if (p is Sucursal s)
         {
-            return e.RazonSocial;
+            return s.Nombre;
         }
 
         return $"Participante #{p.Id}";

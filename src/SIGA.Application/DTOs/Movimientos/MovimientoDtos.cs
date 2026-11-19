@@ -14,8 +14,6 @@ public class CantidadBulbosDto
 
 public class CrearMovimientoDto
 {
-    public TipoOperacionComercial TipoOperacion { get; set; } = TipoOperacionComercial.AjusteStock;
-
     [Range(0, int.MaxValue, ErrorMessage = "El origen es requerido.")]
     public int OrigenId { get; set; }
 
@@ -34,9 +32,10 @@ public class MovimientoBulbosDto
 {
     public int Id { get; set; }
     public int? MovimientoComercialId { get; set; }
+    public TipoMovimientoComercial? TipoMovimientoComercial { get; set; }
+    public string? TipoMovimientoComercialNombre { get; set; }
     public int? CosechaId { get; set; }
     public int? PlantacionId { get; set; }
-    public TipoOperacionComercial? TipoOperacion { get; set; }
     public DateTime Fecha { get; set; }
     public int OrigenId { get; set; }
     public string OrigenNombre { get; set; } = string.Empty;

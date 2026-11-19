@@ -7,6 +7,8 @@ import { plantacionesService } from '../services/plantaciones-service.js';
 import { temporadasService } from '../services/temporadas-service.js';
 import { sucursalesService } from '../services/sucursales-service.js';
 import { clientesService } from '../services/clientes-service.js';
+import { BulbosCalibresGrid } from '../components/bulbos-calibres-grid.js';
+import { loadTemplate } from '../utils/template-loader.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/escape-html.js';
 
@@ -23,219 +25,20 @@ export class PlantacionesView {
     this.selectedSucursalId = null;
     this.lotes = [];
     this.currentPlantacion = null;
+    this.calibresGrid = null;
   }
 
   async render(rootElement) {
     this.container = rootElement;
+    this.container.innerHTML = await loadTemplate('plantaciones.html');
 
-    this.container.innerHTML = `
-      <div class="fade-in">
-        <!-- Encabezado de la Vista -->
-        <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
-          <div>
-            <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Estructura Productiva y Plantaciones</h1>
-            <p class="text-muted text-sm">Registro de distribución física de bulbos en surcos/filas por cliente</p>
-          </div>
-          <div>
-            <button class="btn btn-secondary" id="btn-refresh-plantaciones" title="Actualizar datos">
-              <svg class="icon-svg sm" viewBox="0 0 24 24">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              <span>Refrescar</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Barra de Contexto: Selectores Principales -->
-        <div class="card mb-4" style="background: var(--surface);">
-          <div class="card-body p-3">
-            <div class="form-row two-cols">
-              <div class="form-group mb-0">
-                <label for="select-temporada" class="form-label font-bold text-xs uppercase" style="color: var(--primary);">
-                  1. Seleccionar Temporada Productiva:
-                </label>
-                <select id="select-temporada" class="form-control" style="font-weight: 600;">
-                  <option value="">Cargando temporadas...</option>
-                </select>
-              </div>
-
-              <div class="form-group mb-0">
-                <label for="select-sucursal" class="form-label font-bold text-xs uppercase" style="color: var(--accent);">
-                  2. Sucursal / Campo de Siembra:
-                </label>
-                <select id="select-sucursal" class="form-control">
-                  <option value="">Cargando sucursales...</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Formulario Básico: Registrar Distribución Física en Campo -->
-        <div class="card mb-4">
-          <div class="card-header">
-            <h3 class="card-title text-base">Registrar Lote Plantado (Distribución Física)</h3>
-            <span class="text-xs text-muted">Asigne la fila física y las cantidades de bulbos por clase</span>
-          </div>
-          <div class="card-body">
-            <form id="form-distribucion" novalidate>
-              <div class="form-row two-cols mb-3">
-                <!-- Columna 1: Selección y Creación de Fila -->
-                <div class="form-group">
-                  <div class="d-flex justify-between align-center mb-1">
-                    <label for="select-fila" class="form-label mb-0">
-                      Fila / Surco <span class="required-mark">*</span>
-                    </label>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-toggle-nueva-fila" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
-                      + Nueva Fila
-                    </button>
-                  </div>
-                  <select id="select-fila" class="form-control" required>
-                    <option value="">-- Seleccionar Fila --</option>
-                  </select>
-                  <small class="text-muted text-xs" id="help-fila">Seleccione una fila existente o agregue una nueva</small>
-
-                  <!-- Panel desplegable para Nueva Fila (oculto por defecto) -->
-                  <div id="panel-nueva-fila" class="mt-2 p-2 border rounded hidden" style="background: var(--surface-alt); border: 1px dashed var(--border) !important; border-radius: var(--radius-sm);">
-                    <div class="d-flex justify-between align-center mb-2">
-                      <span class="font-bold text-xs" style="color: var(--primary);">Parámetros de Nueva Fila:</span>
-                      <button type="button" class="btn btn-sm btn-secondary" id="btn-cancel-nueva-fila" style="padding: 0.1rem 0.4rem; font-size: 0.7rem;">✕ Cancelar</button>
-                    </div>
-                    <div class="form-row two-cols">
-                      <div class="form-group mb-0">
-                        <label for="input-nueva-fila-num" class="form-label text-xs mb-1">Número de Fila <span class="required-mark">*</span></label>
-                        <input
-                          type="number"
-                          id="input-nueva-fila-num"
-                          class="form-control"
-                          min="1"
-                          step="1"
-                          placeholder="ej. 15"
-                        />
-                      </div>
-                      <div class="form-group mb-0">
-                        <label for="input-nueva-fila-cap" class="form-label text-xs mb-1">Capacidad Total <span class="required-mark">*</span></label>
-                        <input
-                          type="number"
-                          id="input-nueva-fila-cap"
-                          class="form-control"
-                          min="100"
-                          step="100"
-                          value="5000"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Columna 2: Orden de Lote y Cliente Titular -->
-                <div>
-                  <div class="form-group mb-3">
-                    <label for="input-lote-orden" class="form-label">
-                      Número / Orden de Lote <span class="required-mark">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      id="input-lote-orden"
-                      class="form-control"
-                      min="1"
-                      step="1"
-                      placeholder="ej. 1"
-                      required
-                    />
-                    <small class="text-muted text-xs" id="help-lote-orden">
-                      Orden correlativo dentro de la fila seleccionada
-                    </small>
-                  </div>
-
-                  <div class="form-group mb-0">
-                    <label for="select-cliente" class="form-label">
-                      Cliente (Titular del Lote) <span class="required-mark">*</span>
-                    </label>
-                    <select id="select-cliente" class="form-control" required>
-                      <option value="">-- Seleccionar Cliente --</option>
-                    </select>
-                    <small class="text-muted text-xs">Inversor o propietario de los bulbos plantados</small>
-                  </div>
-                </div>
-              </div>
-
-              <div class="form-group mb-3">
-                <label class="form-label font-semibold mb-2">Cantidades de Bulbos por Clase:</label>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--spacing-sm);">
-                  <div class="p-2" style="background: var(--surface-alt); border-radius: var(--radius-sm); border: 1px solid var(--border);">
-                    <label for="cant-c0" class="text-xs font-bold d-block mb-1" style="color: var(--primary);">Clase 0 (Extra Gde)</label>
-                    <input type="number" id="cant-c0" class="form-control cant-input" min="0" value="0" />
-                  </div>
-                  <div class="p-2" style="background: var(--surface-alt); border-radius: var(--radius-sm); border: 1px solid var(--border);">
-                    <label for="cant-c1" class="text-xs font-bold d-block mb-1" style="color: var(--primary);">Clase 1 (Grande)</label>
-                    <input type="number" id="cant-c1" class="form-control cant-input" min="0" value="0" />
-                  </div>
-                  <div class="p-2" style="background: var(--surface-alt); border-radius: var(--radius-sm); border: 1px solid var(--border);">
-                    <label for="cant-c2" class="text-xs font-bold d-block mb-1" style="color: var(--primary);">Clase 2 (Mediano)</label>
-                    <input type="number" id="cant-c2" class="form-control cant-input" min="0" value="0" />
-                  </div>
-                  <div class="p-2" style="background: var(--surface-alt); border-radius: var(--radius-sm); border: 1px solid var(--border);">
-                    <label for="cant-c3" class="text-xs font-bold d-block mb-1" style="color: var(--primary);">Clase 3 (Chico)</label>
-                    <input type="number" id="cant-c3" class="form-control cant-input" min="0" value="0" />
-                  </div>
-                  <div class="p-2" style="background: var(--surface-alt); border-radius: var(--radius-sm); border: 1px solid var(--border);">
-                    <label for="cant-c4" class="text-xs font-bold d-block mb-1" style="color: var(--primary);">Clase 4 (Semillero)</label>
-                    <input type="number" id="cant-c4" class="form-control cant-input" min="0" value="0" />
-                  </div>
-                </div>
-              </div>
-
-              <div class="d-flex justify-between align-center flex-wrap gap-md mt-4 pt-3 border-top">
-                <div class="text-sm font-semibold">
-                  <span>Total Bulbos a Plantar:</span>
-                  <span id="label-total-bulbos" class="font-bold text-main ml-2" style="font-size: 1.15rem; color: var(--accent-700);">0</span>
-                </div>
-                <button type="submit" class="btn btn-primary" id="btn-registrar-lote">
-                  <svg class="icon-svg sm" viewBox="0 0 24 24">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  <span class="btn-text">Registrar Lote Plantado</span>
-                  <span class="btn-spinner"></span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- Tabla de Lotes Registrados para la Temporada -->
-        <div class="table-card">
-          <div class="table-header p-3 border-bottom d-flex justify-between align-center">
-            <h4 class="font-semibold text-main m-0">Lotes Registrados en la Temporada</h4>
-            <span class="text-xs text-muted" id="total-lotes-count">0 lotes</span>
-          </div>
-
-          <div class="table-responsive">
-            <table class="table" id="tabla-lotes">
-              <thead>
-                <tr>
-                  <th style="width: 100px;">Fila</th>
-                  <th>Lote #</th>
-                  <th>Cliente (Titular)</th>
-                  <th style="text-align: right;">Total Bulbos</th>
-                  <th>Desglose por Clase (C0 | C1 | C2 | C3 | C4)</th>
-                  <th>Fecha Registro</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-lotes">
-                <tr class="table-loading-row">
-                  <td colspan="6" class="text-center py-4">
-                    <span>Cargando lotes...</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    `;
+    this.calibresGrid = new BulbosCalibresGrid({
+      root: this.container,
+      inputIdPrefix: 'cant-c',
+      totalSelector: '#label-total-bulbos',
+      gridContainerSelector: '#plantaciones-calibres-grid'
+    });
+    this.calibresGrid.init();
 
     this._bindEvents();
     await this._loadInitialDropdowns();
@@ -283,26 +86,10 @@ export class PlantacionesView {
       this._setNuevaFilaMode(false);
     });
 
-    // Cálculo dinámico de total al tipear en cantidades
-    const cantInputs = this.container.querySelectorAll('.cant-input');
-    cantInputs.forEach(input => {
-      input.addEventListener('input', () => this._updateTotalPreview());
-    });
-
     // Submit del formulario
     this.container.querySelector('#form-distribucion').addEventListener('submit', (e) => {
       this._handleSubmitDistribucion(e);
     });
-  }
-
-  _updateTotalPreview() {
-    let total = 0;
-    for (let c = 0; c <= 4; c++) {
-      const el = this.container.querySelector(`#cant-c${c}`);
-      total += Number(el?.value) || 0;
-    }
-    const label = this.container.querySelector('#label-total-bulbos');
-    if (label) label.textContent = total.toLocaleString();
   }
 
   async _loadInitialDropdowns() {
@@ -665,15 +452,8 @@ export class PlantacionesView {
     }
 
     // Cantidades de bulbos
-    const detalles = [];
-    let totalBulbos = 0;
-    for (let c = 0; c <= 4; c++) {
-      const q = Number(this.container.querySelector(`#cant-c${c}`).value) || 0;
-      if (q > 0) {
-        detalles.push({ clase: c, claseBulbo: c, cantidad: q });
-        totalBulbos += q;
-      }
-    }
+    const detalles = this.calibresGrid.getItemsArray(false);
+    const totalBulbos = this.calibresGrid.getTotal();
 
     if (totalBulbos <= 0) {
       toast.warning('Debe ingresar al menos una cantidad de bulbos mayor a cero.');
@@ -720,10 +500,7 @@ export class PlantacionesView {
       this.container.querySelector('#select-fila').value = '';
       this.container.querySelector('#input-lote-orden').value = '';
       this.container.querySelector('#select-cliente').value = '';
-      for (let c = 0; c <= 4; c++) {
-        this.container.querySelector(`#cant-c${c}`).value = '0';
-      }
-      this._updateTotalPreview();
+      this.calibresGrid.reset();
 
       // Recargar filas y lotes en simultáneo
       await Promise.all([

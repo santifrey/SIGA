@@ -20,7 +20,6 @@ public class SigaDbContext : DbContext
     public DbSet<RolPermiso> RolPermisos => Set<RolPermiso>();
     public DbSet<ParticipanteComercial> ParticipantesComerciales => Set<ParticipanteComercial>();
     public DbSet<Cliente> Clientes => Set<Cliente>();
-    public DbSet<Empresa> Empresas => Set<Empresa>();
     public DbSet<Sucursal> Sucursales => Set<Sucursal>();
     public DbSet<MovimientoBulbos> MovimientosBulbos => Set<MovimientoBulbos>();
     public DbSet<CantidadBulbos> CantidadesBulbos => Set<CantidadBulbos>();
@@ -53,7 +52,6 @@ public class SigaDbContext : DbContext
         modelBuilder.ApplyConfiguration(new RolPermisoConfiguration());
         modelBuilder.ApplyConfiguration(new ParticipanteComercialConfiguration());
         modelBuilder.ApplyConfiguration(new ClienteConfiguration());
-        modelBuilder.ApplyConfiguration(new EmpresaConfiguration());
         modelBuilder.ApplyConfiguration(new SucursalConfiguration());
         modelBuilder.ApplyConfiguration(new MovimientoBulbosConfiguration());
         modelBuilder.ApplyConfiguration(new CantidadBulbosConfiguration());
@@ -76,7 +74,6 @@ public class SigaDbContext : DbContext
         modelBuilder.Entity<Persona>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Usuario>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<ParticipanteComercial>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Sucursal>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<MovimientoBulbos>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Temporada>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Fila>().HasQueryFilter(e => !e.IsDeleted);
@@ -108,21 +105,26 @@ public class SigaDbContext : DbContext
             new Rol { Id = 5, Nombre = "CONTABILIDAD", Descripcion = "Gestión financiera y contable", EsSistema = true }
         );
 
-        // 2. Empresa Singleton del Dominio: Azafrán Mediterráneo S.A.
-        modelBuilder.Entity<Empresa>().HasData(
-            new Empresa
+        // 2. Sucursal Matriz (Sede Central) del Dominio
+        modelBuilder.Entity<Sucursal>().HasData(
+            new Sucursal
             {
-                Id = Empresa.SingletonId,
-                TipoParticipante = TipoParticipante.Empresa,
+                Id = 1,
+                TipoParticipante = TipoParticipante.Sucursal,
                 Estado = EstadoParticipante.Activo,
                 FechaRegistro = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 IsDeleted = false,
+                Nombre = "Sede Central - Villa General Belgrano",
+                Ubicacion = "Ruta Prov. 5, Villa General Belgrano, Córdoba",
+                CapacidadTotal = 50000m,
+                Activo = true,
+                EsCasaMatriz = true,
                 RazonSocial = "Azafrán Mediterráneo S.A.",
                 CUIT = "30-71234567-8",
                 DireccionFiscal = "Córdoba, Argentina",
                 Telefono = "+54 351 1234567",
                 Email = "info@azafranmediterraneo.com",
-                EsCasaMatriz = true
+                FechaCreacion = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             }
         );
     }

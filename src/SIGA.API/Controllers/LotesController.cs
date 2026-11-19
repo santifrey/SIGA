@@ -7,7 +7,7 @@ using SIGA.Application.Interfaces;
 
 namespace SIGA.API.Controllers;
 
-[Authorize(Roles = Roles.Personal)]
+[RequierePermiso(Permisos.PlantacionesVer)]
 public class LotesController : BaseApiController
 {
     private readonly IGestionLotes _gestionLotes;

@@ -4,163 +4,9 @@
  */
 
 import { apiClient } from '../utils/api-client.js';
-import { storage } from '../utils/storage.js';
 import { CONFIG } from '../config.js';
 
-// Semilla de datos iniciales para demostración y desarrollo local
-const SEED_CLIENTES = [
-  {
-    id: 1,
-    codigo: 'CLI-00101',
-    nombre: 'Martín',
-    apellido: 'Gómez',
-    tipoDocumento: 'DNI',
-    documento: '32456789',
-    email: 'martin.gomez@gmail.com',
-    telefono: '+54 351 456-7890',
-    observaciones: 'Cliente corporativo preferencial. Factura A.',
-    activo: true,
-    fechaAlta: '2025-02-10T10:30:00Z'
-  },
-  {
-    id: 2,
-    codigo: 'CLI-00102',
-    nombre: 'Lucía',
-    apellido: 'Fernández',
-    tipoDocumento: 'DNI',
-    documento: '35123987',
-    email: 'lucia.fernandez@outlook.com',
-    telefono: '+54 351 789-1234',
-    observaciones: 'Compras recurrentes en Sucursal Centro.',
-    activo: true,
-    fechaAlta: '2025-02-14T14:15:00Z'
-  },
-  {
-    id: 3,
-    codigo: 'CLI-00103',
-    nombre: 'Carlos',
-    apellido: 'Benítez',
-    tipoDocumento: 'CUIT',
-    documento: '20-28994512-4',
-    email: 'carlos.benitez@empresa.com.ar',
-    telefono: '+54 351 612-3456',
-    observaciones: 'Cuenta corriente habilitada con límite de crédito.',
-    activo: true,
-    fechaAlta: '2025-03-01T09:00:00Z'
-  },
-  {
-    id: 4,
-    codigo: 'CLI-00104',
-    nombre: 'Mariana',
-    apellido: 'Sosa',
-    tipoDocumento: 'DNI',
-    documento: '38901234',
-    email: 'mariana.sosa@live.com',
-    telefono: '+54 351 555-8821',
-    observaciones: 'Atención personalizada vía WhatsApp.',
-    activo: true,
-    fechaAlta: '2025-03-12T16:20:00Z'
-  },
-  {
-    id: 5,
-    codigo: 'CLI-00105',
-    nombre: 'Facundo',
-    apellido: 'Álvarez',
-    tipoDocumento: 'DNI',
-    documento: '30456123',
-    email: 'facundo.alvarez@gmail.com',
-    telefono: '+54 351 999-3322',
-    observaciones: 'Registró mora temporal en 2025. Regularizado.',
-    activo: false,
-    fechaAlta: '2025-01-20T11:45:00Z'
-  },
-  {
-    id: 6,
-    codigo: 'CLI-00106',
-    nombre: 'Valeria',
-    apellido: 'Romero',
-    tipoDocumento: 'DNI',
-    documento: '36789456',
-    email: 'valeria.romero@estudiojuridico.com',
-    telefono: '+54 351 444-1188',
-    observaciones: 'Asociada al convenio institucional de comercio.',
-    activo: true,
-    fechaAlta: '2025-03-25T13:00:00Z'
-  },
-  {
-    id: 7,
-    codigo: 'CLI-00107',
-    nombre: 'Gonzalo',
-    apellido: 'Molina',
-    tipoDocumento: 'DNI',
-    documento: '29876543',
-    email: 'gmolina@logistica-norte.com.ar',
-    telefono: '+54 351 321-6549',
-    observaciones: 'Descuento por volumen mayorista aplicado.',
-    activo: true,
-    fechaAlta: '2025-04-02T08:15:00Z'
-  },
-  {
-    id: 8,
-    codigo: 'CLI-00108',
-    nombre: 'Florencia',
-    apellido: 'Castro',
-    tipoDocumento: 'DNI',
-    documento: '41234567',
-    email: 'florencia.castro@yahoo.com.ar',
-    telefono: '+54 351 888-2211',
-    observaciones: 'Adherida al débito automático mensual.',
-    activo: true,
-    fechaAlta: '2025-04-10T17:40:00Z'
-  },
-  {
-    id: 9,
-    codigo: 'CLI-00109',
-    nombre: 'Esteban',
-    apellido: 'Paredes',
-    tipoDocumento: 'CUIT',
-    documento: '20-33445566-9',
-    email: 'esteban.paredes@metalurgica.com',
-    telefono: '+54 351 777-6655',
-    observaciones: 'Proveedor y cliente mixto.',
-    activo: true,
-    fechaAlta: '2025-04-18T10:05:00Z'
-  },
-  {
-    id: 10,
-    codigo: 'CLI-00110',
-    nombre: 'Agustina',
-    apellido: 'Herrera',
-    tipoDocumento: 'DNI',
-    documento: '37112233',
-    email: 'agustina.herrera@hotmail.com',
-    telefono: '+54 351 222-9988',
-    observaciones: 'Baja solicitada por cambio de radicación.',
-    activo: false,
-    fechaAlta: '2025-01-15T15:30:00Z'
-  }
-];
-
 class ClientesService {
-  constructor() {
-    this._initLocalStore();
-  }
-
-  _initLocalStore() {
-    if (!storage.get(CONFIG.STORAGE_KEYS.MOCK_CLIENTES)) {
-      storage.set(CONFIG.STORAGE_KEYS.MOCK_CLIENTES, SEED_CLIENTES);
-    }
-  }
-
-  _getLocalClientes() {
-    this._initLocalStore();
-    return storage.get(CONFIG.STORAGE_KEYS.MOCK_CLIENTES, SEED_CLIENTES);
-  }
-
-  _saveLocalClientes(clientes) {
-    storage.set(CONFIG.STORAGE_KEYS.MOCK_CLIENTES, clientes);
-  }
-
   _unwrap(res) {
     if (res && typeof res === 'object' && 'data' in res && res.data !== null && res.data !== undefined) {
       return res.data;
@@ -178,15 +24,15 @@ class ClientesService {
       apellido = parts.slice(1).join(' ') || '';
     }
     const nombreCompleto = c.nombreCompleto || `${nombre} ${apellido}`.trim();
-    const codigo = c.codigo || c.codigoCliente || `CLI-${String(c.id).padStart(4, '0')}`;
+    const tipoDocumento = c.tipoDocumento || (c.persona && c.persona.tipoDocumento) || 'DNI';
     const documento = c.documento || (c.persona && c.persona.documento) || '';
-    const tipoDocumento = c.tipoDocumento || (documento.includes('-') ? 'CUIT' : 'DNI');
-    const email = c.email ?? (c.persona && c.persona.email) ?? '';
-    const telefono = c.telefono ?? (c.persona && c.persona.telefono) ?? '';
+    const email = c.email || (c.persona && c.persona.email) || '';
+    const telefono = c.telefono || (c.persona && c.persona.telefono) || '';
+    const codigo = c.codigoCliente || c.codigo || `CLI-${String(c.id).padStart(4, '0')}`;
 
     let activo = true;
-    if (typeof c.activo === 'boolean') {
-      activo = c.activo;
+    if (c.activo !== undefined && c.activo !== null) {
+      activo = Boolean(c.activo);
     } else if (c.estadoCliente !== undefined && c.estadoCliente !== null) {
       const est = String(c.estadoCliente).toLowerCase();
       activo = est === 'activo' || est === '1';
@@ -205,6 +51,8 @@ class ClientesService {
       telefono,
       codigo,
       codigoCliente: codigo,
+      sucursalId: c.sucursalId ?? c.persona?.sucursalId ?? null,
+      sucursalNombre: c.sucursalNombre ?? c.persona?.sucursal?.nombre ?? null,
       observaciones: c.observaciones ?? '',
       activo,
       estadoCliente: activo ? 'Activo' : 'Inactivo',
@@ -216,7 +64,6 @@ class ClientesService {
   _filterAndPaginate(rawList, { page = 1, pageSize = CONFIG.PAGINATION.DEFAULT_PAGE_SIZE, search = '', estado = 'todos' } = {}) {
     let list = rawList.map(c => this._normalizeCliente(c));
 
-    // Filtro por búsqueda (nombre, apellido, nombreCompleto, documento, código, email)
     if (search && search.trim() !== '') {
       const q = search.trim().toLowerCase();
       list = list.filter(c =>
@@ -229,7 +76,6 @@ class ClientesService {
       );
     }
 
-    // Filtro por estado
     if (estado === 'activos') {
       list = list.filter(c => c.activo === true);
     } else if (estado === 'inactivos') {
@@ -253,28 +99,40 @@ class ClientesService {
    * Listar clientes con paginación, filtros de búsqueda y estado
    */
   async listar({ page = 1, pageSize = CONFIG.PAGINATION.DEFAULT_PAGE_SIZE, search = '', estado = 'todos' } = {}) {
-    try {
-      const params = search && search.trim() !== '' ? { busqueda: search.trim() } : {};
-      const response = await apiClient.get('/clientes', params);
-      const unwrapped = this._unwrap(response);
+    const params = search && search.trim() !== '' ? { busqueda: search.trim() } : {};
+    const response = await apiClient.get('/clientes', params);
+    const unwrapped = this._unwrap(response);
 
-      if (Array.isArray(unwrapped)) {
-        return this._filterAndPaginate(unwrapped, { page, pageSize, search, estado });
-      }
-      if (unwrapped && Array.isArray(unwrapped.items)) {
-        return {
-          ...unwrapped,
-          items: unwrapped.items.map(c => this._normalizeCliente(c))
-        };
-      }
-      return { items: [], total: 0, page: Number(page), pageSize: Number(pageSize), totalPages: 1 };
+    if (Array.isArray(unwrapped)) {
+      return this._filterAndPaginate(unwrapped, { page, pageSize, search, estado });
+    }
+    if (unwrapped && Array.isArray(unwrapped.items)) {
+      return {
+        ...unwrapped,
+        items: unwrapped.items.map(c => this._normalizeCliente(c))
+      };
+    }
+    return { items: [], total: 0, page: Number(page), pageSize: Number(pageSize), totalPages: 1 };
+  }
+
+  /**
+   * Búsqueda rápida asíncrona para Autocomplete / Typeahead
+   * @param {string} busqueda Texto a buscar (DNI, nombre, apellido, código)
+   * @param {number} limit Límite de resultados devueltos (default: 10)
+   */
+  async buscarRapido(busqueda, limit = 10) {
+    if (!busqueda || busqueda.trim().length < 2) return [];
+    try {
+      const response = await apiClient.get('/clientes', {
+        busqueda: busqueda.trim(),
+        limit
+      });
+      const unwrapped = this._unwrap(response);
+      const items = Array.isArray(unwrapped) ? unwrapped : (unwrapped?.items || []);
+      return items.map(c => this._normalizeCliente(c));
     } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        console.info('[ClientesService] Usando repositorio local mock.');
-        const list = this._getLocalClientes();
-        return this._filterAndPaginate(list, { page, pageSize, search, estado });
-      }
-      throw err;
+      console.warn('[ClientesService] Error en búsqueda rápida:', err);
+      return [];
     }
   }
 
@@ -282,75 +140,35 @@ class ClientesService {
    * Obtener cliente por ID
    */
   async obtenerPorId(id) {
-    try {
-      const response = await apiClient.get(`/clientes/${id}`);
-      return this._normalizeCliente(this._unwrap(response));
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const list = this._getLocalClientes();
-        const cliente = list.find(c => String(c.id) === String(id));
-        if (!cliente) throw new Error('Cliente no encontrado');
-        return this._normalizeCliente(cliente);
-      }
-      throw err;
-    }
+    const response = await apiClient.get(`/clientes/${id}`);
+    return this._normalizeCliente(this._unwrap(response));
   }
 
   /**
    * Crear nuevo cliente
    */
   async crear(clienteData) {
-    try {
-      const payload = {
-        ...clienteData,
-        codigoCliente: clienteData.codigoCliente || clienteData.codigo || null
-      };
-      const response = await apiClient.post('/clientes', payload);
-      return this._normalizeCliente(this._unwrap(response));
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const list = this._getLocalClientes();
-        const nextId = list.length > 0 ? Math.max(...list.map(c => Number(c.id) || 0)) + 1 : 1;
-        const nuevoCliente = this._normalizeCliente({
-          ...clienteData,
-          id: nextId,
-          codigo: clienteData.codigo || clienteData.codigoCliente || `CLI-00${100 + nextId}`,
-          activo: clienteData.activo !== undefined ? clienteData.activo : true,
-          fechaAlta: new Date().toISOString()
-        });
-        list.unshift(nuevoCliente);
-        this._saveLocalClientes(list);
-        return nuevoCliente;
-      }
-      throw err;
-    }
+    const payload = {
+      ...clienteData,
+      codigoCliente: clienteData.codigoCliente || clienteData.codigo || null
+    };
+    const response = await apiClient.post('/clientes', payload);
+    return this._normalizeCliente(this._unwrap(response));
   }
 
   /**
    * Actualizar cliente existente
    */
   async actualizar(id, clienteData) {
-    try {
-      const estadoCliente = clienteData.estadoCliente ||
-        (clienteData.activo !== undefined ? (clienteData.activo ? 'Activo' : 'Inactivo') : undefined);
-      const payload = {
-        ...clienteData,
-        codigoCliente: clienteData.codigoCliente || clienteData.codigo || undefined,
-        estadoCliente
-      };
-      const response = await apiClient.put(`/clientes/${id}`, payload);
-      return this._normalizeCliente(this._unwrap(response));
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const list = this._getLocalClientes();
-        const index = list.findIndex(c => String(c.id) === String(id));
-        if (index === -1) throw new Error('Cliente a actualizar no encontrado');
-        list[index] = this._normalizeCliente({ ...list[index], ...clienteData, id: Number(id) });
-        this._saveLocalClientes(list);
-        return list[index];
-      }
-      throw err;
-    }
+    const estadoCliente = clienteData.estadoCliente ||
+      (clienteData.activo !== undefined ? (clienteData.activo ? 'Activo' : 'Inactivo') : undefined);
+    const payload = {
+      ...clienteData,
+      codigoCliente: clienteData.codigoCliente || clienteData.codigo || undefined,
+      estadoCliente
+    };
+    const response = await apiClient.put(`/clientes/${id}`, payload);
+    return this._normalizeCliente(this._unwrap(response));
   }
 
   /**

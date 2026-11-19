@@ -55,26 +55,3 @@ public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
             .IsUnique();
     }
 }
-
-public class EmpresaConfiguration : IEntityTypeConfiguration<Empresa>
-{
-    public void Configure(EntityTypeBuilder<Empresa> builder)
-    {
-        builder.ToTable("Empresas");
-
-        builder.Property(e => e.RazonSocial)
-            .HasMaxLength(150);
-
-        builder.Property(e => e.CUIT)
-            .HasMaxLength(20);
-
-        builder.Property(e => e.DireccionFiscal)
-            .HasMaxLength(200);
-
-        builder.Property(e => e.Telefono)
-            .HasMaxLength(50);
-
-        builder.Property(e => e.Email)
-            .HasMaxLength(150);
-    }
-}

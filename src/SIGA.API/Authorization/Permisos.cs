@@ -26,10 +26,6 @@ public static class Permisos
     // Stock y Bulbos
     public const string StockVer = "STOCK_VER";
     public const string StockAjustar = "STOCK_AJUSTAR";
-    public const string MovimientosVer = "MOVIMIENTOS_VER";
-    public const string MovimientosCrear = "MOVIMIENTOS_CREAR";
-    public const string MovimientosConfirmar = "MOVIMIENTOS_CONFIRMAR";
-    public const string MovimientosAnular = "MOVIMIENTOS_ANULAR";
 
     // Temporadas
     public const string TemporadasVer = "TEMPORADAS_VER";

@@ -15,50 +15,9 @@ class EmpleadosService {
   }
 
   async listar() {
-    try {
-      const response = await apiClient.get('/empleados');
-      const data = this._unwrap(response);
-      return Array.isArray(data) ? data : [];
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        console.info('[EmpleadosService] Fallback mock para listado de empleados');
-        return [
-          {
-            id: 1,
-            personaId: 1,
-            username: 'admin',
-            nombre: 'Administrador',
-            apellido: 'SIGA',
-            nombreCompleto: 'Administrador SIGA',
-            documento: '00000000',
-            telefono: '123456789',
-            email: 'admin@azafranmediterraneo.com',
-            rolId: 1,
-            rol: 'ADMINISTRADOR',
-            estado: 'Activo',
-            ultimoAcceso: new Date().toISOString(),
-            fechaCreacion: '2026-01-01T00:00:00Z'
-          },
-          {
-            id: 2,
-            personaId: 2,
-            username: 'vendedor1',
-            nombre: 'Carlos',
-            apellido: 'Ventas',
-            nombreCompleto: 'Carlos Ventas',
-            documento: '30111222',
-            telefono: '+54 351 444-5555',
-            email: 'carlos.ventas@siga.com',
-            rolId: 2,
-            rol: 'VENDEDOR',
-            estado: 'Activo',
-            ultimoAcceso: new Date().toISOString(),
-            fechaCreacion: '2026-02-01T00:00:00Z'
-          }
-        ];
-      }
-      throw err;
-    }
+    const response = await apiClient.get('/empleados');
+    const data = this._unwrap(response);
+    return Array.isArray(data) ? data : [];
   }
 
   async obtenerPorId(id) {

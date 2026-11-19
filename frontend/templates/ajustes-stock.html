@@ -1,0 +1,199 @@
+<div class="fade-in">
+  <!-- Encabezado -->
+  <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
+    <div>
+      <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Ajustes de Stock</h1>
+      <p class="text-muted text-sm">Registro de ingresos y egresos manuales de bulbos para clientes o la empresa con motivo obligatorio</p>
+    </div>
+    <div class="d-flex gap-sm">
+      <button class="btn btn-secondary btn-sm" id="btn-refresh-ajustes" title="Actualizar lista">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>Refrescar</span>
+      </button>
+      <button class="btn btn-primary" id="btn-nuevo-ajuste">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Nuevo Ajuste de Stock</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filtros Rápidos -->
+  <div class="table-card mb-4" style="padding: 0.85rem 1.25rem;">
+    <div class="d-flex align-center gap-md flex-wrap justify-between">
+      <div style="flex: 1; min-width: 240px;">
+        <input
+          type="text"
+          id="filter-ajuste-busqueda"
+          class="form-control"
+          placeholder="🔍 Buscar por nombre y apellido de cliente, comprobante o motivo..."
+          style="padding: 0.45rem 0.85rem;"
+        />
+      </div>
+      <div class="d-flex align-center gap-lg flex-wrap">
+        <div class="d-flex align-center gap-sm">
+          <label class="text-xs text-muted font-bold text-uppercase">Estado:</label>
+          <select id="filter-ajuste-estado" class="form-control" style="width: 170px; padding: 0.4rem 0.75rem;">
+            <option value="todos">Todos los Estados</option>
+            <option value="Pendiente">Solo Pendientes</option>
+            <option value="Confirmado">Solo Confirmados</option>
+            <option value="Anulado">Solo Anulados</option>
+          </select>
+        </div>
+        <div class="d-flex align-center gap-sm">
+          <label class="text-xs text-muted font-bold text-uppercase">Titular:</label>
+          <select id="filter-ajuste-entidad" class="form-control" style="width: 200px; padding: 0.4rem 0.75rem;">
+            <option value="todos">Todos los Titulares</option>
+            <option value="sucursales">🏢 Solo Sucursales</option>
+            <option value="clientes">👤 Solo Clientes</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla de Ajustes de Stock -->
+  <div class="table-card">
+    <div class="table-responsive">
+      <table class="table" id="ajustes-table">
+        <thead>
+          <tr>
+            <th style="width: 130px;">Comprobante</th>
+            <th style="width: 140px;">Fecha</th>
+            <th style="width: 110px;">Sentido</th>
+            <th>Titular Afectado</th>
+            <th style="text-align: right; width: 110px;">Total Bulbos</th>
+            <th>Motivo / Observación del Ajuste</th>
+            <th style="width: 120px;">Estado</th>
+            <th style="text-align: right; width: 150px;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="ajustes-table-body">
+          <tr>
+            <td colspan="8" class="text-center text-muted" style="padding: 2.5rem;">Cargando ajustes de stock...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal de Nuevo Ajuste de Stock -->
+  <div id="modal-nuevo-ajuste" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-dialog modal-lg" style="max-width: 680px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title font-bold" style="color: var(--primary);">Registrar Ajuste de Stock de Bulbos</h3>
+          <p class="text-xs text-muted mt-1" style="margin-bottom: 0;">Seleccione si añade o quita bulbos a la empresa o a un cliente y detalle el motivo obligatorio.</p>
+        </div>
+        <button type="button" class="modal-close-btn" id="btn-close-modal-ajuste" aria-label="Cerrar modal">✕</button>
+      </div>
+      <form id="form-nuevo-ajuste" novalidate>
+        <div class="modal-body" style="padding: 1.5rem;">
+
+          <!-- 1. Selección de Titular / Entidad -->
+          <div class="form-section mb-4" style="background: var(--surface-alt); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
+            <label class="form-label font-bold mb-2 text-main">
+              1. ¿A quién se le aplica el ajuste? <span class="text-danger">*</span>
+            </label>
+            <div class="d-flex gap-lg mb-2 flex-wrap">
+              <label class="d-flex align-center gap-xs font-medium cursor-pointer" style="cursor: pointer;">
+                <input type="radio" name="ajuste-entidad-tipo" value="sucursal" id="radio-entidad-sucursal" checked />
+                <span>🏢 Sucursal (Depósito de Sucursal)</span>
+              </label>
+              <label class="d-flex align-center gap-xs font-medium cursor-pointer" style="cursor: pointer;">
+                <input type="radio" name="ajuste-entidad-tipo" value="cliente" id="radio-entidad-cliente" />
+                <span>👤 Cliente de la empresa</span>
+              </label>
+            </div>
+
+            <div id="box-sucursal-select" class="mt-2">
+              <label class="form-label font-semibold text-xs" for="ajuste-sucursal-id">Seleccionar Sucursal:</label>
+              <select id="ajuste-sucursal-id" class="form-control">
+                <option value="">-- Elija una sucursal --</option>
+              </select>
+            </div>
+
+            <div id="box-cliente-select" class="hidden mt-2">
+              <label class="form-label font-semibold text-xs" for="ajuste-cliente-autocomplete">Seleccionar Cliente:</label>
+              <div id="ajuste-cliente-autocomplete"></div>
+            </div>
+          </div>
+
+          <!-- 2. Acción / Sentido del Ajuste -->
+          <div class="form-section mb-4" style="background: var(--surface-alt); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
+            <label class="form-label font-bold mb-2 text-main">
+              2. ¿Qué acción realiza el ajuste? <span class="text-danger">*</span>
+            </label>
+            <div class="d-flex gap-lg flex-wrap">
+              <label class="d-flex align-center gap-xs font-semibold cursor-pointer text-success" style="cursor: pointer;">
+                <input type="radio" name="ajuste-accion" value="sumar" checked />
+                <span>➕ Añadir bulbos (Ingreso de Stock)</span>
+              </label>
+              <label class="d-flex align-center gap-xs font-semibold cursor-pointer text-danger" style="cursor: pointer;">
+                <input type="radio" name="ajuste-accion" value="restar" />
+                <span>➖ Quitar bulbos (Egreso / Merma / Baja de Stock)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 3. Cantidades por Clase (0 a 4) -->
+          <div class="form-section mb-4">
+            <label class="form-label font-bold mb-2 text-main">
+              3. Cantidades de Bulbos por Clase (0 a 4): <span class="text-danger">*</span>
+            </label>
+            <div id="ajustes-calibres-grid"></div>
+            <div class="d-flex justify-between align-center mt-2" style="background: var(--surface-hover); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm);">
+              <span class="text-xs text-muted">Total de unidades del ajuste:</span>
+              <span class="font-bold text-primary" style="font-size: 1.1rem;"><span id="ajuste-total-preview">0</span> bulbos</span>
+            </div>
+          </div>
+
+          <!-- 4. Motivo / Observación del Ajuste (Obligatorio) -->
+          <div class="form-group mb-3">
+            <label class="form-label font-bold text-main" for="ajuste-motivo">
+              4. Motivo / Observación del Ajuste <span class="text-danger">*</span>
+            </label>
+            <textarea id="ajuste-motivo" class="form-control" rows="3" required placeholder="Especifique el motivo por el cual se quitan o añaden bulbos (ej: Merma por clasificación en depósito, Ajuste de recuento físico de inventario, Corrección de saldo inicial, etc.)"></textarea>
+            <small class="text-muted text-xs">Este motivo quedará permanentemente asentado en la observación del ajuste para fines de trazabilidad y auditoría.</small>
+          </div>
+
+          <div id="ajuste-form-error" class="alert alert-danger hidden mb-2" style="font-size: 0.8125rem;"></div>
+        </div>
+
+        <div class="modal-footer d-flex justify-between">
+          <button type="button" class="btn btn-outline" id="btn-cancel-ajuste">Cancelar</button>
+          <div class="d-flex gap-sm">
+            <button type="button" class="btn btn-secondary" id="btn-save-pendiente">
+              <span>Guardar como Pendiente</span>
+            </button>
+            <button type="submit" class="btn btn-primary" id="btn-save-confirmar">
+              <span>Guardar y Confirmar</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de Detalle de Ajuste -->
+  <div id="modal-detalle-ajuste" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title font-bold text-primary" id="detalle-titulo">Detalle de Ajuste de Stock</h3>
+        <button type="button" class="modal-close-btn" id="btn-close-modal-detalle">✕</button>
+      </div>
+      <div class="modal-body" id="detalle-cuerpo" style="padding: 1.5rem;">
+        <!-- Cargado dinámicamente -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="btn-cerrar-detalle">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>

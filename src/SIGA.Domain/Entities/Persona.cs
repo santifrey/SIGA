@@ -12,6 +12,10 @@ public class Persona : BaseEntity
 
     public string NombreCompleto => $"{Nombre} {Apellido}".Trim();
 
+    // Vinculación a Sucursal (opcional)
+    public int? SucursalId { get; set; }
+    public virtual Sucursal? Sucursal { get; set; }
+
     // Propiedades de navegación
     public virtual Usuario? Usuario { get; set; }
     public virtual Cliente? Cliente { get; set; }

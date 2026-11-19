@@ -3,7 +3,7 @@
 ## Architecture
 SIGA is a modular agricultural enterprise system composed of:
 - **Backend API**: ASP.NET Core 7 Web API (`src/SIGA.API`), Clean Architecture layered with Application (`src/SIGA.Application`), Domain (`src/SIGA.Domain`), and Infrastructure (`src/SIGA.Infrastructure`).
-- **Persistence**: Entity Framework Core with SQLite (`siga_dev.db`), repository pattern, and unit of work.
+- **Persistence**: Entity Framework Core with MySQL (`siga_db`), repository pattern, and unit of work.
 - **Frontend SPA**: Vanilla ES6 modules (`frontend/js/`), CSS custom properties design system (`frontend/css/`), hash-based client-side router (`frontend/js/router.js`).
 - **Security**: JWT authentication with single-role claim and granular permission claims, dynamic policy-based authorization (`[RequierePermiso("...")]`).
 

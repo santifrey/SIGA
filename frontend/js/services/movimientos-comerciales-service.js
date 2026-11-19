@@ -109,8 +109,6 @@ export const ACCIONES_APROBACION = {
   Corregido: 'Corregido y Reenviado'
 };
 
-const STORAGE_KEY_MOCK_MOVIMIENTOS = 'siga_mock_movimientos_comerciales';
-
 class MovimientosComercialesService {
   _unwrap(res) {
     if (res && typeof res === 'object' && 'data' in res && res.data !== null && res.data !== undefined) {
@@ -133,34 +131,26 @@ class MovimientosComercialesService {
    * GET /api/v1/movimientos-comerciales
    */
   async listar(filtro = {}) {
-    try {
-      const params = {};
-      if (filtro.tipo !== undefined && filtro.tipo !== null && filtro.tipo !== 'todos' && filtro.tipo !== '') {
-        params.tipo = Number(filtro.tipo);
-      }
-      if (filtro.estado !== undefined && filtro.estado !== null && filtro.estado !== 'todos' && filtro.estado !== '') {
-        params.estado = Number(filtro.estado);
-      }
-      if (filtro.clienteId && filtro.clienteId !== 'todos') {
-        params.clienteId = Number(filtro.clienteId);
-      }
-      if (filtro.temporadaId && filtro.temporadaId !== 'todos') {
-        params.temporadaId = Number(filtro.temporadaId);
-      }
-      if (filtro.fechaDesde) params.fechaDesde = filtro.fechaDesde;
-      if (filtro.fechaHasta) params.fechaHasta = filtro.fechaHasta;
-
-      const response = await apiClient.get('/movimientos-comerciales', params);
-      const data = this._unwrap(response);
-      const list = Array.isArray(data) ? data : (data?.items || []);
-      return list.map(m => this._normalizeMovimiento(m));
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        console.info('[MovimientosComercialesService] Fallback mock para listar.');
-        return this._getLocalMovimientos(filtro);
-      }
-      throw err;
+    const params = {};
+    if (filtro.tipo !== undefined && filtro.tipo !== null && filtro.tipo !== 'todos' && filtro.tipo !== '') {
+      params.tipo = Number(filtro.tipo);
     }
+    if (filtro.estado !== undefined && filtro.estado !== null && filtro.estado !== 'todos' && filtro.estado !== '') {
+      params.estado = Number(filtro.estado);
+    }
+    if (filtro.clienteId && filtro.clienteId !== 'todos') {
+      params.clienteId = Number(filtro.clienteId);
+    }
+    if (filtro.temporadaId && filtro.temporadaId !== 'todos') {
+      params.temporadaId = Number(filtro.temporadaId);
+    }
+    if (filtro.fechaDesde) params.fechaDesde = filtro.fechaDesde;
+    if (filtro.fechaHasta) params.fechaHasta = filtro.fechaHasta;
+
+    const response = await apiClient.get('/movimientos-comerciales', params);
+    const data = this._unwrap(response);
+    const list = Array.isArray(data) ? data : (data?.items || []);
+    return list.map(m => this._normalizeMovimiento(m));
   }
 
   /**
@@ -168,16 +158,8 @@ class MovimientosComercialesService {
    * GET /api/v1/movimientos-comerciales/{id}
    */
   async obtenerPorId(id) {
-    try {
-      const response = await apiClient.get(`/movimientos-comerciales/${id}`);
-      return this._normalizeMovimiento(this._unwrap(response));
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const item = this._getLocalMovimientos().find(m => Number(m.id) === Number(id));
-        if (item) return this._normalizeMovimiento(item);
-      }
-      throw err;
-    }
+    const response = await apiClient.get(`/movimientos-comerciales/${id}`);
+    return this._normalizeMovimiento(this._unwrap(response));
   }
 
   /**
@@ -188,16 +170,9 @@ class MovimientosComercialesService {
     const numId = Number(clienteId);
     if (!numId) return { esNuevo: false, requiereContrato: false };
 
-    try {
-      const params = excludeMovimientoId ? { excludeMovimientoId: Number(excludeMovimientoId) } : {};
-      const response = await apiClient.get(`/movimientos-comerciales/verificar-cliente-nuevo/${numId}`, params);
-      return this._unwrap(response);
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        return { esNuevo: false, requiereContrato: false };
-      }
-      throw err;
-    }
+    const params = excludeMovimientoId ? { excludeMovimientoId: Number(excludeMovimientoId) } : {};
+    const response = await apiClient.get(`/movimientos-comerciales/verificar-cliente-nuevo/${numId}`, params);
+    return this._unwrap(response);
   }
 
   /**
@@ -269,25 +244,6 @@ class MovimientosComercialesService {
     }
     const response = await apiClient.post(`/movimientos-comerciales/${id}/rechazar`, payload);
     return this._unwrap(response);
-  }
-
-  // Local storage mock helpers
-  _getLocalMovimientos(filtro = {}) {
-    const raw = storage.get(STORAGE_KEY_MOCK_MOVIMIENTOS, []);
-    let list = Array.isArray(raw) ? raw : [];
-    if (filtro.tipo && filtro.tipo !== 'todos') {
-      list = list.filter(m => Number(m.tipo) === Number(filtro.tipo));
-    }
-    if (filtro.estado && filtro.estado !== 'todos') {
-      list = list.filter(m => Number(m.estado) === Number(filtro.estado));
-    }
-    if (filtro.clienteId && filtro.clienteId !== 'todos') {
-      list = list.filter(m => Number(m.clienteId) === Number(filtro.clienteId) || Number(m.origenParticipanteId) === Number(filtro.clienteId) || Number(m.destinoParticipanteId) === Number(filtro.clienteId));
-    }
-    if (filtro.temporadaId && filtro.temporadaId !== 'todos') {
-      list = list.filter(m => Number(m.temporadaId) === Number(filtro.temporadaId));
-    }
-    return list;
   }
 }
 

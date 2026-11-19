@@ -15,6 +15,8 @@ public class EmpleadoDto
     public string? Posicion { get; set; }
     public string? Telefono { get; set; }
     public string? Email { get; set; }
+    public int? SucursalId { get; set; }
+    public string? SucursalNombre { get; set; }
     public int RolId { get; set; }
     public string Rol { get; set; } = string.Empty;
     public EstadoUsuario Estado { get; set; }
@@ -33,6 +35,7 @@ public class CrearEmpleadoDto
     public string? Posicion { get; set; }
     public string? Telefono { get; set; }
     public string? Email { get; set; }
+    public int? SucursalId { get; set; }
 
     // Datos de Usuario (Opcionales: si se omiten, Username = Email y Password = Documento)
     public string? Username { get; set; }
@@ -50,6 +53,7 @@ public class ActualizarEmpleadoDto
     public string? Posicion { get; set; }
     public string? Telefono { get; set; }
     public string? Email { get; set; }
+    public int? SucursalId { get; set; }
 
     // Datos de Usuario
     public int RolId { get; set; }

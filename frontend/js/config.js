@@ -26,17 +26,6 @@ export const CONFIG = {
     TOKEN: 'siga_auth_token',
     USER: 'siga_auth_user',
     REMEMBER: 'siga_remember_session',
-    MOCK_CLIENTES: 'siga_mock_clientes',
-    MOCK_SUCURSALES: 'siga_mock_sucursales',
-    MOCK_MOVIMIENTOS: 'siga_mock_movimientos',
-    MOCK_STOCK: 'siga_mock_stock',
-    MOCK_TEMPORADAS: 'siga_mock_temporadas',
-    MOCK_PLANTACIONES: 'siga_mock_plantaciones',
-    MOCK_LOTES: 'siga_mock_lotes',
-    MOCK_TRANSFERENCIAS: 'siga_mock_transferencias',
-    MOCK_COSECHAS: 'siga_mock_cosechas',
-    MOCK_PRECIOS_CLASE: 'siga_mock_precios_clase',
-    MOCK_VENTAS: 'siga_mock_ventas',
   },
 
   // Configuración de paginación por defecto
@@ -48,7 +37,4 @@ export const CONFIG = {
 
   // Timeout para solicitudes HTTP (en milisegundos)
   HTTP_TIMEOUT_MS: 10000,
-
-  // Bandera de modo Mock / Fallback automático: activo solo en entorno local de desarrollo
-  ENABLE_MOCK_FALLBACK: isLocalEnvironment,
 };

@@ -20,17 +20,10 @@ public enum EstadoParticipante
     Activo = 1
 }
 
-public enum EstadoSucursal
-{
-    Inactivo = 0,
-    Activo = 1,
-    Mantenimiento = 2
-}
-
 public enum TipoParticipante
 {
     Cliente = 1,
-    Empresa = 2,
+    Sucursal = 2,
     Proveedor = 3
 }
 
@@ -60,27 +53,11 @@ public enum ClaseBulbo
     MIX = 5
 }
 
-public enum EstadoOperacion
-{
-    Pendiente = 0,
-    Confirmada = 1,
-    Anulada = 2
-}
-
 public enum EstadoMovimiento
 {
     Pendiente = 0,
     Confirmado = 1,
     Anulado = 2
-}
-
-public enum TipoOperacionComercial
-{
-    CompraVentaBulbos = 1,
-    Traspaso = 2,
-    AjusteStock = 3,
-    Devolucion = 4,
-    IngresoCosecha = 5
 }
 
 public enum EstadoTemporada
@@ -149,13 +126,9 @@ public enum EstadoFactura
 public enum AccionAprobacion
 {
     Registrado = 0,
-    EnviadoARevision = 0,
     AprobadoAdmin = 1,
-    AprobadoAdministracion = 1,
-    Observado = 2,
     Facturado = 3,
     Finalizado = 4,
-    AprobacionFinal = 4,
     Rechazado = 5,
     Corregido = 6
 }

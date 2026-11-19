@@ -22,7 +22,7 @@ public class CrearMovimientoComercialDto
     public TipoMovimientoComercial Tipo { get; set; } = TipoMovimientoComercial.VentaACliente;
 
     [Range(1, int.MaxValue, ErrorMessage = "El participante origen es requerido.")]
-    public int OrigenParticipanteId { get; set; } = Empresa.SingletonId;
+    public int OrigenParticipanteId { get; set; }
 
     [Range(1, int.MaxValue, ErrorMessage = "El participante destino es requerido.")]
     public int DestinoParticipanteId { get; set; }
@@ -45,7 +45,7 @@ public class CrearMovimientoComercialDto
 public class ActualizarMovimientoComercialDto
 {
     [Range(1, int.MaxValue, ErrorMessage = "El participante origen es requerido.")]
-    public int OrigenParticipanteId { get; set; } = Empresa.SingletonId;
+    public int OrigenParticipanteId { get; set; }
 
     [Range(1, int.MaxValue, ErrorMessage = "El participante destino es requerido.")]
     public int DestinoParticipanteId { get; set; }

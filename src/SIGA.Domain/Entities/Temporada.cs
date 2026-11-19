@@ -10,6 +10,7 @@ public class Temporada : BaseEntity
     public DateTime FechaInicio { get; set; } = DateTime.UtcNow;
     public DateTime? FechaFin { get; set; }
     public EstadoTemporada Estado { get; set; } = EstadoTemporada.Planificada;
+    public decimal PorcentajeComisionCompra { get; set; } = 0m;
 
     public int UsuarioCreadorId { get; set; }
     public virtual Usuario? UsuarioCreador { get; set; }
@@ -74,5 +75,13 @@ public class Temporada : BaseEntity
 
         Estado = EstadoTemporada.Cerrada;
         FechaFin = DateTime.UtcNow;
+    }
+
+    public void ActualizarComisionCompra(decimal porcentaje)
+    {
+        if (porcentaje < 0 || porcentaje > 100)
+            throw new OperacionInvalidaException("El porcentaje de comisión de compra debe estar entre 0% y 100%.");
+
+        PorcentajeComisionCompra = porcentaje;
     }
 }

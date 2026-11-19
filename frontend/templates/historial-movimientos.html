@@ -1,0 +1,184 @@
+<div class="fade-in">
+  <!-- Encabezado Principal del Historial -->
+  <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
+    <div>
+      <div class="d-flex align-center gap-sm">
+        <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Movimiento de Bulbos</h1>
+        <span class="badge badge-primary text-xs" style="text-transform: uppercase; font-weight: 700;">Trazabilidad
+          Física</span>
+      </div>
+      <p class="text-muted text-sm">Registro cronológico de todas las entradas, salidas y transferencias de bulbos en el
+        sistema</p>
+    </div>
+    <div class="d-flex gap-sm">
+      <button class="btn btn-secondary btn-sm" id="btn-refresh-historial" title="Actualizar lista desde el servidor">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>Refrescar</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tarjetas de Resumen KPI -->
+  <div class="metric-grid mb-4">
+    <div class="metric-card primary">
+      <div class="metric-icon-wrap">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="17 1 21 5 17 9"></polyline>
+          <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+          <polyline points="7 23 3 19 7 15"></polyline>
+          <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+        </svg>
+      </div>
+      <div class="metric-content">
+        <span class="metric-label">Total Movimientos</span>
+        <div class="metric-value" id="kpi-hist-total">0</div>
+        <span class="metric-subtext">Registros en historial</span>
+      </div>
+    </div>
+
+    <div class="metric-card accent">
+      <div class="metric-icon-wrap">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+      </div>
+      <div class="metric-content">
+        <span class="metric-label">Bulbos Movilizados</span>
+        <div class="metric-value" id="kpi-hist-bulbos">0</div>
+        <span class="metric-subtext">Unidades físicas totales</span>
+      </div>
+    </div>
+
+    <div class="metric-card success">
+      <div class="metric-icon-wrap">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      </div>
+      <div class="metric-content">
+        <span class="metric-label">Confirmados</span>
+        <div class="metric-value" id="kpi-hist-confirmados">0</div>
+        <span class="metric-subtext">Impacto en stock asentado</span>
+      </div>
+    </div>
+
+    <div class="metric-card warning">
+      <div class="metric-icon-wrap">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <div class="metric-content">
+        <span class="metric-label">Pendientes</span>
+        <div class="metric-value" id="kpi-hist-pendientes">0</div>
+        <span class="metric-subtext">Por revisar o confirmar</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros y Buscador en Vivo -->
+  <div class="table-card mb-4" style="padding: 1rem 1.25rem;">
+    <div class="d-flex align-center gap-md flex-wrap justify-between">
+      <div style="flex: 1; min-width: 240px;">
+        <input type="text" id="filter-hist-busqueda" class="form-control"
+          placeholder="🔍 Buscar por comprobante, participante u observaciones..." style="padding: 0.5rem 0.85rem;" />
+      </div>
+
+      <div class="d-flex align-center gap-md flex-wrap">
+        <div class="d-flex align-center gap-xs">
+          <label class="text-xs text-muted font-bold text-uppercase">Tipo:</label>
+          <select id="filter-hist-tipo" class="form-control" style="width: 175px; padding: 0.45rem 0.65rem;">
+            <option value="todos">Todos los Tipos</option>
+            <option value="Venta">🛒 Ventas a Clientes</option>
+            <option value="Compra">📥 Compras a Clientes</option>
+            <option value="Traspaso">🔄 Traspasos</option>
+            <option value="Cosecha">🌾 Cosechas</option>
+            <option value="Plantacion">🌱 Plantaciones</option>
+            <option value="AjusteStock">⚖️ Ajustes de Stock</option>
+          </select>
+        </div>
+
+        <div class="d-flex align-center gap-xs">
+          <label class="text-xs text-muted font-bold text-uppercase">Estado:</label>
+          <select id="filter-hist-estado" class="form-control" style="width: 160px; padding: 0.45rem 0.65rem;">
+            <option value="todos">Todos los Estados</option>
+            <option value="Confirmado">Solo Confirmados</option>
+            <option value="Pendiente">Solo Pendientes</option>
+            <option value="Anulado">Solo Anulados</option>
+          </select>
+        </div>
+
+        <div class="d-flex align-center gap-xs">
+          <label class="text-xs text-muted font-bold text-uppercase">Titular:</label>
+          <select id="filter-hist-entidad" class="form-control"
+            style="min-width: 220px; max-width: 320px; padding: 0.45rem 0.65rem;">
+            <option value="todos">Todos los Titulares</option>
+            <option value="todas_sucursales">🏢 Todas las Sucursales</option>
+            <option value="todos_clientes">👤 Todos los Clientes</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla Histórica de Movimientos -->
+  <div class="table-card">
+    <div class="table-responsive">
+      <table class="table" id="historial-table">
+        <thead>
+          <tr>
+            <th style="width: 130px;">Comprobante</th>
+            <th style="width: 135px;">Fecha</th>
+            <th style="width: 155px;">Tipo de Operación</th>
+            <th>Origen</th>
+            <th>Destino / Titular Afectado</th>
+            <th style="text-align: right; width: 115px;">Total Bulbos</th>
+            <th style="width: 110px;">Estado</th>
+            <th>Observaciones / Motivo</th>
+            <th style="text-align: right; width: 130px;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="historial-table-body">
+          <tr>
+            <td colspan="9" class="text-center text-muted" style="padding: 2.5rem;">Cargando historial de movimientos...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal de Detalle de Movimiento -->
+  <div id="modal-detalle-mov" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-dialog modal-lg" style="max-width: 620px;">
+      <div class="modal-header">
+        <div>
+          <div class="d-flex align-center gap-sm">
+            <h3 class="modal-title font-bold text-primary" id="det-mov-titulo" style="margin-bottom: 0;">Detalle de
+              Movimiento</h3>
+            <span id="det-mov-badge-tipo"></span>
+            <span id="det-mov-badge-estado"></span>
+          </div>
+          <p class="text-xs text-muted mt-1" style="margin-bottom: 0;" id="det-mov-subtitulo">Comprobante y trazabilidad
+            de inventario</p>
+        </div>
+        <button type="button" class="modal-close-btn" id="btn-close-det-mov">✕</button>
+      </div>
+      <div class="modal-body" id="det-mov-cuerpo" style="padding: 1.5rem;">
+        <!-- Cargado dinámicamente -->
+      </div>
+      <div class="modal-footer d-flex justify-between align-center">
+        <div id="det-mov-acciones-extra" class="d-flex gap-xs"></div>
+        <button type="button" class="btn btn-outline" id="btn-cerrar-det-mov">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>

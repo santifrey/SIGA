@@ -11,6 +11,7 @@ public class PrecioReferenciaDto
     public ClaseBulbo ClaseBulbo { get; set; }
     public string NombreClase => ClaseBulbo.ToString();
     public decimal PrecioReferencia { get; set; }
+    public decimal PorcentajeComisionCompra { get; set; }
     public DateTime FechaVigencia { get; set; }
 }
 
@@ -45,6 +46,9 @@ public class ConfigurarPreciosTemporadaDto
     [Required(ErrorMessage = "Debe especificar la lista de precios.")]
     [MinLength(1, ErrorMessage = "Debe incluir al menos un precio de referencia.")]
     public List<ItemPrecioTemporadaDto> Precios { get; set; } = new();
+
+    [Range(0, 100, ErrorMessage = "El porcentaje de comisión debe estar entre 0 y 100.")]
+    public decimal? PorcentajeComisionCompra { get; set; }
 }
 
 public class PrecioClaseDto : PrecioReferenciaDto { }

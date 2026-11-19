@@ -9,6 +9,8 @@ public class PersonaDto
     public string Documento { get; set; } = string.Empty;
     public string? Telefono { get; set; }
     public string? Email { get; set; }
+    public int? SucursalId { get; set; }
+    public string? SucursalNombre { get; set; }
     public DateTime FechaCreacion { get; set; }
     public DateTime? FechaModificacion { get; set; }
 }
@@ -20,6 +22,7 @@ public class CreatePersonaDto
     public string Documento { get; set; } = string.Empty;
     public string? Telefono { get; set; }
     public string? Email { get; set; }
+    public int? SucursalId { get; set; }
 }
 
 public class UpdatePersonaDto
@@ -29,4 +32,5 @@ public class UpdatePersonaDto
     public string Documento { get; set; } = string.Empty;
     public string? Telefono { get; set; }
     public string? Email { get; set; }
+    public int? SucursalId { get; set; }
 }

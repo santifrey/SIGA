@@ -326,7 +326,7 @@ public class GestionReportes : IGestionReportes
     public async Task<ApiResponse<ResumenEjecutivoDto>> ObtenerResumenEjecutivoAsync(
         CancellationToken cancellationToken = default)
     {
-        var clientes = await _clienteRepository.GetAllWithPersonaAsync(null, cancellationToken);
+        var clientes = await _clienteRepository.GetAllWithPersonaAsync(null, null, cancellationToken);
         var sucursales = await _sucursalRepository.GetAllAsync(cancellationToken);
         var temporadaActiva = await _temporadaRepository.GetActivaAsync(cancellationToken);
         var movimientos = await _movimientoComercialRepository.GetAllWithDetailsAsync(cancellationToken);
@@ -354,7 +354,7 @@ public class GestionReportes : IGestionReportes
         var resumen = new ResumenEjecutivoDto
         {
             TotalClientesActivos = clientes.Count(c => c.EstadoCliente == EstadoCliente.Activo),
-            TotalSucursalesActivas = sucursales.Count(s => s.Estado == EstadoSucursal.Activo),
+            TotalSucursalesActivas = sucursales.Count(s => s.Activo),
             TemporadaActivaId = temporadaActiva?.Id,
             TemporadaActivaNombre = temporadaActiva?.Nombre,
             TemporadaActivaEstado = temporadaActiva?.Estado.ToString(),
@@ -376,10 +376,10 @@ public class GestionReportes : IGestionReportes
         {
             return c.Persona != null ? c.Persona.NombreCompleto : c.CodigoCliente;
         }
-        if (p is Empresa e)
+        if (p is Sucursal s)
         {
-            return e.RazonSocial;
+            return s.Nombre;
         }
-        return fallbackId == Empresa.SingletonId ? "Azafrán Mediterráneo S.A." : $"Participante #{fallbackId}";
+        return $"Participante #{fallbackId}";
     }
 }

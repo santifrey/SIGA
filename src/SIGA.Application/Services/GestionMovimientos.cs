@@ -45,24 +45,26 @@ public class GestionMovimientos : IGestionMovimientos
         if (dto.OrigenId <= 0 || dto.DestinoId <= 0)
         {
             var participantes = await _participanteRepository.FindAsync(
-                p => p is Empresa && ((Empresa)p).RazonSocial == "Ajustes de Inventario", 
+                p => p is Sucursal && ((Sucursal)p).Nombre == "Ajustes de Inventario", 
                 cancellationToken);
             var participanteAjustes = participantes.FirstOrDefault();
 
             if (participanteAjustes == null)
             {
-                var nuevaEmpresaAjustes = new Empresa
+                var nuevaSucursalAjustes = new Sucursal
                 {
-                    TipoParticipante = TipoParticipante.Empresa,
+                    TipoParticipante = TipoParticipante.Sucursal,
                     Estado = EstadoParticipante.Activo,
                     FechaRegistro = DateTime.UtcNow,
+                    Nombre = "Ajustes de Inventario",
                     RazonSocial = "Ajustes de Inventario",
                     CUIT = "00-00000000-0",
+                    Activo = false,
                     IsDeleted = false
                 };
-                await _participanteRepository.AddAsync(nuevaEmpresaAjustes, cancellationToken);
+                await _participanteRepository.AddAsync(nuevaSucursalAjustes, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
-                participanteAjustes = nuevaEmpresaAjustes;
+                participanteAjustes = nuevaSucursalAjustes;
             }
 
             if (dto.OrigenId <= 0) dto.OrigenId = participanteAjustes.Id;
@@ -87,7 +89,6 @@ public class GestionMovimientos : IGestionMovimientos
                 dto.OrigenId, 
                 dto.DestinoId, 
                 usuarioCreadorId, 
-                dto.TipoOperacion,
                 dto.Observaciones);
 
             foreach (var cant in dto.Cantidades)
@@ -245,9 +246,10 @@ public class GestionMovimientos : IGestionMovimientos
         {
             Id = m.Id,
             MovimientoComercialId = m.MovimientoComercialId,
+            TipoMovimientoComercial = m.MovimientoComercial?.Tipo,
+            TipoMovimientoComercialNombre = m.MovimientoComercial?.Tipo.ToString(),
             CosechaId = m.CosechaId,
             PlantacionId = m.PlantacionId,
-            TipoOperacion = m.TipoOperacion,
             Fecha = m.Fecha,
             OrigenId = m.OrigenId,
             OrigenNombre = ObtenerNombreParticipante(m.Origen),
@@ -275,17 +277,15 @@ public class GestionMovimientos : IGestionMovimientos
         {
             if (c.Persona != null && !string.IsNullOrWhiteSpace(c.Persona.NombreCompleto))
             {
-                return !string.IsNullOrWhiteSpace(c.CodigoCliente) 
-                    ? $"{c.Persona.NombreCompleto} ({c.CodigoCliente})" 
-                    : c.Persona.NombreCompleto;
+                return c.Persona.NombreCompleto;
             }
 
             return !string.IsNullOrWhiteSpace(c.CodigoCliente) ? $"Cliente {c.CodigoCliente}" : $"Cliente #{c.Id}";
         }
 
-        if (p is Empresa e)
+        if (p is Sucursal s)
         {
-            return !string.IsNullOrWhiteSpace(e.RazonSocial) ? e.RazonSocial : $"Empresa #{e.Id}";
+            return !string.IsNullOrWhiteSpace(s.Nombre) ? s.Nombre : (!string.IsNullOrWhiteSpace(s.RazonSocial) ? s.RazonSocial : $"Sucursal #{s.Id}");
         }
 
         return $"Participante #{p.Id}";

@@ -7,6 +7,10 @@
 
 import { movimientosService } from '../services/movimientos-service.js';
 import { clientesService } from '../services/clientes-service.js';
+import { sucursalesService } from '../services/sucursales-service.js';
+import { BulbosCalibresGrid } from '../components/bulbos-calibres-grid.js';
+import { ClienteAutocomplete } from '../components/cliente-autocomplete.js';
+import { loadTemplate } from '../utils/template-loader.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/escape-html.js';
 
@@ -15,224 +19,40 @@ export class AjustesStockView {
     this.router = router;
     this.container = null;
     this.clientesList = [];
+    this.sucursalesList = [];
+    this.filterBusqueda = '';
     this.filterEstado = 'todos';
     this.filterEntidad = 'todos';
     this.ajustesCache = [];
+    this.calibresGrid = null;
+    this.clienteAutocomplete = null;
   }
 
   async render(rootElement) {
     this.container = rootElement;
+    this.container.innerHTML = await loadTemplate('ajustes-stock.html');
 
-    this.container.innerHTML = `
-      <div class="fade-in">
-        <!-- Encabezado -->
-        <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
-          <div>
-            <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Ajustes de Stock</h1>
-            <p class="text-muted text-sm">Registro de ingresos y egresos manuales de bulbos para clientes o la empresa con motivo obligatorio</p>
-          </div>
-          <div class="d-flex gap-sm">
-            <button class="btn btn-secondary btn-sm" id="btn-refresh-ajustes" title="Actualizar lista">
-              <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              <span>Refrescar</span>
-            </button>
-            <button class="btn btn-primary" id="btn-nuevo-ajuste">
-              <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <span>Nuevo Ajuste de Stock</span>
-            </button>
-          </div>
-        </div>
+    this.calibresGrid = new BulbosCalibresGrid({
+      root: this.container,
+      inputIdPrefix: 'ajuste-cant-',
+      totalSelector: '#ajuste-total-preview',
+      gridContainerSelector: '#ajustes-calibres-grid'
+    });
+    this.calibresGrid.init();
 
-        <!-- Filtros Rápidos -->
-        <div class="table-card mb-4" style="padding: 0.85rem 1.25rem;">
-          <div class="d-flex align-center gap-lg flex-wrap">
-            <div class="d-flex align-center gap-sm">
-              <label class="text-xs text-muted font-bold text-uppercase">Estado:</label>
-              <select id="filter-ajuste-estado" class="form-control" style="width: 170px; padding: 0.4rem 0.75rem;">
-                <option value="todos">Todos los Estados</option>
-                <option value="Pendiente">Solo Pendientes</option>
-                <option value="Confirmado">Solo Confirmados</option>
-                <option value="Anulado">Solo Anulados</option>
-              </select>
-            </div>
-            <div class="d-flex align-center gap-sm">
-              <label class="text-xs text-muted font-bold text-uppercase">Titular:</label>
-              <select id="filter-ajuste-entidad" class="form-control" style="width: 200px; padding: 0.4rem 0.75rem;">
-                <option value="todos">Todos los Titulares</option>
-                <option value="empresa">🏢 Solo Empresa Central</option>
-                <option value="clientes">👤 Solo Clientes</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tabla de Ajustes de Stock -->
-        <div class="table-card">
-          <div class="table-responsive">
-            <table class="table" id="ajustes-table">
-              <thead>
-                <tr>
-                  <th style="width: 130px;">Comprobante</th>
-                  <th style="width: 140px;">Fecha</th>
-                  <th style="width: 110px;">Sentido</th>
-                  <th>Titular Afectado</th>
-                  <th style="text-align: right; width: 110px;">Total Bulbos</th>
-                  <th>Motivo / Observación del Ajuste</th>
-                  <th style="width: 120px;">Estado</th>
-                  <th style="text-align: right; width: 150px;">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="ajustes-table-body">
-                <tr>
-                  <td colspan="8" class="text-center text-muted" style="padding: 2.5rem;">Cargando ajustes de stock...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Modal de Nuevo Ajuste de Stock -->
-        <div id="modal-nuevo-ajuste" class="modal-backdrop" role="dialog" aria-modal="true">
-          <div class="modal-dialog modal-lg" style="max-width: 680px;">
-            <div class="modal-header">
-              <div>
-                <h3 class="modal-title font-bold" style="color: var(--primary);">Registrar Ajuste de Stock de Bulbos</h3>
-                <p class="text-xs text-muted mt-1" style="margin-bottom: 0;">Seleccione si añade o quita bulbos a la empresa o a un cliente y detalle el motivo obligatorio.</p>
-              </div>
-              <button type="button" class="modal-close-btn" id="btn-close-modal-ajuste" aria-label="Cerrar modal">✕</button>
-            </div>
-            <form id="form-nuevo-ajuste" novalidate>
-              <div class="modal-body" style="padding: 1.5rem;">
-
-                <!-- 1. Selección de Titular / Entidad -->
-                <div class="form-section mb-4" style="background: var(--surface-alt); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
-                  <label class="form-label font-bold mb-2 text-main">
-                    1. ¿A quién se le aplica el ajuste? <span class="text-danger">*</span>
-                  </label>
-                  <div class="d-flex gap-lg mb-2 flex-wrap">
-                    <label class="d-flex align-center gap-xs font-medium cursor-pointer" style="cursor: pointer;">
-                      <input type="radio" name="ajuste-entidad-tipo" value="empresa" id="radio-entidad-empresa" checked />
-                      <span>🏢 Empresa (Depósito Central)</span>
-                    </label>
-                    <label class="d-flex align-center gap-xs font-medium cursor-pointer" style="cursor: pointer;">
-                      <input type="radio" name="ajuste-entidad-tipo" value="cliente" id="radio-entidad-cliente" />
-                      <span>👤 Cliente de la empresa</span>
-                    </label>
-                  </div>
-
-                  <div id="box-cliente-select" class="hidden mt-2">
-                    <label class="form-label font-semibold text-xs" for="ajuste-cliente-id">Seleccionar Cliente:</label>
-                    <select id="ajuste-cliente-id" class="form-control">
-                      <option value="">-- Elija un cliente --</option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- 2. Acción / Sentido del Ajuste -->
-                <div class="form-section mb-4" style="background: var(--surface-alt); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
-                  <label class="form-label font-bold mb-2 text-main">
-                    2. ¿Qué acción realiza el ajuste? <span class="text-danger">*</span>
-                  </label>
-                  <div class="d-flex gap-lg flex-wrap">
-                    <label class="d-flex align-center gap-xs font-semibold cursor-pointer text-success" style="cursor: pointer;">
-                      <input type="radio" name="ajuste-accion" value="sumar" checked />
-                      <span>➕ Añadir bulbos (Ingreso de Stock)</span>
-                    </label>
-                    <label class="d-flex align-center gap-xs font-semibold cursor-pointer text-danger" style="cursor: pointer;">
-                      <input type="radio" name="ajuste-accion" value="restar" />
-                      <span>➖ Quitar bulbos (Egreso / Merma / Baja de Stock)</span>
-                    </label>
-                  </div>
-                </div>
-
-                <!-- 3. Cantidades por Clase (0 a 4) -->
-                <div class="form-section mb-4">
-                  <label class="form-label font-bold mb-2 text-main">
-                    3. Cantidades de Bulbos por Clase (0 a 4): <span class="text-danger">*</span>
-                  </label>
-                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 0.65rem;">
-                    <div class="form-group mb-0">
-                      <label class="text-xs font-semibold text-muted" for="ajuste-cant-0">Clase 0 (Extra Gde)</label>
-                      <input type="number" id="ajuste-cant-0" class="form-control text-right" min="0" value="0" />
-                    </div>
-                    <div class="form-group mb-0">
-                      <label class="text-xs font-semibold text-muted" for="ajuste-cant-1">Clase 1 (Grande)</label>
-                      <input type="number" id="ajuste-cant-1" class="form-control text-right" min="0" value="0" />
-                    </div>
-                    <div class="form-group mb-0">
-                      <label class="text-xs font-semibold text-muted" for="ajuste-cant-2">Clase 2 (Mediano)</label>
-                      <input type="number" id="ajuste-cant-2" class="form-control text-right" min="0" value="0" />
-                    </div>
-                    <div class="form-group mb-0">
-                      <label class="text-xs font-semibold text-muted" for="ajuste-cant-3">Clase 3 (Chico)</label>
-                      <input type="number" id="ajuste-cant-3" class="form-control text-right" min="0" value="0" />
-                    </div>
-                    <div class="form-group mb-0">
-                      <label class="text-xs font-semibold text-muted" for="ajuste-cant-4">Clase 4 (Semillero)</label>
-                      <input type="number" id="ajuste-cant-4" class="form-control text-right" min="0" value="0" />
-                    </div>
-                  </div>
-                  <div class="d-flex justify-between align-center mt-2" style="background: var(--surface-hover); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm);">
-                    <span class="text-xs text-muted">Total de unidades del ajuste:</span>
-                    <span class="font-bold text-primary" style="font-size: 1.1rem;"><span id="ajuste-total-preview">0</span> bulbos</span>
-                  </div>
-                </div>
-
-                <!-- 4. Motivo / Observación del Ajuste (Obligatorio) -->
-                <div class="form-group mb-3">
-                  <label class="form-label font-bold text-main" for="ajuste-motivo">
-                    4. Motivo / Observación del Ajuste <span class="text-danger">*</span>
-                  </label>
-                  <textarea id="ajuste-motivo" class="form-control" rows="3" required placeholder="Especifique el motivo por el cual se quitan o añaden bulbos (ej: Merma por clasificación en depósito, Ajuste de recuento físico de inventario, Corrección de saldo inicial, etc.)"></textarea>
-                  <small class="text-muted text-xs">Este motivo quedará permanentemente asentado en la observación del ajuste para fines de trazabilidad y auditoría.</small>
-                </div>
-
-                <div id="ajuste-form-error" class="alert alert-danger hidden mb-2" style="font-size: 0.8125rem;"></div>
-              </div>
-
-              <div class="modal-footer d-flex justify-between">
-                <button type="button" class="btn btn-outline" id="btn-cancel-ajuste">Cancelar</button>
-                <div class="d-flex gap-sm">
-                  <button type="button" class="btn btn-secondary" id="btn-save-pendiente">
-                    <span>Guardar como Pendiente</span>
-                  </button>
-                  <button type="submit" class="btn btn-primary" id="btn-save-confirmar">
-                    <span>Guardar y Confirmar</span>
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- Modal de Detalle de Ajuste -->
-        <div id="modal-detalle-ajuste" class="modal-backdrop" role="dialog" aria-modal="true">
-          <div class="modal-dialog" style="max-width: 520px;">
-            <div class="modal-header">
-              <h3 class="modal-title font-bold text-primary" id="detalle-titulo">Detalle de Ajuste de Stock</h3>
-              <button type="button" class="modal-close-btn" id="btn-close-modal-detalle">✕</button>
-            </div>
-            <div class="modal-body" id="detalle-cuerpo" style="padding: 1.5rem;">
-              <!-- Cargado dinámicamente -->
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline" id="btn-cerrar-detalle">Cerrar</button>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    `;
+    // Inicializar componente Autocomplete Asíncrono para selección de clientes
+    const acEl = this.container.querySelector('#ajuste-cliente-autocomplete');
+    if (acEl) {
+      this.clienteAutocomplete = new ClienteAutocomplete({
+        container: acEl,
+        name: 'ajuste-cliente-id',
+        placeholder: 'Buscar cliente por DNI, Nombre o Código...',
+        required: false
+      });
+    }
 
     this._bindEvents();
-    await this._loadClientes();
+    await this._loadSucursales();
     await this._loadAjustes();
   }
 
@@ -240,6 +60,14 @@ export class AjustesStockView {
     this.container.querySelector('#btn-refresh-ajustes').addEventListener('click', () => {
       this._loadAjustes();
     });
+
+    const inputBusqueda = this.container.querySelector('#filter-ajuste-busqueda');
+    if (inputBusqueda) {
+      inputBusqueda.addEventListener('input', (e) => {
+        this.filterBusqueda = e.target.value.toLowerCase().trim();
+        this._renderTable();
+      });
+    }
 
     this.container.querySelector('#filter-ajuste-estado').addEventListener('change', (e) => {
       this.filterEstado = e.target.value;
@@ -265,21 +93,27 @@ export class AjustesStockView {
       this.container.querySelector('#modal-detalle-ajuste').classList.remove('is-active');
     });
 
-    const radioEmpresa = this.container.querySelector('#radio-entidad-empresa');
+    const radioSucursal = this.container.querySelector('#radio-entidad-sucursal');
     const radioCliente = this.container.querySelector('#radio-entidad-cliente');
+    const boxSucursalSelect = this.container.querySelector('#box-sucursal-select');
     const boxClienteSelect = this.container.querySelector('#box-cliente-select');
 
-    radioEmpresa.addEventListener('change', () => {
-      if (radioEmpresa.checked) boxClienteSelect.classList.add('hidden');
-    });
-    radioCliente.addEventListener('change', () => {
-      if (radioCliente.checked) boxClienteSelect.classList.remove('hidden');
-    });
-
-    const inputsCant = this.container.querySelectorAll('[id^="ajuste-cant-"]');
-    inputsCant.forEach(inp => {
-      inp.addEventListener('input', () => this._updateTotalPreview());
-    });
+    if (radioSucursal) {
+      radioSucursal.addEventListener('change', () => {
+        if (radioSucursal.checked) {
+          boxSucursalSelect?.classList.remove('hidden');
+          boxClienteSelect?.classList.add('hidden');
+        }
+      });
+    }
+    if (radioCliente) {
+      radioCliente.addEventListener('change', () => {
+        if (radioCliente.checked) {
+          boxSucursalSelect?.classList.add('hidden');
+          boxClienteSelect?.classList.remove('hidden');
+        }
+      });
+    }
 
     this.container.querySelector('#btn-save-pendiente').addEventListener('click', () => {
       this._handleAjusteSubmit(false);
@@ -291,31 +125,125 @@ export class AjustesStockView {
     });
   }
 
-  _updateTotalPreview() {
-    let sum = 0;
-    for (let c = 0; c <= 4; c++) {
-      const val = Number(this.container.querySelector(`#ajuste-cant-${c}`).value) || 0;
-      sum += Math.max(0, val);
+  async _loadSucursales() {
+    try {
+      this.sucursalesList = await sucursalesService.listar({ estado: 'activas' });
+      const selectSucursal = this.container.querySelector('#ajuste-sucursal-id');
+      if (selectSucursal) {
+        selectSucursal.innerHTML = '<option value="">-- Elija una sucursal --</option>';
+        this.sucursalesList.forEach(s => {
+          const partId = s.participanteComercialId || s.id;
+          const text = `🏢 ${s.nombre} (${s.codigo || 'SUC-' + s.id})`;
+          selectSucursal.add(new Option(text, String(partId)));
+        });
+
+        if (this.sucursalesList.length > 0) {
+          selectSucursal.value = String(this.sucursalesList[0].participanteComercialId || this.sucursalesList[0].id);
+        }
+      }
+    } catch (err) {
+      console.warn('[AjustesStockView] No se pudo cargar sucursales:', err);
     }
-    const previewEl = this.container.querySelector('#ajuste-total-preview');
-    if (previewEl) previewEl.textContent = sum.toLocaleString('es-AR');
   }
 
   async _loadClientes() {
     try {
-      const data = await clientesService.listar({ page: 1, pageSize: 150, estado: 'activos' });
+      const data = await clientesService.listar({ page: 1, pageSize: 500, estado: 'todos' });
       this.clientesList = data.items || [];
 
       const selectCliente = this.container.querySelector('#ajuste-cliente-id');
       selectCliente.innerHTML = '<option value="">-- Elija un cliente --</option>';
 
-      this.clientesList.forEach(c => {
-        const text = `👤 ${c.nombre} ${c.apellido} (${c.codigoCliente || 'DNI ' + (c.documento || c.id)})`;
-        selectCliente.add(new Option(text, String(c.id)));
-      });
+      this.clientesList
+        .filter(c => c.activo !== false && String(c.estadoCliente || 'Activo').toLowerCase() !== 'inactivo')
+        .forEach(c => {
+          const nombreCompleto = `${c.nombre || ''} ${c.apellido || ''}`.trim() || c.nombreCompleto || `Cliente #${c.id}`;
+          const docInfo = c.documento ? ` (DNI ${c.documento})` : '';
+          const text = `👤 ${nombreCompleto}${docInfo}`;
+          selectCliente.add(new Option(text, String(c.id)));
+        });
     } catch (err) {
       console.warn('[AjustesStockView] No se pudo cargar clientes:', err);
     }
+  }
+
+  _resolverNombreCliente(participanteId, rawNombre) {
+    const idNum = Number(participanteId);
+    const raw = String(rawNombre || '').trim();
+
+    if (idNum > 1 && this.clientesList.length > 0) {
+      const foundById = this.clientesList.find(c => Number(c.id) === idNum);
+      if (foundById) {
+        const full = `${foundById.nombre || ''} ${foundById.apellido || ''}`.trim() || foundById.nombreCompleto;
+        if (full) return full;
+      }
+    }
+
+    if (raw && this.clientesList.length > 0) {
+      const foundByCode = this.clientesList.find(c => {
+        const cod = String(c.codigoCliente || c.codigo || '').toLowerCase();
+        return cod && raw.toLowerCase().includes(cod);
+      });
+      if (foundByCode) {
+        const full = `${foundByCode.nombre || ''} ${foundByCode.apellido || ''}`.trim() || foundByCode.nombreCompleto;
+        if (full) return full;
+      }
+    }
+
+    // Si el backend ya envió "Nombre Apellido (CLI-...)" quitar el código entre paréntesis
+    const sinCodigoParentesis = raw.replace(/\s*\(CLI-[^)]+\)/i, '').trim();
+    if (sinCodigoParentesis && !/^cliente\s+cli-/i.test(sinCodigoParentesis)) {
+      return sinCodigoParentesis;
+    }
+
+    return raw || `Cliente #${participanteId}`;
+  }
+
+  _obtenerInfoAjuste(m) {
+    const obs = String(m.observaciones || '');
+    const origId = Number(m.origenId);
+    const destId = Number(m.destinoId);
+    const origRaw = String(m.origenNombre || '').trim();
+    const destRaw = String(m.destinoNombre || '').trim();
+
+    const esEgreso = destRaw.toLowerCase().includes('ajuste') || destId === 0 || obs.includes('[Egreso');
+    const esIngreso = !esEgreso;
+    const titularId = esIngreso ? destId : origId;
+    const titularRaw = esIngreso ? destRaw : origRaw;
+
+    // Detectar si el titular es una sucursal o empresa
+    const suc = this.sucursalesList.find(s =>
+      Number(s.participanteComercialId) === titularId || Number(s.id) === titularId
+    );
+    const matchSucTag = obs.match(/\[(?:Ingreso a|Egreso de)\s+Sucursal:\s*([^\]]+)\]/i);
+    const esSucursal = Boolean(suc) || titularId === 1 || Boolean(matchSucTag) || obs.includes('[Ingreso a Empresa]') || obs.includes('[Egreso de Empresa]');
+
+    let titularTexto = '';
+    if (suc) {
+      titularTexto = `🏢 ${suc.nombre}`;
+    } else if (matchSucTag && matchSucTag[1]) {
+      titularTexto = `🏢 ${matchSucTag[1].trim()}`;
+    } else if (titularId === 1) {
+      titularTexto = '🏢 Sede Central (Depósito Central)';
+    } else if (esSucursal) {
+      titularTexto = `🏢 ${titularRaw || `Sucursal #${titularId}`}`;
+    } else {
+      titularTexto = `👤 ${this._resolverNombreCliente(titularId, titularRaw)}`;
+    }
+
+    let motivoLimpio = obs
+      .replace(/\[Ingreso a Sucursal:[^\]]+\]\s*/i, '')
+      .replace(/\[Egreso de Sucursal:[^\]]+\]\s*/i, '')
+      .replace(/\[Ingreso a Empresa\]\s*/i, '')
+      .replace(/\[Egreso de Empresa\]\s*/i, '')
+      .replace(/\[Ingreso a Cliente\]\s*/i, '')
+      .replace(/\[Egreso de Cliente\]\s*/i, '')
+      .replace(/\[Ajuste de Stock Empresa \([+-]\)\]\s*/i, '')
+      .trim();
+
+    if (!motivoLimpio) motivoLimpio = 'Ajuste general de stock';
+
+    return { esIngreso, esSucursal, esEmpresa: esSucursal, titularTexto, motivoLimpio };
   }
 
   async _loadAjustes() {
@@ -324,18 +252,10 @@ export class AjustesStockView {
 
     try {
       const result = await movimientosService.listar({ estado: 'todos' });
-      // Filtrar únicamente los movimientos que son ajustes manuales de stock
-      this.ajustesCache = (result.items || []).filter(m => {
-        const tipo = String(m.tipoOperacion || '').toLowerCase();
-        const obs = (m.observaciones || '').toLowerCase();
-        return tipo.includes('ajuste') ||
-          obs.includes('[ingreso') ||
-          obs.includes('[egreso') ||
-          obs.includes('[ajuste') ||
-          m.origenId === 0 ||
-          m.destinoId === 0 ||
-          (!m.movimientoComercialId && !m.cosechaId && !m.plantacionId);
-      });
+      // Un movimiento es un Ajuste de Stock si no tiene FK a MovimientoComercial, Cosecha ni Plantación
+      this.ajustesCache = (result.items || []).filter(
+        m => !m.movimientoComercialId && !m.cosechaId && !m.plantacionId
+      );
       this._renderTable();
     } catch (err) {
       tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger" style="padding: 2rem;">${escapeHtml(err.message || 'Error al cargar ajustes')}</td></tr>`;
@@ -347,26 +267,31 @@ export class AjustesStockView {
     const tbody = this.container.querySelector('#ajustes-table-body');
     let items = [...this.ajustesCache];
 
+    // Filtro por búsqueda de texto (nombre y apellido de cliente, comprobante o motivo)
+    if (this.filterBusqueda) {
+      items = items.filter(m => {
+        const info = this._obtenerInfoAjuste(m);
+        const compStr = String(m.numeroComprobante || `AJU-${m.id}`).toLowerCase();
+        const titularStr = info.titularTexto.toLowerCase();
+        const motivoStr = info.motivoLimpio.toLowerCase();
+        const obsStr = String(m.observaciones || '').toLowerCase();
+        return compStr.includes(this.filterBusqueda) ||
+          titularStr.includes(this.filterBusqueda) ||
+          motivoStr.includes(this.filterBusqueda) ||
+          obsStr.includes(this.filterBusqueda);
+      });
+    }
+
     // Filtro por estado
     if (this.filterEstado !== 'todos') {
       items = items.filter(m => String(m.estado).toLowerCase() === this.filterEstado.toLowerCase());
     }
 
     // Filtro por entidad
-    if (this.filterEntidad === 'empresa') {
-      items = items.filter(m => {
-        const obs = (m.observaciones || '').toLowerCase();
-        const orig = (m.origenNombre || '').toLowerCase();
-        const dest = (m.destinoNombre || '').toLowerCase();
-        return obs.includes('empresa') || (orig.includes('empresa') && dest.includes('ajuste')) || (dest.includes('empresa') && orig.includes('ajuste'));
-      });
+    if (this.filterEntidad === 'sucursales' || this.filterEntidad === 'empresa') {
+      items = items.filter(m => this._obtenerInfoAjuste(m).esSucursal);
     } else if (this.filterEntidad === 'clientes') {
-      items = items.filter(m => {
-        const obs = (m.observaciones || '').toLowerCase();
-        const orig = (m.origenNombre || '').toLowerCase();
-        const dest = (m.destinoNombre || '').toLowerCase();
-        return obs.includes('cliente') || (!orig.includes('ajuste') && !dest.includes('ajuste') && (orig.includes('cliente') || dest.includes('cliente')));
-      });
+      items = items.filter(m => !this._obtenerInfoAjuste(m).esSucursal);
     }
 
     if (items.length === 0) {
@@ -376,42 +301,8 @@ export class AjustesStockView {
 
     tbody.innerHTML = items.map(m => {
       const fechaStr = m.fecha ? new Date(m.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-
       const obs = m.observaciones || '';
-      let esIngreso = false;
-      let titularTexto = '';
-
-      if (obs.includes('[Ingreso a Empresa]') || obs.includes('[Ajuste de Stock Empresa (+)]')) {
-        esIngreso = true;
-        titularTexto = '🏢 Empresa (Depósito Central)';
-      } else if (obs.includes('[Egreso de Empresa]') || obs.includes('[Ajuste de Stock Empresa (-)]')) {
-        esIngreso = false;
-        titularTexto = '🏢 Empresa (Depósito Central)';
-      } else if (obs.includes('[Ingreso a Cliente]')) {
-        esIngreso = true;
-        titularTexto = `👤 ${escapeHtml(m.destinoNombre || `Cliente #${m.destinoId}`)}`;
-      } else if (obs.includes('[Egreso de Cliente]')) {
-        esIngreso = false;
-        titularTexto = `👤 ${escapeHtml(m.origenNombre || `Cliente #${m.origenId}`)}`;
-      } else {
-        if (m.origenId === 1 || String(m.origenId) === 'empresa' || (m.origenNombre || '').includes('Ajuste')) {
-          esIngreso = true;
-          titularTexto = m.destinoId === 1 ? '🏢 Empresa Central' : `👤 ${escapeHtml(m.destinoNombre || `Cliente #${m.destinoId}`)}`;
-        } else {
-          esIngreso = false;
-          titularTexto = `👤 ${escapeHtml(m.origenNombre || `Cliente #${m.origenId}`)}`;
-        }
-      }
-
-      let motivoLimpio = obs
-        .replace(/\[Ingreso a Empresa\]\s*/i, '')
-        .replace(/\[Egreso de Empresa\]\s*/i, '')
-        .replace(/\[Ingreso a Cliente\]\s*/i, '')
-        .replace(/\[Egreso de Cliente\]\s*/i, '')
-        .replace(/\[Ajuste de Stock Empresa \([+-]\)\]\s*/i, '')
-        .trim();
-
-      if (!motivoLimpio) motivoLimpio = 'Ajuste general de stock';
+      const { esIngreso, titularTexto, motivoLimpio } = this._obtenerInfoAjuste(m);
 
       let badgeEstado = 'badge-warning';
       if (m.estado === 'Confirmado') badgeEstado = 'badge-success';
@@ -428,7 +319,7 @@ export class AjustesStockView {
               ${esIngreso ? '+ Ingreso' : '- Egreso'}
             </span>
           </td>
-          <td class="font-medium text-main text-sm">${titularTexto}</td>
+          <td class="font-medium text-main text-sm">${escapeHtml(titularTexto)}</td>
           <td style="text-align: right; font-weight: 800; color: var(--primary);">
             ${(m.totalBulbos || 0).toLocaleString('es-AR')}
           </td>
@@ -507,6 +398,7 @@ export class AjustesStockView {
     titulo.textContent = `Ajuste ${mov.numeroComprobante || 'AJU-' + mov.id}`;
 
     const fechaStr = mov.fecha ? new Date(mov.fecha).toLocaleString('es-AR') : '-';
+    const { esIngreso, titularTexto, motivoLimpio } = this._obtenerInfoAjuste(mov);
     const cantidadesHtml = (mov.cantidades || []).map(c => `
       <div class="d-flex justify-between py-1 border-b" style="border-bottom: 1px dashed var(--border); font-size: 0.875rem;">
         <span>${escapeHtml(c.nombreClase || `Clase ${c.claseBulbo ?? c.clase}`)}:</span>
@@ -520,8 +412,11 @@ export class AjustesStockView {
         <div class="font-medium text-main">${escapeHtml(fechaStr)}</div>
       </div>
       <div class="mb-3">
-        <label class="text-xs text-muted font-bold text-uppercase">Origen y Destino:</label>
-        <div class="font-medium text-main">${escapeHtml(mov.origenNombre || mov.origenId)} ➔ ${escapeHtml(mov.destinoNombre || mov.destinoId)}</div>
+        <label class="text-xs text-muted font-bold text-uppercase">Titular Afectado y Sentido:</label>
+        <div class="font-medium text-main d-flex align-center gap-sm mt-1">
+          <span>${escapeHtml(titularTexto)}</span>
+          <span class="badge ${esIngreso ? 'badge-success' : 'badge-danger'}">${esIngreso ? '+ Ingreso de Stock' : '- Egreso de Stock'}</span>
+        </div>
       </div>
       <div class="mb-3">
         <label class="text-xs text-muted font-bold text-uppercase">Desglose por Calibre:</label>
@@ -536,7 +431,7 @@ export class AjustesStockView {
       <div class="mb-3">
         <label class="text-xs text-muted font-bold text-uppercase">Motivo / Observación Registrada:</label>
         <div class="alert alert-info mt-1" style="font-size: 0.875rem; padding: 0.75rem;">
-          ${escapeHtml(mov.observaciones || 'Sin observación asentada')}
+          ${escapeHtml(motivoLimpio || mov.observaciones || 'Sin observación asentada')}
         </div>
       </div>
       <div>
@@ -555,11 +450,14 @@ export class AjustesStockView {
   _openModalNuevo() {
     const form = this.container.querySelector('#form-nuevo-ajuste');
     form.reset();
-    this.container.querySelector('#radio-entidad-empresa').checked = true;
-    this.container.querySelector('#box-cliente-select').classList.add('hidden');
+    const radioSucursal = this.container.querySelector('#radio-entidad-sucursal');
+    if (radioSucursal) radioSucursal.checked = true;
+    this.container.querySelector('#box-sucursal-select')?.classList.remove('hidden');
+    this.container.querySelector('#box-cliente-select')?.classList.add('hidden');
     this.container.querySelector('#ajuste-form-error').classList.add('hidden');
     this.container.querySelector('#ajuste-form-error').textContent = '';
-    this._updateTotalPreview();
+    this.calibresGrid.reset();
+    this.clienteAutocomplete?.clear();
 
     const modal = this.container.querySelector('#modal-nuevo-ajuste');
     modal.classList.add('is-active');
@@ -575,14 +473,22 @@ export class AjustesStockView {
     errBox.classList.add('hidden');
     errBox.textContent = '';
 
-    const entidadTipo = this.container.querySelector('input[name="ajuste-entidad-tipo"]:checked')?.value || 'empresa';
+    const entidadTipo = this.container.querySelector('input[name="ajuste-entidad-tipo"]:checked')?.value || 'sucursal';
     const accion = this.container.querySelector('input[name="ajuste-accion"]:checked')?.value || 'sumar';
-    const clienteId = this.container.querySelector('#ajuste-cliente-id').value;
-    const motivo = this.container.querySelector('#ajuste-motivo').value.trim();
+    const sucursalId = this.container.querySelector('#ajuste-sucursal-id')?.value;
+    const clienteId = this.clienteAutocomplete?.getValue();
+    const motivo = this.container.querySelector('#ajuste-motivo')?.value.trim();
+
+    if (entidadTipo === 'sucursal' && !sucursalId) {
+      errBox.textContent = 'Debe seleccionar la sucursal para realizar el ajuste de stock.';
+      errBox.classList.remove('hidden');
+      return;
+    }
 
     if (entidadTipo === 'cliente' && !clienteId) {
-      errBox.textContent = 'Debe seleccionar el cliente para realizar el ajuste de stock.';
+      errBox.textContent = 'Debe buscar y seleccionar el cliente para realizar el ajuste de stock.';
       errBox.classList.remove('hidden');
+      this.clienteAutocomplete?.markInvalid();
       return;
     }
 
@@ -592,15 +498,8 @@ export class AjustesStockView {
       return;
     }
 
-    const cantidades = [];
-    let total = 0;
-    for (let c = 0; c <= 4; c++) {
-      const val = Number(this.container.querySelector(`#ajuste-cant-${c}`).value) || 0;
-      if (val > 0) {
-        cantidades.push({ clase: c, cantidad: val });
-        total += val;
-      }
-    }
+    const cantidades = this.calibresGrid.getItemsArray(false);
+    const total = this.calibresGrid.getTotal();
 
     if (total <= 0) {
       errBox.textContent = 'Debe ingresar una cantidad mayor a cero en al menos una clase de bulbo.';
@@ -612,8 +511,11 @@ export class AjustesStockView {
     btnSubmit.disabled = true;
 
     try {
+      const suc = this.sucursalesList.find(s => String(s.participanteComercialId || s.id) === String(sucursalId));
       await movimientosService.registrarAjuste({
         entidad: entidadTipo,
+        sucursalId: entidadTipo === 'sucursal' ? sucursalId : null,
+        sucursalNombre: suc ? suc.nombre : null,
         clienteId: entidadTipo === 'cliente' ? clienteId : null,
         accion,
         cantidades,

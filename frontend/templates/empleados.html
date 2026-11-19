@@ -1,0 +1,176 @@
+<div class="fade-in">
+  <!-- Encabezado de Sección -->
+  <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
+    <div>
+      <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Gestión de Empleados</h1>
+      <p class="text-muted text-sm">Administración de usuarios internos, personal operativo y asignación de roles</p>
+    </div>
+    <div class="d-flex gap-sm">
+      <button class="btn btn-secondary" id="btn-refresh-empleados" title="Recargar lista">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>Refrescar</span>
+      </button>
+      <button class="btn btn-primary" id="btn-nuevo-empleado">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Nuevo Empleado</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Barra de Filtros -->
+  <div class="card mb-4" style="padding: 1rem 1.25rem;">
+    <div class="d-flex gap-md flex-wrap align-center">
+      <div style="flex: 2; min-width: 220px;">
+        <input type="text" id="filtro-buscar" class="form-control" placeholder="Buscar por nombre, usuario, documento o email..." />
+      </div>
+      <div style="flex: 1; min-width: 160px;">
+        <select id="filtro-rol" class="form-control">
+          <option value="">Todos los Roles</option>
+        </select>
+      </div>
+      <div style="flex: 1; min-width: 140px;">
+        <select id="filtro-estado" class="form-control">
+          <option value="TODOS">Todos los Estados</option>
+          <option value="ACTIVO">Solo Activos</option>
+          <option value="INACTIVO">Solo Inactivos</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla de Empleados -->
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table" id="tabla-empleados">
+        <thead>
+          <tr>
+            <th>Empleado</th>
+            <th>Legajo</th>
+            <th>Posición</th>
+            <th>Documento</th>
+            <th>Contacto</th>
+            <th>Sucursal</th>
+            <th>Rol</th>
+            <th>Estado</th>
+            <th>Último Acceso</th>
+            <th style="text-align: right;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-empleados">
+          <tr>
+            <td colspan="9" class="text-center text-muted" style="padding: 2.5rem;">
+              <div class="btn-spinner" style="display:inline-block; width:24px; height:24px; border-width:2px;"></div>
+              <p class="mt-2">Cargando nómina de empleados...</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación y Contador -->
+    <div class="d-flex justify-between align-center p-3 border-top flex-wrap gap-sm">
+      <div class="text-sm text-muted" id="empleados-pagination-info">Mostrando 0 empleados</div>
+      <div class="d-flex gap-xs" id="empleados-pagination-controls"></div>
+    </div>
+  </div>
+
+  <!-- Modal Crear / Editar Empleado -->
+  <div class="modal-backdrop" id="modal-empleado">
+    <div class="modal-dialog" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-empleado-title">Nuevo Empleado</h3>
+        <button type="button" class="modal-close-btn btn-close" id="btn-close-modal-empleado">&times;</button>
+      </div>
+      <form id="form-empleado">
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+          <input type="hidden" id="emp-id" value="" />
+
+          <h4 class="text-xs text-muted font-bold text-uppercase mb-2">Datos Laborales</h4>
+          <div class="grid-two-cols mb-2" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" for="emp-legajo">Legajo</label>
+              <input type="text" id="emp-legajo" class="form-control" placeholder="Ej: LEG-0012" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="emp-posicion">Posición / Cargo</label>
+              <input type="text" id="emp-posicion" class="form-control" placeholder="Ej: Encargado de Depósito" />
+            </div>
+          </div>
+          <div class="form-group mb-3">
+            <label class="form-label" for="emp-sucursal">Sucursal Asignada</label>
+            <select id="emp-sucursal" class="form-control">
+              <option value="">Sin sucursal asignada (Central / Corporativo)</option>
+            </select>
+          </div>
+
+          <h4 class="text-xs text-muted font-bold text-uppercase mb-2">Datos Personales</h4>
+          <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" for="emp-nombre">Nombre <span class="text-danger">*</span></label>
+              <input type="text" id="emp-nombre" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="emp-apellido">Apellido <span class="text-danger">*</span></label>
+              <input type="text" id="emp-apellido" class="form-control" required />
+            </div>
+          </div>
+
+          <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" for="emp-documento">Documento (DNI/CUIT) <span class="text-danger">*</span></label>
+              <input type="text" id="emp-documento" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="emp-telefono">Teléfono</label>
+              <input type="tel" id="emp-telefono" class="form-control" />
+            </div>
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label" for="emp-email">Correo Electrónico <span class="text-danger">*</span></label>
+            <input type="email" id="emp-email" class="form-control" required />
+          </div>
+
+          <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" for="emp-rol">Rol del Empleado <span class="text-danger">*</span></label>
+              <select id="emp-rol" class="form-control" required>
+                <option value="">Seleccione un Rol...</option>
+              </select>
+            </div>
+            <div class="form-group" style="display:flex; align-items:center; margin-top: 1.5rem;">
+              <label class="d-flex align-center gap-xs" style="cursor: pointer;">
+                <input type="checkbox" id="emp-activo" checked />
+                <span class="font-medium text-sm">Usuario Activo</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="alert alert-info d-flex align-center gap-sm mb-3" style="background: rgba(30, 58, 138, 0.06); border: 1px solid rgba(30, 58, 138, 0.2); border-radius: var(--radius-md); padding: 0.75rem 1rem;">
+            <svg class="icon-svg sm text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <div class="text-xs text-muted">
+              <strong class="text-main">Credenciales automáticas:</strong> El usuario de acceso será su <strong>correo electrónico</strong> y la contraseña inicial su <strong>DNI</strong>. En el primer inicio de sesión se le exigirá cambiar la contraseña para activar su cuenta.
+            </div>
+          </div>
+
+          <div id="form-empleado-error" class="alert alert-danger hidden mt-2"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-empleado">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-empleado">Guardar Empleado</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

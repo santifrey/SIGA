@@ -15,39 +15,23 @@ public static class DependencyInjection
         this IServiceCollection services, 
         IConfiguration configuration)
     {
-        // 1. Configuración de Base de Datos (MySQL o fallback a SQLite)
-        var useSqliteEnv = Environment.GetEnvironmentVariable("USE_SQLITE");
-        var useSqlite = !string.IsNullOrWhiteSpace(useSqliteEnv)
-            ? bool.TryParse(useSqliteEnv, out var parsedSqlite) && parsedSqlite
-            : configuration.GetValue<bool>("UseSqlite", true);
-
-        var sqliteConnection = Environment.GetEnvironmentVariable("SQLITE_CONNECTION_STRING")
-            ?? configuration.GetConnectionString("SqliteConnection") 
-            ?? "Data Source=siga_dev.db";
-
+        // 1. Configuración de Base de Datos (MySQL)
         var mySqlConnection = ResolveMySqlConnectionString(configuration);
 
         services.AddDbContext<SigaDbContext>(options =>
         {
-            if (useSqlite)
+            ServerVersion serverVersion;
+            try
             {
-                options.UseSqlite(sqliteConnection);
+                serverVersion = ServerVersion.AutoDetect(mySqlConnection);
             }
-            else
+            catch
             {
-                ServerVersion serverVersion;
-                try
-                {
-                    serverVersion = ServerVersion.AutoDetect(mySqlConnection);
-                }
-                catch
-                {
-                    // Fallback a versión estándar si el servidor MySQL no responde durante la configuración
-                    serverVersion = new MySqlServerVersion(new Version(8, 0, 36));
-                }
+                // Fallback a versión estándar si el servidor MySQL no responde durante la configuración
+                serverVersion = new MySqlServerVersion(new Version(8, 0, 36));
+            }
 
-                options.UseMySql(mySqlConnection, serverVersion);
-            }
+            options.UseMySql(mySqlConnection, serverVersion);
         });
 
         // 2. Servicios de Seguridad

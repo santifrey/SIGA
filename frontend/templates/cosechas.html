@@ -1,0 +1,77 @@
+<div class="fade-in">
+  <!-- Encabezado de la Vista -->
+  <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
+    <div>
+      <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Gestión de Cosechas por Sucursal</h1>
+      <p class="text-muted text-sm">Control de recolección de bulbos por lote y acreditación automática a titulares vigentes.</p>
+    </div>
+    <div>
+      <button class="btn btn-secondary" id="btn-refresh-cosechas" title="Actualizar datos">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>Refrescar</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filtros y Selectores Principales -->
+  <div class="card mb-4" style="background: var(--surface);">
+    <div class="card-body p-3">
+      <div class="form-row two-cols" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+        <div class="form-group mb-0">
+          <label for="select-cosecha-temporada" class="form-label font-bold text-xs uppercase" style="color: var(--primary);">
+            1. Temporada Productiva:
+          </label>
+          <select id="select-cosecha-temporada" class="form-control" style="font-weight: 600;">
+            <option value="">Cargando temporadas...</option>
+          </select>
+        </div>
+
+        <div class="form-group mb-0">
+          <label for="select-cosecha-sucursal" class="form-label font-bold text-xs uppercase" style="color: var(--accent);">
+            2. Sucursal / Campo:
+          </label>
+          <select id="select-cosecha-sucursal" class="form-control">
+            <option value="">Cargando sucursales...</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel Dinámico: Cosecha de la Sucursal Seleccionada -->
+  <div id="panel-cosecha-sucursal">
+    <div class="text-center p-4 text-muted">Seleccione una temporada y sucursal para gestionar la cosecha.</div>
+  </div>
+
+  <!-- Tabla Histórica de Cosechas en la Temporada -->
+  <div class="card mt-4">
+    <div class="card-header d-flex justify-between align-center p-3 border-bottom">
+      <h3 class="card-title text-base m-0">Todas las Cosechas Registradas en la Temporada</h3>
+      <span class="text-xs text-muted" id="total-cosechas-badge">0 sucursales</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Sucursal</th>
+              <th>Estado</th>
+              <th>Fecha Inicio</th>
+              <th>Fecha Cierre</th>
+              <th style="text-align: right;">Total Bulbos Cosechados</th>
+              <th style="text-align: center;">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-cosechas-temporada">
+            <tr><td colspan="7" class="text-center p-3 text-muted">Cargando cosechas...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

@@ -18,7 +18,7 @@ public class TemporadaRepository : Repository<Temporada>, ITemporadaRepository
             .Include(t => t.Filas)
             .Include(t => t.Plantaciones)
             .OrderByDescending(t => t.FechaInicio)
-            .FirstOrDefaultAsync(t => t.Estado != EstadoTemporada.Cerrada, cancellationToken);
+            .FirstOrDefaultAsync(t => t.Estado != EstadoTemporada.Cerrada && t.Estado != EstadoTemporada.Planificada, cancellationToken);
     }
 
     public async Task<Temporada?> GetByIdWithDetailsAsync(int id, CancellationToken cancellationToken = default)

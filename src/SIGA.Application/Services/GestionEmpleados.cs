@@ -12,6 +12,7 @@ public class GestionEmpleados : IGestionEmpleados
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IPersonaRepository _personaRepository;
     private readonly IRolRepository _rolRepository;
+    private readonly ISucursalRepository? _sucursalRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -21,10 +22,22 @@ public class GestionEmpleados : IGestionEmpleados
         IRolRepository rolRepository,
         IPasswordHasher passwordHasher,
         IUnitOfWork unitOfWork)
+        : this(usuarioRepository, personaRepository, rolRepository, null, passwordHasher, unitOfWork)
+    {
+    }
+
+    public GestionEmpleados(
+        IUsuarioRepository usuarioRepository,
+        IPersonaRepository personaRepository,
+        IRolRepository rolRepository,
+        ISucursalRepository? sucursalRepository,
+        IPasswordHasher passwordHasher,
+        IUnitOfWork unitOfWork)
     {
         _usuarioRepository = usuarioRepository;
         _personaRepository = personaRepository;
         _rolRepository = rolRepository;
+        _sucursalRepository = sucursalRepository;
         _passwordHasher = passwordHasher;
         _unitOfWork = unitOfWork;
     }
@@ -104,6 +117,7 @@ public class GestionEmpleados : IGestionEmpleados
                 Posicion = dto.Posicion?.Trim() ?? string.Empty,
                 Telefono = dto.Telefono?.Trim(),
                 Email = dto.Email?.Trim(),
+                SucursalId = dto.SucursalId > 0 ? dto.SucursalId : null,
                 FechaCreacion = DateTime.UtcNow
             };
             await _personaRepository.AddAsync(empleado, cancellationToken);
@@ -184,11 +198,18 @@ public class GestionEmpleados : IGestionEmpleados
         {
             if (usuario.Persona != null)
             {
-                usuario.Persona.Nombre = dto.Nombre.Trim();
-                usuario.Persona.Apellido = dto.Apellido.Trim();
-                usuario.Persona.Documento = dto.Documento.Trim();
-                usuario.Persona.Telefono = dto.Telefono?.Trim();
-                usuario.Persona.Email = dto.Email?.Trim();
+                if (!string.IsNullOrWhiteSpace(dto.Nombre))
+                    usuario.Persona.Nombre = dto.Nombre.Trim();
+                if (!string.IsNullOrWhiteSpace(dto.Apellido))
+                    usuario.Persona.Apellido = dto.Apellido.Trim();
+                if (!string.IsNullOrWhiteSpace(dto.Documento))
+                    usuario.Persona.Documento = dto.Documento.Trim();
+                if (dto.Telefono != null)
+                    usuario.Persona.Telefono = dto.Telefono.Trim();
+                if (dto.Email != null)
+                    usuario.Persona.Email = dto.Email.Trim();
+
+                usuario.Persona.SucursalId = dto.SucursalId > 0 ? dto.SucursalId : null;
 
                 if (usuario.Persona is Empleado emp)
                 {
@@ -272,6 +293,8 @@ public class GestionEmpleados : IGestionEmpleados
             Posicion = empleado?.Posicion,
             Telefono = usuario.Persona?.Telefono,
             Email = usuario.Persona?.Email,
+            SucursalId = usuario.Persona?.SucursalId,
+            SucursalNombre = usuario.Persona?.Sucursal?.Nombre,
             RolId = usuario.RolId,
             Rol = usuario.Rol?.Nombre ?? string.Empty,
             Estado = usuario.Estado,

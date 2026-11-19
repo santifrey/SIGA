@@ -17,6 +17,7 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
     private readonly IRepository<ParticipanteComercial> _participanteRepository;
     private readonly IGestionStock _gestionStock;
     private readonly IMovimientoBulbosRepository _movimientoBulbosRepository;
+    private readonly ISucursalRepository? _sucursalRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public GestionMovimientosComerciales(
@@ -27,7 +28,8 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         IRepository<ParticipanteComercial> participanteRepository,
         IGestionStock gestionStock,
         IMovimientoBulbosRepository movimientoBulbosRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ISucursalRepository? sucursalRepository = null)
     {
         _movimientoRepository = movimientoRepository;
         _precioClaseRepository = precioClaseRepository;
@@ -37,6 +39,7 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         _gestionStock = gestionStock;
         _movimientoBulbosRepository = movimientoBulbosRepository;
         _unitOfWork = unitOfWork;
+        _sucursalRepository = sucursalRepository;
     }
 
     public async Task<ApiResponse<MovimientoComercialDto>> CrearMovimientoAsync(
@@ -53,6 +56,9 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
             throw new ValidationException("El participante destino es requerido.");
         if (dto.OrigenParticipanteId == dto.DestinoParticipanteId)
             throw new ValidationException("El participante origen y destino no pueden ser el mismo.");
+
+        await ValidarParticipanteActivoAsync(dto.OrigenParticipanteId, "origen", cancellationToken);
+        await ValidarParticipanteActivoAsync(dto.DestinoParticipanteId, "destino", cancellationToken);
 
         if (dto.Tipo == TipoMovimientoComercial.CompraACliente && (dto.PorcentajeComision < 0 || dto.PorcentajeComision > 100))
             throw new ValidationException("El porcentaje de comisión debe estar entre 0 y 100.");
@@ -75,7 +81,19 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
             else if (dto.Tipo == TipoMovimientoComercial.CompraACliente)
                 clienteId = dto.OrigenParticipanteId;
             else
-                clienteId = dto.OrigenParticipanteId;
+            {
+                // En traspasos, verificar si alguno de los participantes es un cliente
+                var clienteOrigen = await _clienteRepository.GetByIdAsync(dto.OrigenParticipanteId, cancellationToken);
+                if (clienteOrigen != null)
+                {
+                    clienteId = dto.OrigenParticipanteId;
+                }
+                else
+                {
+                    var clienteDestino = await _clienteRepository.GetByIdAsync(dto.DestinoParticipanteId, cancellationToken);
+                    clienteId = clienteDestino?.Id;
+                }
+            }
         }
 
         var movimiento = new MovimientoComercial(
@@ -132,6 +150,22 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         {
             bool hasFinalized = await _movimientoRepository.HasFinalizedMovementsForClientAsync(clienteId.Value, movimiento.Id, cancellationToken);
             requiereContrato = !hasFinalized;
+
+            // La sucursal del cliente debe ser por defecto la que haga la venta inicial obligatoria para generar el contrato
+            if (requiereContrato && _sucursalRepository != null)
+            {
+                var cliente = await _clienteRepository.GetByIdWithPersonaAsync(clienteId.Value, cancellationToken);
+                if (cliente?.Persona != null && !cliente.Persona.SucursalId.HasValue)
+                {
+                    var sucursalOrigen = await _sucursalRepository.GetByParticipanteComercialIdAsync(movimiento.OrigenParticipanteId, cancellationToken);
+                    if (sucursalOrigen != null)
+                    {
+                        cliente.Persona.SucursalId = sucursalOrigen.Id;
+                        await _clienteRepository.UpdateAsync(cliente, cancellationToken);
+                        await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    }
+                }
+            }
         }
 
         return ApiResponse<MovimientoComercialDto>.Created(MapToDto(movimiento, requiereContrato), "Movimiento comercial registrado exitosamente.");
@@ -282,15 +316,10 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            var tipoOp = mov.Tipo == TipoMovimientoComercial.TraspasoEntreClientes
-                ? TipoOperacionComercial.Traspaso
-                : TipoOperacionComercial.CompraVentaBulbos;
-
             var movBulbos = new MovimientoBulbos(
                 mov.OrigenParticipanteId,
                 mov.DestinoParticipanteId,
                 usuarioId,
-                tipoOp,
                 $"Entrega comercial #{mov.Id} ({mov.Tipo}) finalizada",
                 movimientoComercialId: mov.Id);
 
@@ -374,6 +403,9 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         }
 
         // Update participants
+        await ValidarParticipanteActivoAsync(dto.OrigenParticipanteId, "origen", cancellationToken);
+        await ValidarParticipanteActivoAsync(dto.DestinoParticipanteId, "destino", cancellationToken);
+
         mov.OrigenParticipanteId = dto.OrigenParticipanteId;
         mov.DestinoParticipanteId = dto.DestinoParticipanteId;
         mov.ClienteId = dto.ClienteId;
@@ -490,13 +522,13 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         string codigoCliente = mov.Cliente?.CodigoCliente ?? string.Empty;
         string nombreCliente = mov.Cliente?.Persona != null ? mov.Cliente.Persona.NombreCompleto : codigoCliente;
 
-        string nombreOrigen = mov.OrigenParticipante is Empresa eOrig ? eOrig.RazonSocial :
+        string nombreOrigen = mov.OrigenParticipante is Sucursal sOrig ? sOrig.Nombre :
             mov.OrigenParticipante is Cliente cOrig ? (cOrig.Persona != null ? cOrig.Persona.NombreCompleto : (mov.ClienteId == mov.OrigenParticipanteId && !string.IsNullOrWhiteSpace(nombreCliente) ? nombreCliente : cOrig.CodigoCliente)) :
-            (mov.OrigenParticipanteId == Empresa.SingletonId ? "Empresa Central" : (mov.ClienteId == mov.OrigenParticipanteId && !string.IsNullOrWhiteSpace(nombreCliente) ? nombreCliente : $"Participante #{mov.OrigenParticipanteId}"));
+            (mov.ClienteId == mov.OrigenParticipanteId && !string.IsNullOrWhiteSpace(nombreCliente) ? nombreCliente : $"Participante #{mov.OrigenParticipanteId}");
 
-        string nombreDestino = mov.DestinoParticipante is Empresa eDest ? eDest.RazonSocial :
+        string nombreDestino = mov.DestinoParticipante is Sucursal sDest ? sDest.Nombre :
             mov.DestinoParticipante is Cliente cDest ? (cDest.Persona != null ? cDest.Persona.NombreCompleto : (mov.ClienteId == mov.DestinoParticipanteId && !string.IsNullOrWhiteSpace(nombreCliente) ? nombreCliente : cDest.CodigoCliente)) :
-            (mov.DestinoParticipanteId == Empresa.SingletonId ? "Empresa Central" : (mov.ClienteId == mov.DestinoParticipanteId && !string.IsNullOrWhiteSpace(nombreCliente) ? nombreCliente : $"Participante #{mov.DestinoParticipanteId}"));
+            (mov.ClienteId == mov.DestinoParticipanteId && !string.IsNullOrWhiteSpace(nombreCliente) ? nombreCliente : $"Participante #{mov.DestinoParticipanteId}");
 
         string nombreUsuarioRegistro = mov.UsuarioRegistro?.Persona != null
             ? mov.UsuarioRegistro.Persona.NombreCompleto
@@ -582,5 +614,26 @@ public class GestionMovimientosComerciales : IGestionMovimientosComerciales
         }
 
         return dto;
+    }
+
+    private async Task ValidarParticipanteActivoAsync(int participanteId, string rol, CancellationToken cancellationToken)
+    {
+        var participante = await _participanteRepository.GetByIdAsync(participanteId, cancellationToken);
+        if (participante == null || participante.IsDeleted)
+            throw new ValidationException($"El participante {rol} #{participanteId} no existe o fue eliminado.");
+
+        if (participante.Estado == EstadoParticipante.Inactivo)
+            throw new ReglaNegocioException($"El participante {rol} se encuentra inactivo.");
+
+        if (participante is Cliente cliente)
+        {
+            if (cliente.EstadoCliente == EstadoCliente.Inactivo)
+                throw new ReglaNegocioException($"El cliente {rol} se encuentra inactivo.");
+        }
+        else if (participante is Sucursal sucursal)
+        {
+            if (!sucursal.Activo)
+                throw new ReglaNegocioException($"La sucursal {rol} '{sucursal.Nombre}' se encuentra inactiva.");
+        }
     }
 }

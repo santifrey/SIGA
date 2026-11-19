@@ -4,6 +4,7 @@
  */
 
 import { sucursalesService } from '../services/sucursales-service.js';
+import { loadTemplate } from '../utils/template-loader.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/escape-html.js';
 import { getProhibitionIcon } from '../utils/icons.js';
@@ -22,164 +23,15 @@ export class SucursalesView {
     this.container = rootElement;
     const autoOpenNew = queryParams && queryParams.action === 'new';
 
-    this.container.innerHTML = `
-      <div class="fade-in">
-        <!-- Encabezado de Sección -->
-        <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
-          <div>
-            <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Gestión de Sucursales</h1>
-            <p class="text-muted text-sm">Control de sedes operativas, capacidades instaladas y responsables</p>
-          </div>
-          <div class="d-flex gap-sm">
-            <button class="btn btn-secondary" id="btn-refresh-sucursales" title="Refrescar">
-              <svg class="icon-svg sm" viewBox="0 0 24 24">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              <span>Refrescar</span>
-            </button>
-            <button class="btn btn-primary" id="btn-new-sucursal">
-              <svg class="icon-svg sm" viewBox="0 0 24 24">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <span>Nueva Sucursal</span>
-            </button>
-          </div>
-        </div>
+    this.container.innerHTML = await loadTemplate('sucursales.html');
 
-        <!-- Barra de herramientas (Búsqueda y Modo de vista) -->
-        <div class="table-card mb-4" style="border-radius: var(--radius-lg);">
-          <div class="table-toolbar">
-            <div class="toolbar-search">
-              <div class="input-group">
-                <span class="input-icon-left">
-                  <svg class="icon-svg sm" viewBox="0 0 24 24">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  id="search-sucursales"
-                  class="form-control has-icon-left"
-                  placeholder="Buscar por nombre, código o ciudad..."
-                  value="${escapeHtml(this.searchTerm)}"
-                />
-              </div>
-            </div>
+    const searchInput = this.container.querySelector('#search-sucursales');
+    if (searchInput) searchInput.value = this.searchTerm;
 
-            <div class="toolbar-actions">
-              <label class="text-xs text-muted font-semibold">Estado:</label>
-              <select id="filter-sucursales-estado" class="form-control" style="width: 140px; padding: 0.45rem 2rem 0.45rem 0.75rem;">
-                <option value="todas">Todas</option>
-                <option value="activas">Solo Activas</option>
-                <option value="inactivas">Solo Inactivas</option>
-              </select>
-
-              <div class="d-flex gap-xs" style="margin-left: 0.5rem;">
-                <button type="button" class="btn btn-sm ${this.viewMode === 'cards' ? 'btn-primary' : 'btn-outline'}" id="btn-mode-cards" title="Vista en tarjetas">
-                  <svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                </button>
-                <button type="button" class="btn btn-sm ${this.viewMode === 'table' ? 'btn-primary' : 'btn-outline'}" id="btn-mode-table" title="Vista en tabla">
-                  <svg class="icon-svg sm" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Contenedor dinámico (Tarjetas o Tabla) -->
-        <div id="sucursales-container">
-          <div class="text-center text-muted" style="padding: 3rem;">Cargando sucursales...</div>
-        </div>
-      </div>
-
-      <!-- Modal Crear / Editar Sucursal -->
-      <div id="modal-sucursal" class="modal-backdrop" role="dialog" aria-modal="true">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-header">
-            <h3 class="modal-title" id="modal-sucursal-title">Nueva Sucursal</h3>
-            <button type="button" class="modal-close-btn" id="btn-close-modal-sucursal">
-              <svg class="icon-svg sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-          </div>
-          <form id="form-sucursal" novalidate>
-            <div class="modal-body">
-              <input type="hidden" id="sucursal-id" />
-
-              <div class="form-row two-cols">
-                <div class="form-group">
-                  <label for="sucursal-nombre" class="form-label">
-                    Nombre de la Sucursal <span class="required-mark">*</span>
-                  </label>
-                  <input type="text" id="sucursal-nombre" class="form-control" placeholder="ej. Sucursal Córdoba Centro" required />
-                  <div class="invalid-feedback">El nombre es obligatorio.</div>
-                </div>
-
-                <div class="form-group">
-                  <label for="sucursal-codigo" class="form-label">
-                    Código Identificador <span class="label-hint">(ej. SUC-CBA-01)</span>
-                  </label>
-                  <input type="text" id="sucursal-codigo" class="form-control" placeholder="ej. SUC-01" />
-                </div>
-              </div>
-
-              <div class="form-row two-cols">
-                <div class="form-group">
-                  <label for="sucursal-direccion" class="form-label">
-                    Dirección / Calle y Número <span class="required-mark">*</span>
-                  </label>
-                  <input type="text" id="sucursal-direccion" class="form-control" placeholder="ej. Bv. Chacabuco 780" required />
-                  <div class="invalid-feedback">La dirección es obligatoria.</div>
-                </div>
-
-                <div class="form-group">
-                  <label for="sucursal-ciudad" class="form-label">Ciudad / Localidad</label>
-                  <input type="text" id="sucursal-ciudad" class="form-control" placeholder="ej. Córdoba Capital" />
-                </div>
-              </div>
-
-              <div class="form-row three-cols">
-                <div class="form-group">
-                  <label for="sucursal-telefono" class="form-label">Teléfono</label>
-                  <input type="text" id="sucursal-telefono" class="form-control" placeholder="ej. +54 351 468-9000" />
-                </div>
-
-                <div class="form-group">
-                  <label for="sucursal-capacidad" class="form-label">
-                    Capacidad (Puestos) <span class="required-mark">*</span>
-                  </label>
-                  <input type="number" id="sucursal-capacidad" class="form-control" min="1" max="2000" value="50" required />
-                </div>
-
-                <div class="form-group">
-                  <label for="sucursal-responsable" class="form-label">Responsable / Encargado</label>
-                  <input type="text" id="sucursal-responsable" class="form-control" placeholder="ej. Lic. Mariano Valdéz" />
-                </div>
-              </div>
-
-              <div class="form-group mt-2">
-                <label class="form-switch">
-                  <input type="checkbox" id="sucursal-activa" class="switch-input" checked />
-                  <span class="switch-slider"></span>
-                  <span class="form-check-label font-semibold">Sucursal Operativa / Activa</span>
-                </label>
-              </div>
-            </div>
-
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" id="btn-cancel-modal-sucursal">Cancelar</button>
-              <button type="submit" class="btn btn-primary" id="btn-save-sucursal">
-                <span class="btn-text">Guardar Sucursal</span>
-                <span class="btn-spinner"></span>
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    `;
+    const btnCards = this.container.querySelector('#btn-mode-cards');
+    const btnTable = this.container.querySelector('#btn-mode-table');
+    if (btnCards) btnCards.className = `btn btn-sm ${this.viewMode === 'cards' ? 'btn-primary' : 'btn-outline'}`;
+    if (btnTable) btnTable.className = `btn btn-sm ${this.viewMode === 'table' ? 'btn-primary' : 'btn-outline'}`;
 
     this._bindEvents();
     await this.loadSucursales();
@@ -301,6 +153,11 @@ export class SucursalesView {
                       <span class="text-xs text-muted font-semibold">CAPACIDAD OPERATIVA:</span>
                       <span class="font-bold text-primary" style="font-size: 1.1rem;">${escapeHtml(s.capacidad || 0)} puestos</span>
                     </div>
+
+                    <div class="mt-1 d-flex justify-between align-center">
+                      <span class="text-xs text-muted font-semibold">PART. COMERCIAL:</span>
+                      <span class="badge badge-primary text-xs font-bold">#${escapeHtml(s.participanteComercialId || '-')} (${s.participanteComercialId ? 'Tipo 2 - Sucursal' : 'S/D'})</span>
+                    </div>
                   </div>
                 </div>
 
@@ -311,11 +168,15 @@ export class SucursalesView {
                       Editar
                     </button>
                     ${s.activa ? `
-                      <button class="btn btn-sm btn-outline btn-disable-sucursal d-flex align-center gap-xs" data-id="${escapeHtml(s.id)}" style="color: var(--danger); border-color: var(--danger-border);">
+                      <button class="btn btn-sm btn-outline btn-toggle-sucursal d-flex align-center gap-xs" data-id="${escapeHtml(s.id)}" data-action="desactivar" style="color: var(--danger); border-color: var(--danger-border);">
                         ${getProhibitionIcon({ size: 'sm', title: 'Desactivar' })}
                         <span>Desactivar</span>
                       </button>
-                    ` : ''}
+                    ` : `
+                      <button class="btn btn-sm btn-outline btn-toggle-sucursal d-flex align-center gap-xs" data-id="${escapeHtml(s.id)}" data-action="activar" style="color: var(--success); border-color: var(--success);">
+                        <span>Reactivar</span>
+                      </button>
+                    `}
                   </div>
                 </div>
               </div>
@@ -331,6 +192,7 @@ export class SucursalesView {
                   <tr>
                     <th>Código</th>
                     <th>Nombre</th>
+                    <th>Part. Comercial</th>
                     <th>Ubicación</th>
                     <th>Teléfono</th>
                     <th>Responsable</th>
@@ -344,6 +206,11 @@ export class SucursalesView {
                     <tr>
                       <td><span class="font-bold text-xs" style="color: var(--primary);">${escapeHtml(s.codigo || s.id)}</span></td>
                       <td class="font-semibold text-main">${escapeHtml(s.nombre)}</td>
+                      <td>
+                        <span class="badge badge-primary text-xs font-bold" title="Participante Comercial Tipo 2 (Sucursal)">
+                          #${escapeHtml(s.participanteComercialId || '-')}
+                        </span>
+                      </td>
                       <td>${escapeHtml(s.direccion)}, ${escapeHtml(s.ciudad)}</td>
                       <td>${escapeHtml(s.telefono || '-')}</td>
                       <td>${escapeHtml(s.responsable || 'No asignado')}</td>
@@ -359,10 +226,14 @@ export class SucursalesView {
                             <svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                           </button>
                           ${s.activa ? `
-                            <button class="btn-icon btn-disable-sucursal" data-id="${escapeHtml(s.id)}" title="Desactivar">
+                            <button class="btn-icon btn-toggle-sucursal" data-id="${escapeHtml(s.id)}" data-action="desactivar" title="Desactivar sucursal">
                               ${getProhibitionIcon({ size: 'sm', title: 'Desactivar sucursal' })}
                             </button>
-                          ` : ''}
+                          ` : `
+                            <button class="btn-icon btn-toggle-sucursal" data-id="${escapeHtml(s.id)}" data-action="activar" title="Reactivar sucursal" style="color: var(--success); font-weight: bold;">
+                              ✓
+                            </button>
+                          `}
                         </div>
                       </td>
                     </tr>
@@ -374,23 +245,26 @@ export class SucursalesView {
         `;
       }
 
-      // Eventos de botones editar / desactivar
+      // Eventos de botones editar / toggle activar-desactivar
       container.querySelectorAll('.btn-edit-sucursal').forEach(btn => {
         btn.addEventListener('click', () => {
           this.openModalEditar(btn.getAttribute('data-id'));
         });
       });
 
-      container.querySelectorAll('.btn-disable-sucursal').forEach(btn => {
+      container.querySelectorAll('.btn-toggle-sucursal').forEach(btn => {
         btn.addEventListener('click', async () => {
           const id = btn.getAttribute('data-id');
-          if (confirm('¿Desea marcar esta sucursal como inactiva?')) {
+          const action = btn.getAttribute('data-action');
+          const isActivar = action === 'activar';
+          const msg = isActivar ? '¿Desea reactivar esta sucursal?' : '¿Desea marcar esta sucursal como inactiva?';
+          if (confirm(msg)) {
             try {
-              await sucursalesService.eliminar(id);
-              toast.info('Sucursal marcada como inactiva.');
+              await sucursalesService.cambiarEstado(id, isActivar);
+              toast.info(isActivar ? 'Sucursal reactivada exitosamente.' : 'Sucursal marcada como inactiva.');
               this.loadSucursales();
             } catch (err) {
-              toast.error(err.message || 'Error al desactivar sucursal');
+              toast.error(err.message || 'Error al cambiar estado de la sucursal');
             }
           }
         });

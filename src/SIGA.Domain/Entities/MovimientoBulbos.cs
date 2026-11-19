@@ -15,8 +15,6 @@ public class MovimientoBulbos : BaseEntity
     public int? PlantacionId { get; set; }
     public virtual Plantacion? Plantacion { get; set; }
 
-    public TipoOperacionComercial TipoOperacion { get; set; } = TipoOperacionComercial.AjusteStock;
-
     public DateTime Fecha { get; set; } = DateTime.UtcNow;
 
     public int OrigenId { get; set; }
@@ -41,7 +39,6 @@ public class MovimientoBulbos : BaseEntity
         int origenId, 
         int destinoId, 
         int usuarioCreadorId, 
-        TipoOperacionComercial tipoOperacion = TipoOperacionComercial.AjusteStock,
         string? observaciones = null,
         int? movimientoComercialId = null,
         int? cosechaId = null,
@@ -52,7 +49,6 @@ public class MovimientoBulbos : BaseEntity
         OrigenId = origenId;
         DestinoId = destinoId;
         UsuarioCreadorId = usuarioCreadorId;
-        TipoOperacion = tipoOperacion;
         Observaciones = observaciones;
         MovimientoComercialId = movimientoComercialId;
         CosechaId = cosechaId;

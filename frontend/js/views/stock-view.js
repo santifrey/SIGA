@@ -5,6 +5,8 @@
 
 import { stockService, CLASES_BULBO } from '../services/stock-service.js';
 import { clientesService } from '../services/clientes-service.js';
+import { sucursalesService } from '../services/sucursales-service.js';
+import { loadTemplate } from '../utils/template-loader.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/escape-html.js';
 
@@ -12,76 +14,15 @@ export class StockView {
   constructor(router) {
     this.router = router;
     this.container = null;
-    this.selectedClienteId = 'empresa';
+    this.selectedClienteId = '1';
   }
 
   async render(rootElement) {
     this.container = rootElement;
-
-    this.container.innerHTML = `
-      <div class="fade-in">
-        <!-- Encabezado simple -->
-        <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
-          <div>
-            <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Consulta de Stock de Bulbos</h1>
-            <p class="text-muted text-sm">Disponibilidad actual por clase para la Empresa o Cliente seleccionado</p>
-          </div>
-          <div>
-            <button class="btn btn-secondary btn-sm" id="btn-refresh-stock">
-              <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              <span>Actualizar</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Selector simple de Cliente -->
-        <div class="table-card mb-4" style="padding: 1rem 1.25rem;">
-          <div class="d-flex align-center gap-md flex-wrap">
-            <label for="select-cliente-stock" class="form-label" style="margin: 0; min-width: 130px;">
-              <strong>Titular del Stock:</strong>
-            </label>
-            <div style="flex: 1; max-width: 400px;">
-              <select id="select-cliente-stock" class="form-control">
-                <option value="empresa">🏢 Empresa (Depósito Central)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tabla simple de Stock de 5 Clases -->
-        <div class="table-card">
-          <div class="table-responsive">
-            <table class="table" id="stock-table">
-              <thead>
-                <tr>
-                  <th style="width: 15%;">Código</th>
-                  <th style="width: 45%;">Clasificación de Bulbo</th>
-                  <th style="width: 40%; text-align: right;">Cantidad Disponible (Unidades)</th>
-                </tr>
-              </thead>
-              <tbody id="stock-table-body">
-                <tr>
-                  <td colspan="3" class="text-center text-muted" style="padding: 2rem;">Cargando stock...</td>
-                </tr>
-              </tbody>
-              <tfoot id="stock-table-foot" style="background: var(--surface-alt); font-weight: 700;">
-                <tr>
-                  <td colspan="2" style="padding: 1rem; text-align: right;">TOTAL BULBOS EN DEPÓSITO:</td>
-                  <td id="stock-total-cell" style="padding: 1rem; text-align: right; color: var(--primary); font-size: 1.1rem;">0</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      </div>
-    `;
+    this.container.innerHTML = await loadTemplate('stock.html');
 
     this._bindEvents();
-    await this._loadClientesSelect();
+    await this._loadTitularesSelect();
     await this._loadStock();
   }
 
@@ -102,21 +43,54 @@ export class StockView {
     }
   }
 
-  async _loadClientesSelect() {
+  async _loadTitularesSelect() {
     const select = this.container.querySelector('#select-cliente-stock');
     if (!select) return;
-    try {
-      const data = await clientesService.listar({ page: 1, pageSize: 100, estado: 'activos' });
-      const clientes = data?.items || [];
+    select.innerHTML = '';
 
-      clientes.forEach(c => {
+    try {
+      // 1. Cargar Sucursales activas
+      const sucursales = await sucursalesService.listar({ estado: 'activas' });
+      if (sucursales && sucursales.length > 0) {
+        const groupSuc = document.createElement('optgroup');
+        groupSuc.label = '🏢 Sucursales';
+        sucursales.forEach(s => {
+          const opt = document.createElement('option');
+          const partId = s.participanteComercialId || s.id;
+          opt.value = String(partId);
+          opt.textContent = `🏢 ${s.nombre} (${s.codigo || 'SUC-' + s.id})`;
+          groupSuc.appendChild(opt);
+        });
+        select.appendChild(groupSuc);
+        this.selectedClienteId = String(sucursales[0].participanteComercialId || sucursales[0].id);
+      } else {
         const opt = document.createElement('option');
-        opt.value = String(c.id);
-        opt.textContent = `👤 ${c.nombre} ${c.apellido} (${c.codigo || 'CLI-' + c.id})`;
+        opt.value = '1';
+        opt.textContent = '🏢 Sede Central (Depósito Central)';
         select.appendChild(opt);
-      });
+        this.selectedClienteId = '1';
+      }
+
+      // 2. Cargar Clientes activos
+      const data = await clientesService.listar({ page: 1, pageSize: 200, estado: 'activos' });
+      const clientes = data?.items || [];
+      if (clientes && clientes.length > 0) {
+        const groupCli = document.createElement('optgroup');
+        groupCli.label = '👤 Clientes';
+        clientes.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = String(c.id);
+          const nombreCompleto = `${c.nombre || ''} ${c.apellido || ''}`.trim() || c.nombreCompleto || `Cliente #${c.id}`;
+          const docInfo = c.documento ? ` - DNI ${c.documento}` : '';
+          opt.textContent = `👤 ${nombreCompleto}${docInfo} (${c.codigo || 'CLI-' + c.id})`;
+          groupCli.appendChild(opt);
+        });
+        select.appendChild(groupCli);
+      }
+
+      select.value = this.selectedClienteId;
     } catch (err) {
-      console.warn('[StockView] No se pudo cargar listado de clientes:', err);
+      console.warn('[StockView] No se pudo cargar titulares de stock:', err);
     }
   }
 

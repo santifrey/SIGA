@@ -5,8 +5,6 @@
  */
 
 import { apiClient } from '../utils/api-client.js';
-import { storage } from '../utils/storage.js';
-import { CONFIG } from '../config.js';
 
 export const CLASES_BULBO = [
   { id: 0, codigo: 'Clase0', label: 'Clase 0', calibres: '> 12 cm', descripcion: 'Bulbo calibre premium extra grande' },
@@ -16,8 +14,6 @@ export const CLASES_BULBO = [
   { id: 4, codigo: 'Clase4', label: 'Clase 4', calibres: '< 6 cm', descripcion: 'Bulbo semillero / cría para engorde' },
   { id: 5, codigo: 'MIX',    label: 'MIX Comercial', calibres: '6 - 12 cm', descripcion: 'Mezcla comercial en proporción 1:1:1 (Clases 1, 2 y 3)' }
 ];
-
-const STORAGE_KEY_MOCK_PRECIOS = 'siga_mock_precios_referencia';
 
 class PreciosReferenciaService {
   _unwrap(res) {
@@ -54,6 +50,7 @@ class PreciosReferenciaService {
       calibres: claseMeta.calibres,
       descripcion: claseMeta.descripcion,
       precioReferencia: Math.max(0, isNaN(precio) ? 0 : precio),
+      porcentajeComisionCompra: raw?.porcentajeComisionCompra != null ? Number(raw.porcentajeComisionCompra) : null,
       fechaVigencia: raw?.fechaVigencia || raw?.fechaActualizacion || raw?.fechaCreacion || null
     };
   }
@@ -66,34 +63,17 @@ class PreciosReferenciaService {
     const tempId = Number(temporadaId);
     if (!tempId) return [];
 
-    try {
-      const response = await apiClient.get(`/precios-referencia/temporada/${tempId}`);
-      const data = this._unwrap(response);
-      const list = Array.isArray(data) ? data : (data?.items || []);
+    const response = await apiClient.get(`/precios-referencia/temporada/${tempId}`);
+    const data = this._unwrap(response);
+    const list = Array.isArray(data) ? data : (data?.items || []);
 
-      return CLASES_BULBO.map(claseMeta => {
-        const found = list.find(it => {
-          const itClaseId = this._parseClaseIndex(it.claseBulbo ?? it.clase ?? it.codigo);
-          return itClaseId === claseMeta.id;
-        });
-        return this._normalizePrecioItem(found, claseMeta);
+    return CLASES_BULBO.map(claseMeta => {
+      const found = list.find(it => {
+        const itClaseId = this._parseClaseIndex(it.claseBulbo ?? it.clase ?? it.codigo);
+        return itClaseId === claseMeta.id;
       });
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        console.info(`[PreciosReferenciaService] Mock fallback para temporada ${tempId}`);
-        const store = storage.get(STORAGE_KEY_MOCK_PRECIOS, {});
-        const mockList = store[tempId] || [];
-
-        return CLASES_BULBO.map(claseMeta => {
-          const found = mockList.find(it => this._parseClaseIndex(it.claseBulbo) === claseMeta.id);
-          return this._normalizePrecioItem(found || {
-            precioReferencia: claseMeta.id === 5 ? 1200 : (1500 - claseMeta.id * 200),
-            fechaVigencia: new Date().toISOString()
-          }, claseMeta);
-        });
-      }
-      throw err;
-    }
+      return this._normalizePrecioItem(found, claseMeta);
+    });
   }
 
   /**
@@ -104,20 +84,11 @@ class PreciosReferenciaService {
     const tempId = Number(temporadaId);
     const claseCodigo = this._getClaseCodigo(clase);
 
-    try {
-      const response = await apiClient.get(`/precios-referencia/vigente/${tempId}/${claseCodigo}`);
-      const data = this._unwrap(response);
-      const claseId = this._parseClaseIndex(clase);
-      const meta = CLASES_BULBO.find(c => c.id === claseId) || CLASES_BULBO[0];
-      return this._normalizePrecioItem(data, meta);
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const list = await this.listarPorTemporada(tempId);
-        const item = list.find(it => it.claseBulbo === this._parseClaseIndex(clase));
-        return item || null;
-      }
-      throw err;
-    }
+    const response = await apiClient.get(`/precios-referencia/vigente/${tempId}/${claseCodigo}`);
+    const data = this._unwrap(response);
+    const claseId = this._parseClaseIndex(clase);
+    const meta = CLASES_BULBO.find(c => c.id === claseId) || CLASES_BULBO[0];
+    return this._normalizePrecioItem(data, meta);
   }
 
   /**
@@ -148,43 +119,17 @@ class PreciosReferenciaService {
       precioReferencia: precio
     };
 
-    try {
-      const response = await apiClient.post('/precios-referencia', payload);
-      const data = this._unwrap(response);
-      const meta = CLASES_BULBO.find(c => c.id === claseId) || CLASES_BULBO[0];
-      return this._normalizePrecioItem(data, meta);
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const store = storage.get(STORAGE_KEY_MOCK_PRECIOS, {});
-        if (!store[tempId]) store[tempId] = [];
-        const existingIdx = store[tempId].findIndex(it => this._parseClaseIndex(it.claseBulbo) === claseId);
-        const item = {
-          id: existingIdx >= 0 ? store[tempId][existingIdx].id : Date.now(),
-          temporadaId: tempId,
-          claseBulbo: claseId,
-          precioReferencia: precio,
-          fechaVigencia: new Date().toISOString()
-        };
-        if (existingIdx >= 0) {
-          store[tempId][existingIdx] = item;
-        } else {
-          store[tempId].push(item);
-        }
-        storage.set(STORAGE_KEY_MOCK_PRECIOS, store);
-        const meta = CLASES_BULBO.find(c => c.id === claseId) || CLASES_BULBO[0];
-        return this._normalizePrecioItem(item, meta);
-      }
-      throw err;
-    }
+    const response = await apiClient.post('/precios-referencia', payload);
+    const data = this._unwrap(response);
+    const meta = CLASES_BULBO.find(c => c.id === claseId) || CLASES_BULBO[0];
+    return this._normalizePrecioItem(data, meta);
   }
 
   /**
-   * Guarda o actualiza en lote los precios de una temporada
+   * Guarda o actualiza en lote los precios de una temporada y opcionalmente su comisión de compra
    * POST /api/v1/precios-referencia/temporada
-   * @param {number} temporadaId
-   * @param {Array<{claseBulbo: number|string, precioReferencia: number}>} precios
    */
-  async guardarPreciosTemporada(temporadaId, precios) {
+  async guardarPreciosTemporada(temporadaId, precios, porcentajeComisionCompra = null) {
     const tempId = Number(temporadaId);
     if (!tempId) throw new Error('ID de temporada inválido.');
     if (!Array.isArray(precios) || precios.length === 0) {
@@ -207,25 +152,16 @@ class PreciosReferenciaService {
       precios: itemsDto
     };
 
-    try {
-      const response = await apiClient.post('/precios-referencia/temporada', payload);
-      const data = this._unwrap(response);
-      return Array.isArray(data) ? data : (data?.items || []);
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const store = storage.get(STORAGE_KEY_MOCK_PRECIOS, {});
-        store[tempId] = itemsDto.map((it, idx) => ({
-          id: idx + 1,
-          temporadaId: tempId,
-          claseBulbo: it.claseBulbo,
-          precioReferencia: it.precioReferencia,
-          fechaVigencia: new Date().toISOString()
-        }));
-        storage.set(STORAGE_KEY_MOCK_PRECIOS, store);
-        return store[tempId];
+    if (porcentajeComisionCompra !== null && porcentajeComisionCompra !== undefined) {
+      const comisionNum = Number(porcentajeComisionCompra);
+      if (!isNaN(comisionNum) && comisionNum >= 0 && comisionNum <= 100) {
+        payload.porcentajeComisionCompra = comisionNum;
       }
-      throw err;
     }
+
+    const response = await apiClient.post('/precios-referencia/temporada', payload);
+    const data = this._unwrap(response);
+    return Array.isArray(data) ? data : (data?.items || []);
   }
 }
 

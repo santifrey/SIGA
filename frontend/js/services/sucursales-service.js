@@ -4,111 +4,8 @@
  */
 
 import { apiClient } from '../utils/api-client.js';
-import { storage } from '../utils/storage.js';
-import { CONFIG } from '../config.js';
-
-// Semilla de sucursales para desarrollo y prueba inicial
-const SEED_SUCURSALES = [
-  {
-    id: 1,
-    codigo: 'SUC-CBA-01',
-    nombre: 'Sucursal Central - Nueva Córdoba',
-    direccion: 'Bv. Chacabuco 780',
-    ciudad: 'Córdoba Capital',
-    provincia: 'Córdoba',
-    telefono: '+54 351 468-9000',
-    capacidad: 120,
-    responsable: 'Lic. Mariano Valdéz',
-    activa: true,
-    fechaAlta: '2024-01-10T08:00:00Z'
-  },
-  {
-    id: 2,
-    codigo: 'SUC-CBA-02',
-    nombre: 'Sucursal Cerro de las Rosas',
-    direccion: 'Av. Rafael Núñez 4210',
-    ciudad: 'Córdoba Capital',
-    provincia: 'Córdoba',
-    telefono: '+54 351 481-2244',
-    capacidad: 85,
-    responsable: 'Cra. Gabriela Torres',
-    activa: true,
-    fechaAlta: '2024-03-15T09:00:00Z'
-  },
-  {
-    id: 3,
-    codigo: 'SUC-VCP-01',
-    nombre: 'Sucursal Villa Carlos Paz',
-    direccion: 'Av. San Martín 250',
-    ciudad: 'Villa Carlos Paz',
-    provincia: 'Córdoba',
-    telefono: '+54 3541 42-1133',
-    capacidad: 60,
-    responsable: 'Ing. Rodrigo Paz',
-    activa: true,
-    fechaAlta: '2024-06-01T08:30:00Z'
-  },
-  {
-    id: 4,
-    codigo: 'SUC-RCU-01',
-    nombre: 'Sucursal Río Cuarto',
-    direccion: 'Constitución 680',
-    ciudad: 'Río Cuarto',
-    provincia: 'Córdoba',
-    telefono: '+54 358 464-5500',
-    capacidad: 70,
-    responsable: 'Sr. Fernando Mansilla',
-    activa: true,
-    fechaAlta: '2024-09-20T10:00:00Z'
-  },
-  {
-    id: 5,
-    codigo: 'SUC-BUE-01',
-    nombre: 'Sucursal Buenos Aires - Microcentro',
-    direccion: 'Av. Corrientes 1450',
-    ciudad: 'CABA',
-    provincia: 'Buenos Aires',
-    telefono: '+54 11 5234-9800',
-    capacidad: 150,
-    responsable: 'Lic. Laura Di Marco',
-    activa: true,
-    fechaAlta: '2024-11-05T09:00:00Z'
-  },
-  {
-    id: 6,
-    codigo: 'SUC-ROS-01',
-    nombre: 'Sucursal Rosario Centro',
-    direccion: 'Peatonal Córdoba 1120',
-    ciudad: 'Rosario',
-    provincia: 'Santa Fe',
-    telefono: '+54 341 425-6677',
-    capacidad: 90,
-    responsable: 'Dr. Alejandro Busto',
-    activa: false,
-    fechaAlta: '2025-01-10T08:00:00Z'
-  }
-];
 
 class SucursalesService {
-  constructor() {
-    this._initLocalStore();
-  }
-
-  _initLocalStore() {
-    if (!storage.get(CONFIG.STORAGE_KEYS.MOCK_SUCURSALES)) {
-      storage.set(CONFIG.STORAGE_KEYS.MOCK_SUCURSALES, SEED_SUCURSALES);
-    }
-  }
-
-  _getLocalSucursales() {
-    this._initLocalStore();
-    return storage.get(CONFIG.STORAGE_KEYS.MOCK_SUCURSALES, SEED_SUCURSALES);
-  }
-
-  _saveLocalSucursales(sucursales) {
-    storage.set(CONFIG.STORAGE_KEYS.MOCK_SUCURSALES, sucursales);
-  }
-
   _unwrap(res) {
     if (res && typeof res === 'object' && 'data' in res && res.data !== null && res.data !== undefined) {
       return res.data;
@@ -118,35 +15,49 @@ class SucursalesService {
 
   _normalizeSucursal(s) {
     if (!s) return s;
-    let activa = true;
-    if (typeof s.activa === 'boolean') {
-      activa = s.activa;
-    } else if (s.estado !== undefined && s.estado !== null) {
-      const est = String(s.estado).toLowerCase();
-      activa = est === 'activa' || est === 'activo' || est === '1';
+    const capacidad = Number(s.capacidadTotal ?? s.capacidad ?? 0);
+    const activa = s.activo !== undefined
+      ? Boolean(s.activo)
+      : (s.activa !== undefined
+          ? Boolean(s.activa)
+          : (s.estado !== undefined && s.estado !== null
+              ? (typeof s.estado === 'number'
+                  ? s.estado === 1
+                  : ['activo', 'activa', '1', 'true'].includes(String(s.estado).toLowerCase().trim()))
+              : true));
+
+    let direccion = s.direccion || '';
+    let ciudad = s.ciudad || '';
+    let provincia = s.provincia || '';
+
+    if (!direccion && s.ubicacion) {
+      const parts = String(s.ubicacion).split(',').map(p => p.trim());
+      direccion = parts[0] || '';
+      ciudad = parts[1] || '';
+      provincia = parts[2] || '';
     }
-    const capacidad = Number(s.capacidad ?? s.capacidadTotal ?? 0);
+
     return {
       ...s,
       id: s.id,
-      codigo: s.codigo || `SUC-${String(s.id).padStart(2, '0')}`,
       nombre: s.nombre || '',
-      direccion: s.direccion || s.ubicacion || '',
-      ubicacion: s.ubicacion || s.direccion || '',
-      ciudad: s.ciudad || s.ubicacion || '',
-      provincia: s.provincia || 'Córdoba',
+      codigo: s.codigo || `SUC-${String(s.id).padStart(2, '0')}`,
+      direccion,
+      ciudad,
+      provincia,
+      ubicacion: s.ubicacion || [direccion, ciudad, provincia].filter(Boolean).join(', '),
       telefono: s.telefono || '',
       capacidad,
       capacidadTotal: capacidad,
-      responsable: s.responsable || 'Administración SIGA',
+      participanteComercialId: s.participanteComercialId || null,
+      participanteRazonSocial: s.participanteRazonSocial || null,
+      responsable: s.responsable || s.nombreResponsable || '',
       activa,
+      estado: activa ? 'Activa' : 'Inactiva',
       fechaAlta: s.fechaAlta || s.fechaCreacion || new Date().toISOString()
     };
   }
 
-  /**
-   * Alias de listar para compatibilidad
-   */
   async getAll() {
     return this.listar();
   }
@@ -154,149 +65,93 @@ class SucursalesService {
   /**
    * Listar todas las sucursales con filtros de búsqueda y estado
    */
-  async listar({ search = '', estado = 'todas' } = {}) {
-    try {
-      const response = await apiClient.get('/sucursales');
-      const unwrapped = this._unwrap(response);
-      let list = (Array.isArray(unwrapped) ? unwrapped : (unwrapped?.items || [])).map(s => this._normalizeSucursal(s));
+  async listar({ search = '', estado = 'todas', incluirTecnicas = false } = {}) {
+    const response = await apiClient.get('/sucursales');
+    const unwrapped = this._unwrap(response);
+    let list = (Array.isArray(unwrapped) ? unwrapped : (unwrapped?.items || [])).map(s => this._normalizeSucursal(s));
 
-      if (search && search.trim() !== '') {
-        const q = search.trim().toLowerCase();
-        list = list.filter(s =>
-          (s.nombre && s.nombre.toLowerCase().includes(q)) ||
-          (s.codigo && s.codigo.toLowerCase().includes(q)) ||
-          (s.ciudad && s.ciudad.toLowerCase().includes(q)) ||
-          (s.direccion && s.direccion.toLowerCase().includes(q)) ||
-          (s.responsable && s.responsable.toLowerCase().includes(q))
-        );
-      }
-
-      if (estado === 'activas') {
-        list = list.filter(s => s.activa === true);
-      } else if (estado === 'inactivas') {
-        list = list.filter(s => s.activa === false);
-      }
-
-      return list;
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        console.info('[SucursalesService] Usando repositorio local mock.');
-        let list = this._getLocalSucursales();
-
-        if (search && search.trim() !== '') {
-          const q = search.trim().toLowerCase();
-          list = list.filter(s =>
-            (s.nombre && s.nombre.toLowerCase().includes(q)) ||
-            (s.codigo && s.codigo.toLowerCase().includes(q)) ||
-            (s.ciudad && s.ciudad.toLowerCase().includes(q)) ||
-            (s.responsable && s.responsable.toLowerCase().includes(q))
-          );
-        }
-
-        if (estado === 'activas') {
-          list = list.filter(s => s.activa === true);
-        } else if (estado === 'inactivas') {
-          list = list.filter(s => s.activa === false);
-        }
-
-        return list;
-      }
-      throw err;
+    // Excluir entidades técnicas de contraparte interna salvo que se soliciten explícitamente
+    if (!incluirTecnicas) {
+      list = list.filter(s => s.nombre?.toLowerCase() !== 'ajustes de inventario');
     }
+
+    if (search && search.trim() !== '') {
+      const q = search.trim().toLowerCase();
+      list = list.filter(s =>
+        (s.nombre && s.nombre.toLowerCase().includes(q)) ||
+        (s.codigo && s.codigo.toLowerCase().includes(q)) ||
+        (s.ciudad && s.ciudad.toLowerCase().includes(q)) ||
+        (s.direccion && s.direccion.toLowerCase().includes(q)) ||
+        (s.responsable && s.responsable.toLowerCase().includes(q))
+      );
+    }
+
+    if (estado === 'activas') {
+      list = list.filter(s => s.activa === true);
+    } else if (estado === 'inactivas') {
+      list = list.filter(s => s.activa === false);
+    }
+
+    return list;
   }
 
   /**
    * Obtener sucursal por ID
    */
   async obtenerPorId(id) {
-    try {
-      const response = await apiClient.get(`/sucursales/${id}`);
-      return this._normalizeSucursal(this._unwrap(response));
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const list = this._getLocalSucursales();
-        const sucursal = list.find(s => String(s.id) === String(id));
-        if (!sucursal) throw new Error('Sucursal no encontrada');
-        return sucursal;
-      }
-      throw err;
-    }
+    const response = await apiClient.get(`/sucursales/${id}`);
+    return this._normalizeSucursal(this._unwrap(response));
   }
 
   /**
    * Crear nueva sucursal
    */
   async crear(data) {
-    try {
-      const payload = {
-        ...data,
-        ubicacion: data.ubicacion || [data.direccion, data.ciudad, data.provincia].filter(Boolean).join(', '),
-        capacidadTotal: Number(data.capacidadTotal ?? data.capacidad ?? 0)
-      };
-      const response = await apiClient.post('/sucursales', payload);
-      return this._normalizeSucursal(this._unwrap(response));
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const list = this._getLocalSucursales();
-        const nextId = list.length > 0 ? Math.max(...list.map(s => Number(s.id) || 0)) + 1 : 1;
-        const nueva = {
-          ...data,
-          id: nextId,
-          codigo: data.codigo || `SUC-${String(nextId).padStart(2, '0')}`,
-          activa: data.activa !== undefined ? data.activa : true,
-          fechaAlta: new Date().toISOString()
-        };
-        list.push(nueva);
-        this._saveLocalSucursales(list);
-        return nueva;
-      }
-      throw err;
-    }
+    const isActivo = data.activo !== undefined ? Boolean(data.activo) : (data.activa !== undefined ? Boolean(data.activa) : true);
+    const payload = {
+      nombre: data.nombre,
+      ubicacion: data.ubicacion || [data.direccion, data.ciudad, data.provincia].filter(Boolean).join(', '),
+      capacidadTotal: Number(data.capacidadTotal ?? data.capacidad ?? 0),
+      activo: isActivo
+    };
+    const response = await apiClient.post('/sucursales', payload);
+    return this._normalizeSucursal(this._unwrap(response));
   }
 
   /**
    * Actualizar sucursal existente
    */
   async actualizar(id, data) {
-    try {
-      const payload = {
-        ...data,
-        ubicacion: data.ubicacion || [data.direccion, data.ciudad, data.provincia].filter(Boolean).join(', '),
-        capacidadTotal: Number(data.capacidadTotal ?? data.capacidad ?? 0),
-        estado: data.estado || (data.activa === false ? 'Inactiva' : 'Activa')
-      };
-      const response = await apiClient.put(`/sucursales/${id}`, payload);
-      return this._normalizeSucursal(this._unwrap(response));
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const list = this._getLocalSucursales();
-        const index = list.findIndex(s => String(s.id) === String(id));
-        if (index === -1) throw new Error('Sucursal a actualizar no encontrada');
-        list[index] = { ...list[index], ...data, id: Number(id) };
-        this._saveLocalSucursales(list);
-        return list[index];
-      }
-      throw err;
-    }
+    const isActivo = data.activo !== undefined
+      ? Boolean(data.activo)
+      : (data.activa !== undefined ? Boolean(data.activa) : (data.estado !== 0 && data.estado !== 'Inactivo' && data.estado !== 'Inactiva'));
+    const payload = {
+      nombre: data.nombre,
+      ubicacion: data.ubicacion || [data.direccion, data.ciudad, data.provincia].filter(Boolean).join(', '),
+      capacidadTotal: Number(data.capacidadTotal ?? data.capacidad ?? 0),
+      activo: isActivo
+    };
+    const response = await apiClient.put(`/sucursales/${id}`, payload);
+    return this._normalizeSucursal(this._unwrap(response));
   }
 
   /**
-   * Desactivar / Eliminar sucursal
+   * Cambiar estado activo/inactivo sin eliminar físicamente
+   */
+  async cambiarEstado(id, activa) {
+    const s = await this.obtenerPorId(id);
+    return await this.actualizar(id, {
+      ...s,
+      activo: Boolean(activa),
+      activa: Boolean(activa)
+    });
+  }
+
+  /**
+   * Desactivar / Eliminar sucursal (soft delete)
    */
   async eliminar(id) {
-    try {
-      return await apiClient.delete(`/sucursales/${id}`);
-    } catch (err) {
-      if (err.isNetworkError && CONFIG.ENABLE_MOCK_FALLBACK) {
-        const list = this._getLocalSucursales();
-        const index = list.findIndex(s => String(s.id) === String(id));
-        if (index === -1) throw new Error('Sucursal no encontrada');
-        list[index].activa = false;
-        this._saveLocalSucursales(list);
-        return { success: true, message: 'Sucursal desactivada correctamente' };
-      }
-      throw err;
-    }
+    return await apiClient.delete(`/sucursales/${id}`);
   }
 
   /**

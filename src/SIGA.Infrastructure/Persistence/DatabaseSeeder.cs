@@ -132,241 +132,6 @@ public static class DatabaseSeeder
                 await context.Database.EnsureCreatedAsync();
             }
 
-            // Asegurar columna Activado si la tabla Usuarios ya fue creada previamente
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Usuarios ADD COLUMN Activado TINYINT(1) NOT NULL DEFAULT 0;");
-            }
-            catch
-            {
-                try
-                {
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE Usuarios ADD COLUMN Activado INTEGER NOT NULL DEFAULT 0;");
-                }
-                catch { }
-            }
-
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("UPDATE Usuarios SET Activado = 1 WHERE Username = 'admin';");
-            }
-            catch { }
-
-            // Limpieza y compatibilidad de FK obsoletas a Ventas en RegistrosAprobacion, Contratos y Facturas
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE RegistrosAprobacion DROP FOREIGN KEY FK_RegistrosAprobacion_Ventas_VentaId;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE RegistrosAprobacion MODIFY COLUMN VentaId INT NULL;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Contratos DROP FOREIGN KEY FK_Contratos_Ventas_VentaId;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Contratos MODIFY COLUMN VentaId INT NULL;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Facturas DROP FOREIGN KEY FK_Facturas_Ventas_VentaId;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Facturas DROP INDEX IX_Facturas_VentaId;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Facturas MODIFY COLUMN VentaId INT NULL DEFAULT NULL;");
-            }
-            catch { }
-
-            // Limpieza de columnas de discriminador o campos redundantes en Personas si existieran de migraciones previas
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Personas DROP COLUMN Discriminator;");
-            }
-            catch { }
-
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Personas DROP COLUMN Legajo;");
-            }
-            catch { }
-
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Personas DROP COLUMN Posicion;");
-            }
-            catch { }
-
-            // Asegurar tabla Empleados con Foreign Key a Personas (Estrategia TPT - sin discriminador)
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync(@"
-                    CREATE TABLE IF NOT EXISTS Empleados (
-                        Id INT NOT NULL PRIMARY KEY,
-                        Legajo VARCHAR(50) NULL,
-                        Posicion VARCHAR(100) NULL,
-                        CONSTRAINT FK_Empleados_Personas_Id FOREIGN KEY (Id) REFERENCES Personas(Id) ON DELETE CASCADE
-                    );
-                ");
-            }
-            catch { }
-
-            try
-            {
-                // Migrar o asegurar que usuarios internos tengan registro en Empleados
-                var personalSinEmpleado = await context.Usuarios
-                    .Include(u => u.Rol)
-                    .Where(u => u.Rol != null && u.Rol.Nombre != "CLIENTE")
-                    .Select(u => u.PersonaId)
-                    .ToListAsync();
-
-                foreach (var personaId in personalSinEmpleado)
-                {
-                    var exists = await context.Empleados.AnyAsync(e => e.Id == personaId);
-                    if (!exists)
-                    {
-                        await context.Database.ExecuteSqlRawAsync(
-                            "INSERT INTO Empleados (Id, Legajo, Posicion) VALUES ({0}, {1}, {2});",
-                            personaId, $"LEG-{personaId:D4}", "Personal Interno");
-                    }
-                }
-            }
-            catch { }
-
-            // Asegurar tabla Clientes con Foreign Key a Personas y a Contratos (Estrategia TPT)
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync(@"
-                    CREATE TABLE IF NOT EXISTS Clientes (
-                        Id INT NOT NULL PRIMARY KEY,
-                        PersonaId INT NOT NULL,
-                        ContratoId INT NULL,
-                        CodigoCliente VARCHAR(50) NULL,
-                        Observaciones VARCHAR(500) NULL,
-                        EstadoCliente INT NOT NULL DEFAULT 1,
-                        CONSTRAINT FK_Clientes_ParticipantesComerciales_Id FOREIGN KEY (Id) REFERENCES ParticipantesComerciales(Id) ON DELETE CASCADE,
-                        CONSTRAINT FK_Clientes_Personas_PersonaId FOREIGN KEY (PersonaId) REFERENCES Personas(Id) ON DELETE RESTRICT,
-                        CONSTRAINT FK_Clientes_Contratos_ContratoId FOREIGN KEY (ContratoId) REFERENCES Contratos(Id) ON DELETE SET NULL
-                    );
-                ");
-            }
-            catch { }
-
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Clientes ADD COLUMN ContratoId INT NULL;");
-            }
-            catch { }
-
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Clientes ADD CONSTRAINT UQ_Clientes_ContratoId UNIQUE (ContratoId);");
-            }
-            catch { }
-
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync(@"
-                    INSERT IGNORE INTO Clientes (Id, PersonaId, CodigoCliente, Observaciones, EstadoCliente)
-                    SELECT Id, PersonaId, CodigoCliente, Observaciones, COALESCE(EstadoCliente, 1)
-                    FROM ParticipantesComerciales
-                    WHERE TipoParticipante = 1 AND PersonaId IS NOT NULL;
-                ");
-            }
-            catch { }
-
-            // Asegurar tabla Empresas con Foreign Key a ParticipantesComerciales (Estrategia TPT)
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync(@"
-                    CREATE TABLE IF NOT EXISTS Empresas (
-                        Id INT NOT NULL PRIMARY KEY,
-                        RazonSocial VARCHAR(150) NULL,
-                        CUIT VARCHAR(20) NULL,
-                        DireccionFiscal VARCHAR(200) NULL,
-                        Telefono VARCHAR(50) NULL,
-                        Email VARCHAR(150) NULL,
-                        EsCasaMatriz TINYINT(1) NOT NULL DEFAULT 0,
-                        CONSTRAINT FK_Empresas_ParticipantesComerciales_Id FOREIGN KEY (Id) REFERENCES ParticipantesComerciales(Id) ON DELETE CASCADE
-                    );
-                ");
-            }
-            catch { }
-
-            // Asegurar columnas autónomas en MovimientosBulbos tras la eliminación de OperacionComercial
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosBulbos ADD COLUMN MovimientoComercialId INT NULL;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosBulbos ADD COLUMN CosechaId INT NULL;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosBulbos ADD COLUMN PlantacionId INT NULL;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosBulbos ADD COLUMN TipoOperacion INT NOT NULL DEFAULT 1;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosBulbos MODIFY COLUMN OperacionComercialId INT NULL;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosBulbos DROP FOREIGN KEY FK_MovimientosBulbos_OperacionesComerciales_OperacionComercialId;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE TransferenciasLotes DROP FOREIGN KEY FK_TransferenciasLotes_OperacionesComerciales_OperacionComercialId;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE TransferenciasLotes MODIFY COLUMN OperacionComercialId INT NULL;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosComerciales DROP FOREIGN KEY FK_MovimientosComerciales_OperacionesComerciales_OperacionComercialId;");
-            }
-            catch { }
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosComerciales MODIFY COLUMN OperacionComercialId INT NULL;");
-            }
-            catch { }
-
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync(@"
-                    INSERT IGNORE INTO Empresas (Id, RazonSocial, CUIT, DireccionFiscal, Telefono, Email, EsCasaMatriz)
-                    SELECT Id, RazonSocial, CUIT, DireccionFiscal, Telefono, Email, COALESCE(EsCasaMatriz, 0)
-                    FROM ParticipantesComerciales
-                    WHERE TipoParticipante = 2;
-                ");
-            }
-            catch { }
-
             // 1. Asegurar Roles del Sistema (EsSistema = true)
             var systemRoles = new (int Id, string Nombre, string Descripcion)[]
             {
@@ -511,37 +276,34 @@ public static class DatabaseSeeder
                 }
             }
 
-            // 5. Sembrar sucursal de ejemplo únicamente si está habilitado en configuración (entorno Development) y no hay sucursales
-            var seedSampleSucursal = configuration.GetValue<bool>("SeedSampleSucursal", false);
-            if (seedSampleSucursal && !await context.Sucursales.IgnoreQueryFilters().AnyAsync())
-            {
-                await context.Sucursales.AddAsync(new Sucursal
-                {
-                    Nombre = "Sede Central - Villa General Belgrano",
-                    Ubicacion = "Ruta Prov. 5, Villa General Belgrano, Córdoba",
-                    CapacidadTotal = 50000m,
-                    Estado = EstadoSucursal.Activo,
-                    FechaCreacion = DateTime.UtcNow
-                });
-                await context.SaveChangesAsync();
-            }
+            // 5. Asegurar entidad de contraparte para Ajustes de Inventario
+            var sucursalAjustes = await context.Sucursales
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(s => s.Nombre == "Ajustes de Inventario");
 
-            // 6. Asegurar entidad de contraparte para Ajustes de Inventario
-            var existeAjuste = await context.Empresas.IgnoreQueryFilters().AnyAsync(e => e.RazonSocial == "Ajustes de Inventario");
-            if (!existeAjuste)
+            if (sucursalAjustes == null)
             {
-                var empresaAjustes = new Empresa
+                sucursalAjustes = new Sucursal
                 {
-                    TipoParticipante = TipoParticipante.Empresa,
+                    TipoParticipante = TipoParticipante.Sucursal,
                     Estado = EstadoParticipante.Activo,
                     FechaRegistro = DateTime.UtcNow,
+                    Nombre = "Ajustes de Inventario",
                     RazonSocial = "Ajustes de Inventario",
                     CUIT = "00-00000000-0",
+                    Activo = false,
                     IsDeleted = false
                 };
-                await context.Empresas.AddAsync(empresaAjustes);
+                await context.Sucursales.AddAsync(sucursalAjustes);
                 await context.SaveChangesAsync();
-                logger?.LogInformation("Entidad 'Ajustes de Inventario' aprovisionada exitosamente con Id = {Id}.", empresaAjustes.Id);
+                logger?.LogInformation("Entidad 'Ajustes de Inventario' aprovisionada exitosamente con Id = {Id}.", sucursalAjustes.Id);
+            }
+
+            // 6. Sembrar datos de ejemplo cuando la base de datos se recrea vacía en entorno de desarrollo
+            var seedSampleData = configuration.GetValue<bool>("SeedSampleSucursal", false);
+            if (seedSampleData && !await context.Clientes.IgnoreQueryFilters().AnyAsync())
+            {
+                await SeedSampleDevelopmentDataAsync(context, sucursalAjustes.Id, logger);
             }
         }
         catch (Exception ex)
@@ -549,5 +311,137 @@ public static class DatabaseSeeder
             logger?.LogError(ex, "Ocurrió un error inicializando o sembrando la base de datos.");
             throw;
         }
+    }
+
+    private static async Task SeedSampleDevelopmentDataAsync(
+        SigaDbContext context,
+        int ajustesParticipanteId,
+        ILogger<SigaDbContext>? logger)
+    {
+        var adminUser = await context.Usuarios.FirstOrDefaultAsync(u => !u.IsDeleted);
+        if (adminUser == null) return;
+
+        // 1. Sucursal principal
+        var sucursal = await context.Sucursales.FirstOrDefaultAsync();
+        if (sucursal == null)
+        {
+            sucursal = new Sucursal
+            {
+                Nombre = "Sede Central - Villa General Belgrano",
+                Ubicacion = "Ruta Prov. 5, Villa General Belgrano, Córdoba",
+                CapacidadTotal = 50000m,
+                Activo = true,
+                FechaCreacion = DateTime.UtcNow
+            };
+            await context.Sucursales.AddAsync(sucursal);
+            await context.SaveChangesAsync();
+        }
+
+        // 2. Clientes de ejemplo con Nombre y Apellido reales
+        var datosClientes = new[]
+        {
+            (Nombre: "Carlos", Apellido: "López", Doc: "28999111", Tel: "+54 351 4112233", Email: "carlos.lopez@ejemplo.com", Codigo: "CLI-2026-0001", Obs: "Productor asociado - Valle de Calamuchita"),
+            (Nombre: "Mariana", Apellido: "Sosa", Doc: "37753506", Tel: "+54 351 7778899", Email: "mariana.sosa@ejemplo.com", Codigo: "CLI-2026-0002", Obs: "Inversora inicial de temporada"),
+            (Nombre: "Gonzalo", Apellido: "Pérez", Doc: "36735074", Tel: "+54 351 4445566", Email: "gonzalo.perez@ejemplo.com", Codigo: "CLI-2026-0003", Obs: "Cliente mayorista de bulbos")
+        };
+
+        var clientesCreados = new List<Cliente>();
+        foreach (var item in datosClientes)
+        {
+            var persona = new Persona
+            {
+                Nombre = item.Nombre,
+                Apellido = item.Apellido,
+                Documento = item.Doc,
+                Telefono = item.Tel,
+                Email = item.Email,
+                FechaCreacion = DateTime.UtcNow
+            };
+            await context.Personas.AddAsync(persona);
+            await context.SaveChangesAsync();
+
+            var cliente = new Cliente
+            {
+                PersonaId = persona.Id,
+                TipoParticipante = TipoParticipante.Cliente,
+                Estado = EstadoParticipante.Activo,
+                EstadoCliente = EstadoCliente.Activo,
+                CodigoCliente = item.Codigo,
+                Observaciones = item.Obs,
+                FechaRegistro = DateTime.UtcNow
+            };
+            await context.Clientes.AddAsync(cliente);
+            await context.SaveChangesAsync();
+            clientesCreados.Add(cliente);
+        }
+
+        // 3. Temporada activa con filas y precios de referencia por calibre
+        var temporada = new Temporada("Temporada 2026 - Calamuchita", adminUser.Id, DateTime.UtcNow.AddMonths(-2))
+        {
+            Estado = EstadoTemporada.Comercializacion
+        };
+        await context.Temporadas.AddAsync(temporada);
+        await context.SaveChangesAsync();
+
+        var filas = new[]
+        {
+            new Fila(sucursal.Id, temporada.Id, 1, 5000),
+            new Fila(sucursal.Id, temporada.Id, 2, 5000),
+            new Fila(sucursal.Id, temporada.Id, 3, 5000)
+        };
+        await context.Filas.AddRangeAsync(filas);
+
+        var precios = new[]
+        {
+            new PrecioClase(temporada.Id, ClaseBulbo.Clase0, 2800m),
+            new PrecioClase(temporada.Id, ClaseBulbo.Clase1, 2200m),
+            new PrecioClase(temporada.Id, ClaseBulbo.Clase2, 1700m),
+            new PrecioClase(temporada.Id, ClaseBulbo.Clase3, 1200m),
+            new PrecioClase(temporada.Id, ClaseBulbo.Clase4, 750m),
+            new PrecioClase(temporada.Id, ClaseBulbo.MIX, 1700m)
+        };
+        await context.PreciosClase.AddRangeAsync(precios);
+        await context.SaveChangesAsync();
+
+        // 4. Ajustes de Stock iniciales confirmados (sin FK a MovimientoComercial, Cosecha ni Plantación)
+        var casaMatriz = await context.Sucursales.FirstOrDefaultAsync(s => s.EsCasaMatriz && !s.IsDeleted);
+        var casaMatrizId = casaMatriz?.Id ?? 1;
+
+        var ajusteCasaMatriz = new MovimientoBulbos(
+            ajustesParticipanteId,
+            casaMatrizId,
+            adminUser.Id,
+            "[Ingreso a Sede Central] Stock inicial de depósito central por inventario físico");
+        ajusteCasaMatriz.AgregarCantidad(ClaseBulbo.Clase0, 500);
+        ajusteCasaMatriz.AgregarCantidad(ClaseBulbo.Clase1, 1500);
+        ajusteCasaMatriz.AgregarCantidad(ClaseBulbo.Clase2, 2000);
+        ajusteCasaMatriz.AgregarCantidad(ClaseBulbo.Clase3, 1000);
+        ajusteCasaMatriz.AgregarCantidad(ClaseBulbo.Clase4, 500);
+        ajusteCasaMatriz.Confirmar();
+
+        var ajusteCliente1 = new MovimientoBulbos(
+            ajustesParticipanteId,
+            clientesCreados[0].Id,
+            adminUser.Id,
+            "[Ingreso a Cliente] Saldo inicial de bulbos en custodia para Carlos López");
+        ajusteCliente1.AgregarCantidad(ClaseBulbo.Clase1, 200);
+        ajusteCliente1.AgregarCantidad(ClaseBulbo.Clase2, 300);
+        ajusteCliente1.AgregarCantidad(ClaseBulbo.Clase3, 100);
+        ajusteCliente1.Confirmar();
+
+        var ajusteCliente2 = new MovimientoBulbos(
+            ajustesParticipanteId,
+            clientesCreados[1].Id,
+            adminUser.Id,
+            "[Ingreso a Cliente] Saldo inicial de bulbos en custodia para Mariana Sosa");
+        ajusteCliente2.AgregarCantidad(ClaseBulbo.Clase1, 150);
+        ajusteCliente2.AgregarCantidad(ClaseBulbo.Clase2, 200);
+        ajusteCliente2.AgregarCantidad(ClaseBulbo.Clase3, 100);
+        ajusteCliente2.Confirmar();
+
+        await context.MovimientosBulbos.AddRangeAsync(ajusteCasaMatriz, ajusteCliente1, ajusteCliente2);
+        await context.SaveChangesAsync();
+
+        logger?.LogInformation("Datos de ejemplo iniciales (Sucursal, 3 Clientes, Temporada 2026, Precios y Stock inicial) sembrados con éxito.");
     }
 }

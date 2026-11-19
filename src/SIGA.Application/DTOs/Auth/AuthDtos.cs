@@ -38,6 +38,8 @@ public class UserInfoResponseDto
     public string? Legajo { get; set; }
     public string? Posicion { get; set; }
     public string? Telefono { get; set; }
+    public int? SucursalId { get; set; }
+    public string? SucursalNombre { get; set; }
     public int RolId { get; set; }
     public string Rol { get; set; } = string.Empty;
     public bool Activado { get; set; }

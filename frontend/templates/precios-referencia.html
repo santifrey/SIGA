@@ -1,0 +1,134 @@
+<div class="fade-in">
+  <!-- Encabezado de la Vista -->
+  <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
+    <div>
+      <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Precios de Referencia</h1>
+      <p class="text-muted text-sm">Parámetros oficiales de valorización para compras y ventas de bulbos según calibre y MIX comercial</p>
+    </div>
+    <div class="d-flex align-center gap-sm">
+      <button class="btn btn-secondary btn-sm" id="btn-refresh-precios" title="Actualizar datos">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>Actualizar</span>
+      </button>
+      <button class="btn btn-primary btn-sm" id="btn-guardar-header" title="Guardar todos los precios editados">
+        <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+          <polyline points="17 21 17 13 7 13 7 21"></polyline>
+          <polyline points="7 3 7 8 15 8"></polyline>
+        </svg>
+        <span>Guardar Precios</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Selector de Temporada y Estado -->
+  <div class="card mb-4" style="padding: 1.25rem;">
+    <div class="d-flex align-center justify-between gap-md flex-wrap">
+      <div class="d-flex align-center gap-md flex-wrap" style="flex: 1; min-width: 280px;">
+        <label for="select-temporada-precios" class="form-label font-bold mb-0" style="min-width: 150px;">
+          Temporada Agrícola:
+        </label>
+        <div style="flex: 1; max-width: 360px;">
+          <select id="select-temporada-precios" class="form-control">
+            <option value="">Cargando temporadas...</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="temporada-meta-badge" class="d-flex align-center gap-sm">
+        <!-- Inyectado dinámicamente: badge estado y rango de fechas -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Parámetro de Temporada: Comisión Retenida en Compras -->
+  <div class="card mb-4 p-3" style="background: var(--surface);">
+    <div class="d-flex align-center justify-between flex-wrap gap-md">
+      <div style="flex: 1; min-width: 280px;">
+        <h4 class="font-bold text-sm m-0 d-flex align-center gap-xs" style="color: var(--text);">
+          <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--primary);">
+            <line x1="12" y1="1" x2="12" y2="23"></line>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+          </svg>
+          <span>Comisión Retenida en Compras a Clientes</span>
+        </h4>
+        <span class="text-xs text-muted">
+          Porcentaje administrativo deducido sobre el monto bruto en operaciones de compra de bulbos para esta temporada.
+        </span>
+      </div>
+      <div class="d-flex align-center gap-sm">
+        <label for="input-comision-compra" class="form-label text-xs font-bold uppercase text-muted mb-0">Comisión:</label>
+        <div class="input-group" style="max-width: 140px;">
+          <input type="number" id="input-comision-compra" class="form-control text-right font-bold" min="0" max="100" step="0.5" value="0" />
+          <span class="input-group-text font-bold">%</span>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-guardar-comision" title="Guardar porcentaje de comisión de la temporada">
+          <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span>Guardar Comisión</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Banners informativos condicionales -->
+  <div id="alert-container-precios"></div>
+
+  <!-- Tabla / Grilla de Precios de las 6 Clases -->
+  <div class="table-card mb-4">
+    <div class="card-header p-3 border-bottom d-flex justify-between align-center flex-wrap gap-sm">
+      <div>
+        <h3 class="card-title text-base m-0 font-bold">Lista de Precios Oficiales por Calibre</h3>
+        <span class="text-xs text-muted">Valores unitarios por bulbo para liquidación de operaciones comerciales</span>
+      </div>
+      <div class="text-xs text-muted">
+        Valores expresados en <strong class="text-main">ARS ($ / bulbo)</strong>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table" id="tabla-precios-referencia">
+        <thead>
+          <tr>
+            <th style="width: 14%;">Clase Comercial</th>
+            <th style="width: 16%;">Rango de Calibre</th>
+            <th style="width: 26%;">Descripción Comercial</th>
+            <th style="width: 16%;">Última Vigencia</th>
+            <th style="width: 16%; text-align: right;">Precio Ref. ($ / bulbo)</th>
+            <th style="width: 12%; text-align: center;">Acción</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-precios-referencia">
+          <tr>
+            <td colspan="6" class="text-center text-muted" style="padding: 2.5rem;">Cargando precios de referencia...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Footer con Acciones en Lote -->
+    <div id="footer-acciones-precios" class="card-footer p-3 border-top d-flex justify-between align-center flex-wrap gap-md" style="background: var(--surface-alt); display: none;">
+      <div class="text-xs text-muted">
+        * Todos los precios deben ser valores numéricos estrictamente mayores a cero ($ 0,01 o superior).
+      </div>
+      <div class="d-flex align-center gap-sm">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-precios">
+          <span>Restablecer Valores</span>
+        </button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-guardar-lote">
+          <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+          <span>Guardar Precios de la Temporada</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -185,18 +185,20 @@ public class GestionCosechas : IGestionCosechas
                 .Where(g => g.Key > 0)
                 .ToList();
 
+            var casaMatriz = await _sucursalRepository.GetCasaMatrizAsync(cancellationToken);
+            int casaMatrizId = casaMatriz?.Id ?? 1;
+
             foreach (var grupoTitular in gruposPorTitular)
             {
                 var titularVigenteId = grupoTitular.Key;
 
-                // Si el titular vigente es un Cliente (Id != Empresa.SingletonId), generamos movimiento confirmado de IngresoCosecha (Empresa -> TitularVigente)
-                if (titularVigenteId != Empresa.SingletonId)
+                // Si el titular vigente es un Cliente (Id != casaMatrizId), generamos movimiento confirmado de IngresoCosecha (CasaMatriz -> TitularVigente)
+                if (titularVigenteId != casaMatrizId)
                 {
                     var movimiento = new MovimientoBulbos(
-                        Empresa.SingletonId, // Origen: Producción / Empresa Singleton
+                        casaMatrizId, // Origen: Producción / Sucursal Casa Matriz
                         titularVigenteId, // Destino: Titular Vigente del Lote
                         usuarioId,
-                        TipoOperacionComercial.IngresoCosecha,
                         $"Acreditación de cosecha #{cosecha.Id} (Temporada {temporada.Nombre})",
                         cosechaId: cosecha.Id);
 
@@ -358,9 +360,9 @@ public class GestionCosechas : IGestionCosechas
         }
 
         var participante = await _participanteRepository.GetByIdAsync(participanteId, cancellationToken);
-        if (participante is Empresa empresa)
+        if (participante is Sucursal sucursal)
         {
-            return empresa.RazonSocial;
+            return sucursal.Nombre;
         }
 
         return $"Participante #{participanteId}";

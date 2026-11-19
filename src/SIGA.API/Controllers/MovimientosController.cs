@@ -17,7 +17,7 @@ public class MovimientosController : BaseApiController
     }
 
     [HttpGet]
-    [RequierePermiso(Permisos.MovimientosVer, Permisos.StockVer)]
+    [RequierePermiso(Permisos.StockVer)]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<MovimientoBulbosDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<MovimientoBulbosDto>>>> GetAll(
         [FromQuery] EstadoMovimiento? estado,
@@ -35,7 +35,7 @@ public class MovimientosController : BaseApiController
     }
 
     [HttpGet("{id:int}")]
-    [RequierePermiso(Permisos.MovimientosVer, Permisos.StockVer)]
+    [RequierePermiso(Permisos.StockVer)]
     [ProducesResponseType(typeof(ApiResponse<MovimientoBulbosDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<MovimientoBulbosDto>>> GetById(int id, CancellationToken cancellationToken)
@@ -45,7 +45,7 @@ public class MovimientosController : BaseApiController
     }
 
     [HttpGet("por-cliente/{clienteId:int}")]
-    [RequierePermiso(Permisos.MovimientosVer, Permisos.StockVer)]
+    [RequierePermiso(Permisos.StockVer)]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<MovimientoBulbosDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<MovimientoBulbosDto>>>> GetByCliente(int clienteId, CancellationToken cancellationToken)
     {
@@ -54,7 +54,7 @@ public class MovimientosController : BaseApiController
     }
 
     [HttpPost]
-    [RequierePermiso(Permisos.MovimientosCrear, Permisos.StockAjustar)]
+    [RequierePermiso(Permisos.StockAjustar)]
     [ProducesResponseType(typeof(ApiResponse<MovimientoBulbosDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<MovimientoBulbosDto>>> Create([FromBody] CrearMovimientoDto dto, CancellationToken cancellationToken)
@@ -64,7 +64,7 @@ public class MovimientosController : BaseApiController
     }
 
     [HttpPost("{id:int}/confirmar")]
-    [RequierePermiso(Permisos.MovimientosConfirmar, Permisos.StockAjustar)]
+    [RequierePermiso(Permisos.StockAjustar)]
     [ProducesResponseType(typeof(ApiResponse<MovimientoBulbosDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -75,7 +75,7 @@ public class MovimientosController : BaseApiController
     }
 
     [HttpPost("{id:int}/anular")]
-    [RequierePermiso(Permisos.MovimientosAnular, Permisos.StockAjustar)]
+    [RequierePermiso(Permisos.StockAjustar)]
     [ProducesResponseType(typeof(ApiResponse<MovimientoBulbosDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

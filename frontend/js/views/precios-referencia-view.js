@@ -7,6 +7,7 @@
 import { authService } from '../services/auth-service.js';
 import { temporadasService } from '../services/temporadas-service.js';
 import { preciosReferenciaService, CLASES_BULBO } from '../services/precios-referencia-service.js';
+import { loadTemplate } from '../utils/template-loader.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/escape-html.js';
 
@@ -26,123 +27,23 @@ export class PreciosReferenciaView {
     this.container = rootElement;
     this.canManage = authService.tienePermiso('PRECIOS_REF_GESTIONAR');
 
-    this.container.innerHTML = `
-      <div class="fade-in">
-        <!-- Encabezado de la Vista -->
-        <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
-          <div>
-            <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Precios de Referencia</h1>
-            <p class="text-muted text-sm">Parámetros oficiales de valorización para compras y ventas de bulbos según calibre y MIX comercial</p>
-          </div>
-          <div class="d-flex align-center gap-sm">
-            <button class="btn btn-secondary btn-sm" id="btn-refresh-precios" title="Actualizar datos">
-              <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              <span>Actualizar</span>
-            </button>
-            ${this.canManage ? `
-              <button class="btn btn-primary btn-sm" id="btn-guardar-header" title="Guardar todos los precios editados">
-                <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                  <polyline points="7 3 7 8 15 8"></polyline>
-                </svg>
-                <span>Guardar Precios</span>
-              </button>
-            ` : ''}
-          </div>
-        </div>
+    this.container.innerHTML = await loadTemplate('precios-referencia.html');
 
-        <!-- Selector de Temporada y Estado -->
-        <div class="card mb-4" style="padding: 1.25rem;">
-          <div class="d-flex align-center justify-between gap-md flex-wrap">
-            <div class="d-flex align-center gap-md flex-wrap" style="flex: 1; min-width: 280px;">
-              <label for="select-temporada-precios" class="form-label font-bold mb-0" style="min-width: 150px;">
-                Temporada Agrícola:
-              </label>
-              <div style="flex: 1; max-width: 360px;">
-                <select id="select-temporada-precios" class="form-control">
-                  <option value="">Cargando temporadas...</option>
-                </select>
-              </div>
-            </div>
-
-            <div id="temporada-meta-badge" class="d-flex align-center gap-sm">
-              <!-- Inyectado dinámicamente: badge estado y rango de fechas -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Banners informativos condicionales -->
-        <div id="alert-container-precios">
-          ${!this.canManage ? `
-            <div class="alert alert-info d-flex align-center gap-sm mb-4" style="background: rgba(14, 165, 233, 0.1); border-left: 4px solid var(--info); padding: 0.85rem 1.25rem; border-radius: var(--radius-md);">
-              <span style="font-size: 1.1rem;">ℹ️</span>
-              <div>
-                <strong>Modo Consulta (Solo Lectura):</strong> No posee permisos para modificar precios de referencia oficiales.
-                La edición requiere el permiso <code style="font-weight: 700; color: var(--primary);">PRECIOS_REF_GESTIONAR</code>.
-              </div>
-            </div>
-          ` : ''}
-        </div>
-
-        <!-- Tabla / Grilla de Precios de las 6 Clases -->
-        <div class="table-card mb-4">
-          <div class="card-header p-3 border-bottom d-flex justify-between align-center flex-wrap gap-sm">
+    if (!this.canManage) {
+      this.container.querySelector('#btn-guardar-header')?.remove();
+      const alertContainer = this.container.querySelector('#alert-container-precios');
+      if (alertContainer) {
+        alertContainer.innerHTML = `
+          <div class="alert alert-info d-flex align-center gap-sm mb-4" style="background: rgba(14, 165, 233, 0.1); border-left: 4px solid var(--info); padding: 0.85rem 1.25rem; border-radius: var(--radius-md);">
+            <span style="font-size: 1.1rem;">ℹ️</span>
             <div>
-              <h3 class="card-title text-base m-0 font-bold">Lista de Precios Oficiales por Calibre</h3>
-              <span class="text-xs text-muted">Valores unitarios por bulbo para liquidación de operaciones comerciales</span>
-            </div>
-            <div class="text-xs text-muted">
-              Valores expresados en <strong class="text-main">ARS ($ / bulbo)</strong>
+              <strong>Modo Consulta (Solo Lectura):</strong> No posee permisos para modificar precios de referencia oficiales.
+              La edición requiere el permiso <code style="font-weight: 700; color: var(--primary);">PRECIOS_REF_GESTIONAR</code>.
             </div>
           </div>
-
-          <div class="table-responsive">
-            <table class="table" id="tabla-precios-referencia">
-              <thead>
-                <tr>
-                  <th style="width: 14%;">Clase Comercial</th>
-                  <th style="width: 16%;">Rango de Calibre</th>
-                  <th style="width: 26%;">Descripción Comercial</th>
-                  <th style="width: 16%;">Última Vigencia</th>
-                  <th style="width: 16%; text-align: right;">Precio Ref. ($ / bulbo)</th>
-                  <th style="width: 12%; text-align: center;">Acción</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-precios-referencia">
-                <tr>
-                  <td colspan="6" class="text-center text-muted" style="padding: 2.5rem;">Cargando precios de referencia...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Footer con Acciones en Lote -->
-          <div id="footer-acciones-precios" class="card-footer p-3 border-top d-flex justify-between align-center flex-wrap gap-md" style="background: var(--surface-alt); display: none;">
-            <div class="text-xs text-muted">
-              * Todos los precios deben ser valores numéricos estrictamente mayores a cero ($ 0,01 o superior).
-            </div>
-            <div class="d-flex align-center gap-sm">
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-precios">
-                <span>Restablecer Valores</span>
-              </button>
-              <button type="button" class="btn btn-primary btn-sm" id="btn-guardar-lote">
-                <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                  <polyline points="7 3 7 8 15 8"></polyline>
-                </svg>
-                <span>Guardar Precios de la Temporada</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
+        `;
+      }
+    }
 
     this._bindBaseEvents();
     await this._loadTemporadas();
@@ -173,6 +74,11 @@ export class PreciosReferenciaView {
     const batchSaveBtn = this.container.querySelector('#btn-guardar-lote');
     batchSaveBtn?.addEventListener('click', async () => {
       await this._guardarPreciosLote();
+    });
+
+    const guardarComisionBtn = this.container.querySelector('#btn-guardar-comision');
+    guardarComisionBtn?.addEventListener('click', async () => {
+      await this._guardarComisionTemporada();
     });
 
     const resetBtn = this.container.querySelector('#btn-reset-precios');
@@ -284,6 +190,18 @@ export class PreciosReferenciaView {
     if (headerSaveBtn) {
       headerSaveBtn.style.display = (this.canManage && !isClosed) ? 'inline-flex' : 'none';
     }
+
+    // Controlar campos de comisión de compra según permisos y estado
+    const comisionInput = this.container.querySelector('#input-comision-compra');
+    const comisionBtn = this.container.querySelector('#btn-guardar-comision');
+    const isEditable = this.canManage && !isClosed;
+
+    if (comisionInput) {
+      comisionInput.disabled = !isEditable;
+    }
+    if (comisionBtn) {
+      comisionBtn.style.display = isEditable ? 'inline-flex' : 'none';
+    }
   }
 
   async _loadPrecios() {
@@ -297,6 +215,21 @@ export class PreciosReferenciaView {
     try {
       this.isLoading = true;
       this.precios = await preciosReferenciaService.listarPorTemporada(this.selectedTemporadaId);
+
+      // Sincronizar campo de comisión de la temporada
+      const comisionVal = this.precios[0]?.porcentajeComisionCompra != null
+        ? Number(this.precios[0].porcentajeComisionCompra)
+        : Number(this.selectedTemporada?.porcentajeComisionCompra ?? 0);
+
+      if (this.selectedTemporada) {
+        this.selectedTemporada.porcentajeComisionCompra = comisionVal;
+      }
+
+      const comisionInput = this.container.querySelector('#input-comision-compra');
+      if (comisionInput) {
+        comisionInput.value = comisionVal.toString();
+      }
+
       this._renderPreciosTable();
     } catch (err) {
       console.error('[PreciosReferenciaView] Error al cargar precios:', err);
@@ -496,8 +429,18 @@ export class PreciosReferenciaView {
       if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Guardando...'; }
       if (headerBtn) { headerBtn.disabled = true; headerBtn.textContent = 'Guardando...'; }
 
-      await preciosReferenciaService.guardarPreciosTemporada(this.selectedTemporadaId, items);
-      toast.success('Precios de referencia de la temporada guardados exitosamente.');
+      const comisionInput = this.container.querySelector('#input-comision-compra');
+      const comisionVal = comisionInput ? Number(comisionInput.value) : null;
+
+      await preciosReferenciaService.guardarPreciosTemporada(this.selectedTemporadaId, items, comisionVal);
+      toast.success('Precios de referencia y parámetros de la temporada guardados exitosamente.');
+
+      if (comisionVal !== null && !isNaN(comisionVal) && this.selectedTemporada) {
+        this.selectedTemporada.porcentajeComisionCompra = comisionVal;
+        const itemInList = this.temporadas.find(t => Number(t.id) === Number(this.selectedTemporadaId));
+        if (itemInList) itemInList.porcentajeComisionCompra = comisionVal;
+      }
+
       await this._loadPrecios();
     } catch (err) {
       console.error('[PreciosReferenciaView] Error al guardar lote:', err);
@@ -507,6 +450,58 @@ export class PreciosReferenciaView {
       const headerBtn = this.container.querySelector('#btn-guardar-header');
       if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<span>Guardar Precios de la Temporada</span>'; }
       if (headerBtn) { headerBtn.disabled = false; headerBtn.innerHTML = '<span>Guardar Precios</span>'; }
+    }
+  }
+
+  async _guardarComisionTemporada() {
+    if (!this.canManage || this._isTemporadaCerrada()) return;
+
+    const input = this.container.querySelector('#input-comision-compra');
+    const btn = this.container.querySelector('#btn-guardar-comision');
+    if (!input) return;
+
+    const val = Number(input.value);
+    if (isNaN(val) || val < 0 || val > 100) {
+      input.style.borderColor = 'var(--danger)';
+      toast.warning('El porcentaje de comisión debe estar entre 0% y 100%.');
+      input.focus();
+      return;
+    }
+
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>Guardando...</span>';
+      }
+
+      await temporadasService.actualizarComisionCompra(this.selectedTemporadaId, val);
+      toast.success(`Comisión retenida de compra actualizada a ${val.toFixed(2)}% para esta temporada.`);
+
+      if (this.selectedTemporada) {
+        this.selectedTemporada.porcentajeComisionCompra = val;
+      }
+      const itemInList = this.temporadas.find(t => Number(t.id) === Number(this.selectedTemporadaId));
+      if (itemInList) {
+        itemInList.porcentajeComisionCompra = val;
+      }
+
+      input.style.borderColor = 'var(--success)';
+      setTimeout(() => {
+        if (input) input.style.borderColor = 'var(--border)';
+      }, 1500);
+    } catch (err) {
+      console.error('[PreciosReferenciaView] Error al guardar comisión:', err);
+      toast.error('Error al guardar comisión: ' + (err.message || 'Ocurrió un error'));
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `
+          <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span>Guardar Comisión</span>
+        `;
+      }
     }
   }
 }

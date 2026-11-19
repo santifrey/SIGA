@@ -1,0 +1,22 @@
+<div class="modal-backdrop" id="modal-confirm-delete" role="dialog" aria-modal="true">
+  <div class="modal-dialog" style="max-width: 480px;">
+    <div class="modal-header">
+      <h3 class="modal-title" id="confirm-delete-title" style="color: var(--danger);">Confirmar Baja</h3>
+      <button type="button" class="modal-close-btn btn-close" id="btn-close-confirm-delete" aria-label="Cerrar modal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="d-flex gap-md align-start">
+        <div id="confirm-delete-icon-wrap" style="flex-shrink: 0; margin-top: 2px;"></div>
+        <div>
+          <p id="confirm-delete-prompt" style="font-size: 0.95rem; line-height: 1.4; margin: 0;"></p>
+          <p id="confirm-delete-hint" class="text-muted text-xs mt-2"></p>
+        </div>
+      </div>
+      <div id="confirm-delete-error" class="alert alert-danger hidden mt-3"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" id="btn-cancel-confirm-delete">Cancelar</button>
+      <button type="button" class="btn btn-danger" id="btn-submit-confirm-delete">Confirmar Baja</button>
+    </div>
+  </div>
+</div>

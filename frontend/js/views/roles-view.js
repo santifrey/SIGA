@@ -7,6 +7,8 @@
 
 import { rolesService } from '../services/roles-service.js';
 import { authService } from '../services/auth-service.js';
+import { ConfirmDeleteModal } from '../components/confirm-delete-modal.js';
+import { loadTemplate } from '../utils/template-loader.js';
 import { toast } from '../utils/toast.js';
 import { escapeHtml } from '../utils/escape-html.js';
 import { getProhibitionIcon } from '../utils/icons.js';
@@ -18,141 +20,31 @@ export class RolesView {
     this.roles = [];
     this.catalogoPermisos = [];
     this.selectedRol = null;
-    this.selectedDeleteId = null;
+    this.deleteModal = null;
   }
 
   async render(rootElement) {
     this.container = rootElement;
     const canManage = authService.tienePermiso('ROLES_GESTIONAR');
 
-    this.container.innerHTML = `
-      <div class="fade-in">
-        <!-- Encabezado -->
-        <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
-          <div>
-            <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Roles y Permisos del Sistema</h1>
-            <p class="text-muted text-sm">Definición de perfiles de seguridad, niveles de acceso y matriz de permisos por módulo</p>
-          </div>
-          <div class="d-flex gap-sm">
-            <button class="btn btn-secondary" id="btn-refresh-roles" title="Recargar lista">
-              <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              <span>Refrescar</span>
-            </button>
-            ${canManage ? `
-              <button class="btn btn-primary" id="btn-nuevo-rol">
-                <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                <span>Nuevo Rol</span>
-              </button>
-            ` : ''}
-          </div>
-        </div>
+    this.container.innerHTML = await loadTemplate('roles.html');
 
-        <!-- Tabla de Roles -->
-        <div class="card mb-4">
-          <div class="table-responsive">
-            <table class="table" id="tabla-roles">
-              <thead>
-                <tr>
-                  <th>Rol</th>
-                  <th>Descripción</th>
-                  <th>Tipo</th>
-                  <th>Usuarios Asignados</th>
-                  <th>Permisos</th>
-                  <th style="text-align: right;">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-roles">
-                <tr>
-                  <td colspan="6" class="text-center text-muted" style="padding: 2.5rem;">
-                    <div class="btn-spinner" style="display:inline-block; width:24px; height:24px; border-width:2px;"></div>
-                    <p class="mt-2">Cargando roles del sistema...</p>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+    if (!canManage) {
+      this.container.querySelector('#btn-nuevo-rol')?.remove();
+    }
 
-        <!-- Modal Crear / Editar Rol con Matriz de Permisos -->
-        <div class="modal-backdrop" id="modal-rol">
-          <div class="modal-dialog" style="max-width: 850px;">
-            <div class="modal-header">
-              <h3 class="modal-title" id="modal-rol-title">Nuevo Rol</h3>
-              <button type="button" class="modal-close-btn btn-close" id="btn-close-modal-rol">&times;</button>
-            </div>
-            <form id="form-rol">
-              <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
-                <input type="hidden" id="rol-id" value="" />
-                
-                <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 2fr; gap: 1rem;">
-                  <div class="form-group">
-                    <label class="form-label" for="rol-nombre">Nombre del Rol <span class="text-danger">*</span></label>
-                    <input type="text" id="rol-nombre" class="form-control" placeholder="ej. SUPERVISOR_PLANTA" required />
-                    <span class="text-xs text-muted" id="help-rol-nombre">En mayúsculas sin espacios recomendados.</span>
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label" for="rol-descripcion">Descripción Funcional</label>
-                    <input type="text" id="rol-descripcion" class="form-control" placeholder="Propósito y alcance del rol..." />
-                  </div>
-                </div>
-
-                <div class="d-flex justify-between align-center mb-2 flex-wrap gap-xs">
-                  <h4 class="text-xs text-muted font-bold text-uppercase m-0">Matriz de Permisos por Módulo</h4>
-                  <div class="d-flex gap-xs">
-                    <button type="button" class="btn btn-xs btn-outline" id="btn-select-all-permisos">Seleccionar Todos</button>
-                    <button type="button" class="btn btn-xs btn-outline" id="btn-deselect-all-permisos">Deseleccionar Todos</button>
-                  </div>
-                </div>
-
-                <!-- Contenedor Matriz de Permisos -->
-                <div id="contenedor-matriz-permisos" class="d-flex flex-column gap-md mt-2">
-                  <!-- Inyectado dinámicamente -->
-                </div>
-
-                <div id="form-rol-error" class="alert alert-danger hidden mt-3"></div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" id="btn-cancel-rol">Cancelar</button>
-                <button type="submit" class="btn btn-primary" id="btn-save-rol">Guardar Rol</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- Modal Confirmación de Eliminación (Prohibition) -->
-        <div class="modal-backdrop" id="modal-delete-rol">
-          <div class="modal-dialog" style="max-width: 480px;">
-            <div class="modal-header">
-              <h3 class="modal-title" style="color: var(--danger);">Eliminar Rol</h3>
-              <button type="button" class="modal-close-btn btn-close" id="btn-close-modal-delete-rol">&times;</button>
-            </div>
-            <div class="modal-body">
-              <div class="d-flex gap-md align-start">
-                <div style="flex-shrink: 0; margin-top: 2px;">
-                  ${getProhibitionIcon({ size: 'lg', title: 'Eliminar Rol' })}
-                </div>
-                <div>
-                  <p id="delete-rol-prompt" style="font-size: 0.95rem; line-height: 1.4; margin: 0;"></p>
-                  <p class="text-muted text-xs mt-2">Los roles con usuarios activos asignados o configurados como rol de sistema no pueden eliminarse.</p>
-                </div>
-              </div>
-              <div id="delete-rol-error" class="alert alert-danger hidden mt-3"></div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" id="btn-cancel-delete-rol">Cancelar</button>
-              <button type="button" class="btn btn-danger" id="btn-confirm-delete-rol">Confirmar Eliminación</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
+    this.deleteModal = new ConfirmDeleteModal({
+      container: this.container,
+      title: 'Eliminar Rol',
+      confirmText: 'Confirmar Eliminación',
+      hintText: 'Los roles con usuarios activos asignados o configurados como rol de sistema no pueden eliminarse.',
+      onConfirm: async (id) => {
+        await rolesService.eliminar(id);
+        toast.success('Rol eliminado exitosamente.');
+        await this.loadRoles();
+      }
+    });
+    await this.deleteModal.init();
 
     this._bindEvents();
     await this._loadInitialData();
@@ -181,11 +73,6 @@ export class RolesView {
       this.container.querySelectorAll('.permiso-checkbox').forEach(cb => { cb.checked = false; });
       this.container.querySelectorAll('.modulo-select-all').forEach(cb => { cb.checked = false; });
     });
-
-    // Modal Delete
-    this.container.querySelector('#btn-close-modal-delete-rol').addEventListener('click', () => this.closeModalDelete());
-    this.container.querySelector('#btn-cancel-delete-rol').addEventListener('click', () => this.closeModalDelete());
-    this.container.querySelector('#btn-confirm-delete-rol').addEventListener('click', () => this._handleConfirmDelete());
   }
 
   async _loadInitialData() {
@@ -506,61 +393,18 @@ export class RolesView {
   }
 
   openModalDelete(id, name) {
-    this.selectedDeleteId = id;
-    const prompt = this.container.querySelector('#delete-rol-prompt');
-    const errBox = this.container.querySelector('#delete-rol-error');
-    const confirmBtn = this.container.querySelector('#btn-confirm-delete-rol');
-    errBox.classList.add('hidden');
-    errBox.textContent = '';
-    if (confirmBtn) confirmBtn.disabled = false;
-
-    // Salvaguardas UI para roles del sistema y roles con usuarios asignados
+    let blockingError = null;
     const rol = this.roles.find(r => String(r.id) === String(id));
     if (rol && rol.esSistema) {
-      errBox.textContent = 'No se puede eliminar un rol protegido del sistema.';
-      errBox.classList.remove('hidden');
-      if (confirmBtn) confirmBtn.disabled = true;
+      blockingError = 'No se puede eliminar un rol protegido del sistema.';
     } else if (rol && rol.totalUsuarios > 0) {
-      errBox.textContent = 'No se puede eliminar el rol porque tiene usuarios asignados. Reasigne los usuarios antes de eliminar el rol.';
-      errBox.classList.remove('hidden');
-      if (confirmBtn) confirmBtn.disabled = true;
+      blockingError = 'No se puede eliminar el rol porque tiene usuarios asignados. Reasigne los usuarios antes de eliminar el rol.';
     }
 
-    prompt.innerHTML = `¿Está seguro de que desea eliminar el rol <strong>${escapeHtml(name)}</strong>?`;
-    const modal = this.container.querySelector('#modal-delete-rol');
-    modal.classList.add('is-active');
-  }
-
-  closeModalDelete() {
-    const modal = this.container.querySelector('#modal-delete-rol');
-    modal.classList.remove('is-active');
-    this.selectedDeleteId = null;
-  }
-
-  async _handleConfirmDelete() {
-    if (!this.selectedDeleteId) return;
-
-    const confirmBtn = this.container.querySelector('#btn-confirm-delete-rol');
-    const errBox = this.container.querySelector('#delete-rol-error');
-    errBox.classList.add('hidden');
-    errBox.textContent = '';
-
-    confirmBtn.disabled = true;
-    confirmBtn.classList.add('is-loading');
-
-    try {
-      await rolesService.eliminar(this.selectedDeleteId);
-      toast.success('Rol eliminado exitosamente.');
-      this.closeModalDelete();
-      await this.loadRoles();
-    } catch (err) {
-      const msg = err.message || 'Error al eliminar el rol';
-      errBox.textContent = msg;
-      errBox.classList.remove('hidden');
-      toast.error(msg);
-    } finally {
-      confirmBtn.disabled = false;
-      confirmBtn.classList.remove('is-loading');
-    }
+    this.deleteModal.open({
+      id,
+      promptHtml: `¿Está seguro de que desea eliminar el rol <strong>${escapeHtml(name)}</strong>?`,
+      blockingError
+    });
   }
 }

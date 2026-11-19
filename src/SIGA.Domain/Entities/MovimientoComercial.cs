@@ -9,7 +9,7 @@ public class MovimientoComercial : BaseEntity
     public TipoMovimientoComercial Tipo { get; set; } = TipoMovimientoComercial.VentaACliente;
     public EstadoMovimientoComercial Estado { get; set; } = EstadoMovimientoComercial.PendienteRevision;
 
-    public int OrigenParticipanteId { get; set; } = Empresa.SingletonId;
+    public int OrigenParticipanteId { get; set; }
     public virtual ParticipanteComercial? OrigenParticipante { get; set; }
 
     public int DestinoParticipanteId { get; set; }

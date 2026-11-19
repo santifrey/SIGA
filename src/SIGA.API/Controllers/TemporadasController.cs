@@ -78,4 +78,19 @@ public class TemporadasController : BaseApiController
         var result = await _gestionTemporadas.CerrarAsync(id, cancellationToken);
         return CustomResult(result);
     }
+
+    [HttpPut("{id:int}/comision-compra")]
+    [HttpPost("{id:int}/comision-compra")]
+    [RequierePermiso(Permisos.PreciosRefGestionar, Permisos.TemporadasGestionar)]
+    [ProducesResponseType(typeof(ApiResponse<TemporadaDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<TemporadaDto>>> ActualizarComisionCompra(
+        int id,
+        [FromBody] ActualizarComisionTemporadaDto dto,
+        CancellationToken cancellationToken)
+    {
+        var result = await _gestionTemporadas.ActualizarComisionCompraAsync(id, dto.PorcentajeComisionCompra, cancellationToken);
+        return CustomResult(result);
+    }
 }

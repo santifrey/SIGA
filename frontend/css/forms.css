@@ -160,14 +160,16 @@ select.form-control {
   border-color: var(--success);
 }
 
-.form-feedback {
+.form-feedback,
+.invalid-feedback {
   font-size: var(--font-size-xs);
   margin-top: 0.35rem;
   display: none;
 }
 
-.form-feedback.invalid-feedback {
-  color: var(--danger);
+.form-feedback.invalid-feedback,
+.invalid-feedback {
+  color: var(--danger, #ef4444);
 }
 
 .form-group.has-error .invalid-feedback,

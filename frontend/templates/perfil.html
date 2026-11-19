@@ -1,0 +1,72 @@
+<div class="fade-in">
+  <div class="d-flex justify-between align-center mb-4 flex-wrap gap-md">
+    <div>
+      <h1 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Mi Perfil</h1>
+      <p class="text-muted text-sm">Información personal y de contacto del usuario en el sistema</p>
+    </div>
+    <button class="btn btn-secondary" id="btn-refresh-perfil" title="Actualizar datos">
+      <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+      <span>Refrescar</span>
+    </button>
+  </div>
+
+  <div id="perfil-loading" class="text-center text-muted" style="padding: 3rem;">
+    <div class="btn-spinner" style="display:inline-block; width:30px; height:30px; border-width:3px;"></div>
+    <p class="mt-2">Cargando perfil de usuario...</p>
+  </div>
+
+  <div id="perfil-content" class="hidden"></div>
+
+  <!-- Modal para Modificar Información Personal y de Contacto -->
+  <div id="modal-editar-perfil" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title font-bold" style="color: var(--primary);">Modificar Información Personal</h3>
+        <button type="button" class="modal-close-btn" id="btn-close-modal-perfil" aria-label="Cerrar modal">&times;</button>
+      </div>
+      <form id="form-editar-perfil" novalidate>
+        <div class="modal-body" style="padding: 1.5rem;">
+          <div class="grid-two-cols mb-3" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label font-medium" for="perfil-nombre">Nombre <span class="text-danger">*</span></label>
+              <input type="text" id="perfil-nombre" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label font-medium" for="perfil-apellido">Apellido <span class="text-danger">*</span></label>
+              <input type="text" id="perfil-apellido" class="form-control" required />
+            </div>
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label font-medium" for="perfil-documento">Documento de Identidad (DNI) <span class="text-danger">*</span></label>
+            <input type="text" id="perfil-documento" class="form-control" required />
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label font-medium" for="perfil-email">Correo Electrónico <span class="text-danger">*</span></label>
+            <input type="email" id="perfil-email" class="form-control" required />
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label font-medium" for="perfil-telefono">Teléfono de Contacto</label>
+            <input type="text" id="perfil-telefono" class="form-control" placeholder="ej. 351445566" />
+          </div>
+
+          <div id="perfil-form-error" class="alert alert-danger hidden mb-3" style="font-size: 0.8125rem;"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="btn-cancelar-perfil">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-guardar-perfil">
+            <span class="btn-text">Guardar Cambios</span>
+            <span class="btn-spinner"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

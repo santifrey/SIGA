@@ -18,9 +18,9 @@ public class ClientesController : BaseApiController
     [HttpGet]
     [RequierePermiso(Permisos.ClientesVer)]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<ClienteDto>>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ClienteDto>>>> GetAll([FromQuery] string? busqueda, CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<IEnumerable<ClienteDto>>>> GetAll([FromQuery] string? busqueda, [FromQuery] int? limit, CancellationToken cancellationToken)
     {
-        var result = await _gestionClientes.GetAllAsync(busqueda, cancellationToken);
+        var result = await _gestionClientes.GetAllAsync(busqueda, limit, cancellationToken);
         return CustomResult(result);
     }
 

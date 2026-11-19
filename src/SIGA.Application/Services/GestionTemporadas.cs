@@ -37,6 +37,10 @@ public class GestionTemporadas : IGestionTemporadas
             throw new ValidationException($"Ya existe una temporada activa con el nombre '{dto.Nombre.Trim()}'.");
 
         var temporada = new Temporada(dto.Nombre, usuarioId, dto.FechaInicio);
+        if (dto.PorcentajeComisionCompra.HasValue)
+        {
+            temporada.ActualizarComisionCompra(dto.PorcentajeComisionCompra.Value);
+        }
 
         await _temporadaRepository.AddAsync(temporada, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -82,6 +86,20 @@ public class GestionTemporadas : IGestionTemporadas
         if (temporada.Estado == nuevoEstado)
             return ApiResponse<TemporadaDto>.Ok(MapToDto(temporada), "La temporada ya se encuentra en dicho estado.");
 
+        // Regla de Negocio: Solo puede haber una temporada activa en el sistema.
+        // Para avanzar de 'Planificada' a cualquier fase operativa (Plantacion, etc.),
+        // la temporada anterior debe estar 'Cerrada'.
+        if (temporada.Estado == EstadoTemporada.Planificada && nuevoEstado != EstadoTemporada.Planificada && nuevoEstado != EstadoTemporada.Cerrada)
+        {
+            var todas = await _temporadaRepository.GetAllAsync(cancellationToken);
+            var activaAnterior = todas.FirstOrDefault(t => t.Id != id && t.Estado != EstadoTemporada.Cerrada && t.Estado != EstadoTemporada.Planificada);
+            if (activaAnterior != null)
+            {
+                throw new OperacionInvalidaException(
+                    $"Solo puede haber una temporada activa. Para avanzar '{temporada.Nombre}' a {nuevoEstado}, la temporada anterior '{activaAnterior.Nombre}' debe estar cerrada (Estado actual: {activaAnterior.Estado}).");
+            }
+        }
+
         switch (nuevoEstado)
         {
             case EstadoTemporada.Plantacion:
@@ -114,6 +132,22 @@ public class GestionTemporadas : IGestionTemporadas
         return await CambiarEstadoAsync(id, EstadoTemporada.Cerrada, cancellationToken);
     }
 
+    public async Task<ApiResponse<TemporadaDto>> ActualizarComisionCompraAsync(
+        int id, 
+        decimal porcentaje, 
+        CancellationToken cancellationToken = default)
+    {
+        var temporada = await _temporadaRepository.GetByIdWithDetailsAsync(id, cancellationToken);
+        if (temporada == null)
+            throw new NotFoundException(nameof(Temporada), id);
+
+        temporada.ActualizarComisionCompra(porcentaje);
+        await _temporadaRepository.UpdateAsync(temporada, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return ApiResponse<TemporadaDto>.Ok(MapToDto(temporada), "Porcentaje de comisión de compra actualizado exitosamente.");
+    }
+
     private static TemporadaDto MapToDto(Temporada t)
     {
         return new TemporadaDto
@@ -123,6 +157,7 @@ public class GestionTemporadas : IGestionTemporadas
             FechaInicio = t.FechaInicio,
             FechaFin = t.FechaFin,
             Estado = t.Estado,
+            PorcentajeComisionCompra = t.PorcentajeComisionCompra,
             UsuarioCreadorId = t.UsuarioCreadorId,
             TotalFilas = t.Filas?.Count ?? 0,
             TotalLotes = t.Lotes?.Count ?? 0,
